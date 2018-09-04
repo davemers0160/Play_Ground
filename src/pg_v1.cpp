@@ -54,7 +54,7 @@
 #include "load_dfd_data.h"
 #include "dfd_array_cropper.h"
 #include "rot_90.h"
-#include "read_binary_lidar_data.h" 
+#include "read_binary_image.h" 
 #include "make_dir.h"
 
 
@@ -105,6 +105,22 @@ double schwefel(dlib::matrix<double> x)
 	return result;
 	
 }	// end of schwefel
+
+
+
+// ----------------------------------------------------------------------------------------
+
+void get_mat(uint32_t &height, uint32_t &width, dlib::matrix<float> &dimg)
+{
+
+    float *d2;
+
+    std::string file_name = "D:/Projects/MATAS/data/training/arresting/3ITYIHDWlPM_38.resnet18.bin";
+
+    read_binary_image(file_name, width, height, d2);
+    dimg = dlib::mat(d2, height, width);
+
+}
 
 
 // ----------------------------------------------------------------------------------------
@@ -442,6 +458,31 @@ int main(int argc, char** argv)
         //std::cout << "Date: " << sdate << "    Time: " << stime << std::endl;
         map_file.close();
         */
+
+
+
+
+
+// read in the binary data and compare to matlab
+// read in as an opencv object for now
+
+
+        uint32_t width, height;
+        //float *d2;
+
+        //std::string file_name = "D:/Projects/MATAS/data/training/arresting/3ITYIHDWlPM_38.resnet18.bin";
+
+        //read_binary_image(file_name, width, height, d2);
+        //cv::Mat img = cv::Mat(width, height, CV_32FC1, d2);
+
+
+        dlib::matrix<float> dimg;// = dlib::mat(d2, height, width);
+
+        get_mat(height, width, dimg);
+
+        bp = 2;
+
+
 
     }
     catch (std::exception &e)

@@ -57,6 +57,7 @@
 #include "read_binary_lidar_data.h" 
 #include "make_dir.h"
 
+#include "dfd_net_v8d.h"
 
 using namespace std;
 
@@ -105,63 +106,6 @@ double schwefel(dlib::matrix<double> x)
 	return result;
 	
 }	// end of schwefel
-
-
-// ----------------------------------------------------------------------------------------
-//void get_ip_address(std::vector<std::string> &data, std::string &lpMsgBuf)
-//{
-//    int32_t idx;
-//
-//    /* Variables used by GetIpAddrTable */
-//    PMIB_IPADDRTABLE pIPAddrTable;
-//    unsigned long dwSize = 0;
-//    unsigned long dwRetVal = 0;
-//    in_addr IPAddr;
-//
-//    data.clear();
-//    lpMsgBuf = "";
-//
-//    // Before calling AddIPAddress we use GetIpAddrTable to get an adapter to which we can add the IP.
-//    pIPAddrTable = (MIB_IPADDRTABLE *)HeapAlloc(GetProcessHeap(), 0, sizeof(MIB_IPADDRTABLE));
-//
-//    if (pIPAddrTable) 
-//    {
-//        // Make an initial call to GetIpAddrTable to get the
-//        // necessary size into the dwSize variable
-//        if (GetIpAddrTable(pIPAddrTable, &dwSize, 0) ==
-//            ERROR_INSUFFICIENT_BUFFER) {
-//            HeapFree(GetProcessHeap(), 0, pIPAddrTable);
-//            pIPAddrTable = (MIB_IPADDRTABLE *)HeapAlloc(GetProcessHeap(), 0, dwSize);
-//        }
-//
-//        if (pIPAddrTable == NULL) 
-//        {
-//            lpMsgBuf = "Memory allocation failed for GetIpAddrTable";
-//            return;
-//        }
-//    }
-//
-//    // Make a second call to GetIpAddrTable to get the actual data we want
-//    if ((dwRetVal = GetIpAddrTable(pIPAddrTable, &dwSize, 0)) != NO_ERROR) 
-//    {
-//        //lpMsgBuf = "GetIpAddrTable failed with error " + num2str(dwRetVal, "%d");
-//        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwRetVal, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)& lpMsgBuf, 0, NULL);
-//        return;
-//    }
-//
-//    for (idx = 0; idx < (int)pIPAddrTable->dwNumEntries; ++idx) 
-//    {
-//        IPAddr.S_un.S_addr = (u_long)pIPAddrTable->table[idx].dwAddr;
-//        data.push_back(inet_ntoa(IPAddr));
-//    }
-//
-//    if (pIPAddrTable) 
-//    {
-//        HeapFree(GetProcessHeap(), 0, pIPAddrTable);
-//        pIPAddrTable = NULL;
-//    }
-//
-//}   // end of get_ip_address
 
 
 // ----------------------------------------------------------------------------------------
@@ -220,11 +164,13 @@ int main(int argc, char** argv)
         bp = 1;
 
 
+        // ----------------------------------------------------------------------------------------
+
+        dfd_net_type dfd_net;
 
 
 
-
-
+        init_gorgon((sync_save_location + gorgon_savefile));
 
 
 

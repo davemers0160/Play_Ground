@@ -178,7 +178,23 @@ int main(int argc, char** argv)
 
 
         bp = 1;
+        // ----------------------------------------------------------------------------------------
 
+
+        std::string rx_message = "{\"prod_line\": \"OS-1-64\", \"prod_pn\": \"840-101396-02\", \"prod_sn\": \"991805000142\", \"base_pn\": \"000-101323-01\", \"base_sn\": \"11E0211\", \"image_rev\": \"ousteros-image-prod-aries-v1.2.0-201804232039\", \"build_rev\": \"v1.2.0\", \"proto_rev\": \"v1.1.0\", \"build_date\": \"2018-05-02T18:37:13Z\", \"status\": \"RUNNING\"}";
+
+        std::vector<std::string> lidar_info;
+        lidar_info.clear();
+
+        std::vector<std::string> params, params2;
+        parseCSVLine(rx_message, params);
+        for (uint32_t idx = 0; idx < params.size()-1; ++idx)
+        {
+            parse_line(params[idx], ':', params2);
+            std::string info = params2[1];
+            lidar_info.push_back(info.substr(1, info.length() - 2));
+        }
+        bp = 2;
 
         // ----------------------------------------------------------------------------------------
 

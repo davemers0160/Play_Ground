@@ -32,6 +32,7 @@
 #include "dlib/external/zlib/zlib.h"
 #include "dlib/image_transforms.h"
 
+
 // #include "dlib/xml_parser.h"
 // #include "dlib/string.h"
 
@@ -47,7 +48,7 @@
 #include "mmap.h"
 #include "getCurrentTime.h"
 #include "get_platform.h"
-#include "pso.h"
+//#include "pso.h"
 #include "ycrcb_pixel.h"
 #include "num2string.h"
 #include "file_parser.h"
@@ -57,11 +58,14 @@
 #include "read_binary_image.h" 
 #include "make_dir.h"
 
-#include "dfd_net_v8d.h"
+#include "dlib_elu.h"
+
+//#include "dfd_net_v8d.h"
 
 using namespace std;
 
 // ----------------------------------------------------------------------------------------
+
 
 void write_xml(std::string filename)
 {
@@ -110,18 +114,18 @@ double schwefel(dlib::matrix<double> x)
 
 
 // ----------------------------------------------------------------------------------------
-
-void get_mat(uint32_t &height, uint32_t &width, dlib::matrix<float> &dimg)
-{
-
-    float *d2;
-
-    std::string file_name = "D:/Projects/MATAS/data/training/arresting/3ITYIHDWlPM_38.resnet18.bin";
-
-    read_binary_image(file_name, width, height, d2);
-    dimg = dlib::mat(d2, height, width);
-
-}
+//
+//void get_mat(uint32_t &height, uint32_t &width, dlib::matrix<float> &dimg)
+//{
+//
+//    float *d2;
+//
+//    std::string file_name = "D:/Projects/MATAS/data/training/arresting/3ITYIHDWlPM_38.resnet18.bin";
+//
+//    read_binary_image(file_name, width, height, d2);
+//    dimg = dlib::mat(d2, height, width);
+//
+//}
 
 
 // ----------------------------------------------------------------------------------------
@@ -152,7 +156,7 @@ int main(int argc, char** argv)
 
     try
     {
-        //std::cout << "Input: " << argv[1] << std::endl;
+        std::cout << "Input: " << argv[1] << std::endl;
 
         int bp = 0;
 
@@ -160,43 +164,97 @@ int main(int argc, char** argv)
         //std::string filename = "disp1.png";
 
 // ----------------------------------------------------------------------------------------
-        std::vector<std::string> data;
-        std::string lpMsgBuf;
-        std::string console_input;
-        std::string address;
+        //std::vector<std::string> data;
+        //std::string lpMsgBuf;
+        //std::string console_input;
+        //std::string address;
 
-        get_ip_address(data, lpMsgBuf);
+        //get_ip_address(data, lpMsgBuf);
 
-        for (idx = 0; idx < data.size(); ++idx)
-        {
-            std::cout << "IP Address [" << idx << "]: " << data[idx] << std::endl;
-        }
+        //for (idx = 0; idx < data.size(); ++idx)
+        //{
+        //    std::cout << "IP Address [" << idx << "]: " << data[idx] << std::endl;
+        //}
 
-        std::cout << "Select IP Address: ";
-        std::getline(std::cin, console_input);
-        address = data[stoi(console_input)];
+        //std::cout << "Select IP Address: ";
+        //std::getline(std::cin, console_input);
+        //address = data[stoi(console_input)];
 
 
-        bp = 1;
+        //bp = 1;
+        //// ----------------------------------------------------------------------------------------
+
+
+        //std::string rx_message = "{\"prod_line\": \"OS-1-64\", \"prod_pn\": \"840-101396-02\", \"prod_sn\": \"991805000142\", \"base_pn\": \"000-101323-01\", \"base_sn\": \"11E0211\", \"image_rev\": \"ousteros-image-prod-aries-v1.2.0-201804232039\", \"build_rev\": \"v1.2.0\", \"proto_rev\": \"v1.1.0\", \"build_date\": \"2018-05-02T18:37:13Z\", \"status\": \"RUNNING\"}";
+
+        //std::vector<std::string> lidar_info;
+        //lidar_info.clear();
+
+        //std::vector<std::string> params, params2;
+        //parseCSVLine(rx_message, params);
+        //for (uint32_t idx = 0; idx < params.size()-1; ++idx)
+        //{
+        //    parse_line(params[idx], ':', params2);
+        //    std::string info = params2[1];
+        //    lidar_info.push_back(info.substr(1, info.length() - 2));
+        //}
+        //bp = 2;
+
         // ----------------------------------------------------------------------------------------
 
 
-        std::string rx_message = "{\"prod_line\": \"OS-1-64\", \"prod_pn\": \"840-101396-02\", \"prod_sn\": \"991805000142\", \"base_pn\": \"000-101323-01\", \"base_sn\": \"11E0211\", \"image_rev\": \"ousteros-image-prod-aries-v1.2.0-201804232039\", \"build_rev\": \"v1.2.0\", \"proto_rev\": \"v1.1.0\", \"build_date\": \"2018-05-02T18:37:13Z\", \"status\": \"RUNNING\"}";
+        // MNIST is broken into two parts, a training set of 60000 images and a test set of
+        // 10000 images.  Each image is labeled so that we know what hand written digit is
+        // depicted.  These next statements load the dataset into memory.
+        std::vector<dlib::matrix<unsigned char>> training_images;
+        std::vector<unsigned long>         training_labels;
+        std::vector<dlib::matrix<unsigned char>> testing_images;
+        std::vector<unsigned long>         testing_labels;
+        dlib::load_mnist_dataset(argv[1], training_images, training_labels, testing_images, testing_labels);
 
-        std::vector<std::string> lidar_info;
-        lidar_info.clear();
+        using net_type = dlib::loss_multiclass_log<
+            dlib::fc<10,
+            dlib::elu<dlib::fc<84,
+            dlib::relu<dlib::fc<120,
+            dlib::max_pool<2, 2, 2, 2, dlib::relu<dlib::con<16, 5, 5, 1, 1,
+            dlib::max_pool<2, 2, 2, 2, dlib::relu<dlib::con<6, 5, 5, 1, 1,
+            dlib::input<dlib::matrix<unsigned char>>
+            >>>>>>>>>>>>;
 
-        std::vector<std::string> params, params2;
-        parseCSVLine(rx_message, params);
-        for (uint32_t idx = 0; idx < params.size()-1; ++idx)
+        net_type net;
+
+        dlib::dnn_trainer<net_type> trainer(net);
+        trainer.set_learning_rate(0.01);
+        trainer.set_min_learning_rate(0.00001);
+        trainer.set_mini_batch_size(128);
+        trainer.be_verbose();
+
+        trainer.set_synchronization_file("mnist_sync", std::chrono::seconds(20));
+
+        trainer.train(training_images, training_labels);
+
+        net.clean();
+
+
+        std::vector<unsigned long> predicted_labels = net(training_images);
+        int num_right = 0;
+        int num_wrong = 0;
+        // And then let's see if it classified them correctly.
+        for (size_t i = 0; i < training_images.size(); ++i)
         {
-            parse_line(params[idx], ':', params2);
-            std::string info = params2[1];
-            lidar_info.push_back(info.substr(1, info.length() - 2));
-        }
-        bp = 2;
+            if (predicted_labels[i] == training_labels[i])
+                ++num_right;
+            else
+                ++num_wrong;
 
-        // ----------------------------------------------------------------------------------------
+        }
+        cout << "training num_right: " << num_right << endl;
+        cout << "training num_wrong: " << num_wrong << endl;
+        cout << "training accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
+
+
+
+
 
 
 
@@ -413,29 +471,6 @@ int main(int argc, char** argv)
         //std::cout << "Date: " << sdate << "    Time: " << stime << std::endl;
         map_file.close();
         */
-
-
-
-
-
-// read in the binary data and compare to matlab
-// read in as an opencv object for now
-
-
-        uint32_t width, height;
-        //float *d2;
-
-        //std::string file_name = "D:/Projects/MATAS/data/training/arresting/3ITYIHDWlPM_38.resnet18.bin";
-
-        //read_binary_image(file_name, width, height, d2);
-        //cv::Mat img = cv::Mat(width, height, CV_32FC1, d2);
-
-
-        dlib::matrix<float> dimg;// = dlib::mat(d2, height, width);
-
-        get_mat(height, width, dimg);
-
-        bp = 2;
 
 
 

@@ -214,8 +214,8 @@ int main(int argc, char** argv)
 
         using net_type = dlib::loss_multiclass_log<
             dlib::fc<10,
-            dlib::elu<dlib::fc<84,
-            dlib::relu<dlib::fc<120,
+            dlib::relu<dlib::fc<84,
+            dlib::elu<dlib::fc<120,
             dlib::max_pool<2, 2, 2, 2, dlib::relu<dlib::con<16, 5, 5, 1, 1,
             dlib::max_pool<2, 2, 2, 2, dlib::relu<dlib::con<6, 5, 5, 1, 1,
             dlib::input<dlib::matrix<unsigned char>>
@@ -223,13 +223,16 @@ int main(int argc, char** argv)
 
         net_type net;
 
-        dlib::dnn_trainer<net_type> trainer(net);
+
+        std::cout << net << std::endl;
+
+        dlib::dnn_trainer<net_type, dlib::sgd> trainer(net, dlib::sgd(), { 1 });
         trainer.set_learning_rate(0.01);
         trainer.set_min_learning_rate(0.00001);
         trainer.set_mini_batch_size(128);
         trainer.be_verbose();
 
-        trainer.set_synchronization_file("mnist_sync", std::chrono::seconds(20));
+        trainer.set_synchronization_file("../results/mnist_sync_elu", std::chrono::seconds(20));
 
         trainer.train(training_images, training_labels);
 

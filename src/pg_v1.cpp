@@ -57,8 +57,9 @@
 #include "rot_90.h"
 #include "read_binary_image.h" 
 #include "make_dir.h"
-
-#include "dlib_elu.h"
+#include "dlib_srelu.h"
+//#include "dlib_elu.h"
+#include "center_cropper.h"
 
 //#include "dfd_net_v8d.h"
 
@@ -144,6 +145,14 @@ int main(int argc, char** argv)
 
     std::vector<std::vector<std::string>> training_file;
     std::string data_directory;
+    std::string train_inputfile;
+    std::vector<std::pair<std::string, std::string>> tr_image_files;
+
+    std::vector<dlib::matrix<uint16_t>> gt_train;
+    std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> tr;
+
+    dlib::matrix<uint16_t> gt_crop;
+    std::array<dlib::matrix<uint16_t>, img_depth> tr_crop;
 
     std::string platform;
     getPlatform(platform);
@@ -200,6 +209,32 @@ int main(int argc, char** argv)
         //}
         //bp = 2;
 
+/*
+        // parse through the supplied training csv file
+        train_inputfile = "../dfd_train_data_one2.txt";
+        parseCSVFile(train_inputfile, training_file);
+
+        // the first line in this file is now the data directory
+        data_directory = training_file[0][0];
+        training_file.erase(training_file.begin());
+
+        std::cout << "data_directory:       " << data_directory << std::endl << std::endl;
+        std::cout << "Training image sets to parse: " << training_file.size() << std::endl;
+
+        std::cout << "Loading training images..." << std::endl;
+
+        start_time = chrono::system_clock::now();
+        loadData(training_file, data_directory, tr, gt_train, tr_image_files);
+        stop_time = chrono::system_clock::now();
+
+        uint32_t crop_w = 400;
+        uint32_t crop_h = 352;
+
+        center_cropper(tr[0], tr_crop, crop_w, crop_h);
+        center_cropper(gt_train[0], gt_crop, crop_w, crop_h);
+*/
+        bp = 0;
+
         // ----------------------------------------------------------------------------------------
 
 
@@ -215,24 +250,25 @@ int main(int argc, char** argv)
         using net_type = dlib::loss_multiclass_log<
             dlib::fc<10,
             dlib::relu<dlib::fc<84,
-            dlib::elu<dlib::fc<120,
-            dlib::max_pool<2, 2, 2, 2, dlib::relu<dlib::con<16, 5, 5, 1, 1,
-            dlib::max_pool<2, 2, 2, 2, dlib::relu<dlib::con<6, 5, 5, 1, 1,
+            dlib::srelu<dlib::fc<120,
+            dlib::max_pool<2, 2, 2, 2, dlib::srelu<dlib::con<16, 5, 5, 1, 1,
+            dlib::max_pool<2, 2, 2, 2, dlib::srelu<dlib::con<6, 5, 5, 1, 1,
             dlib::input<dlib::matrix<unsigned char>>
             >>>>>>>>>>>>;
 
-        net_type net;
+        //net_type net;
+        net_type net(dlib::srelu_(0, 0.1, 1, 1), dlib::srelu_(0, 0.1, 1, 1), dlib::srelu_(0, 0.1, 1, 1));
 
 
         std::cout << net << std::endl;
 
-        dlib::dnn_trainer<net_type, dlib::sgd> trainer(net, dlib::sgd(), { 1 });
+        dlib::dnn_trainer<net_type, dlib::sgd> trainer(net, dlib::sgd(), { 0 });
         trainer.set_learning_rate(0.01);
-        trainer.set_min_learning_rate(0.00001);
+        trainer.set_min_learning_rate(0.0001);
         trainer.set_mini_batch_size(128);
         trainer.be_verbose();
 
-        trainer.set_synchronization_file("../results/mnist_sync_elu", std::chrono::seconds(20));
+        trainer.set_synchronization_file("../results/mnist_sync_srelu_4", std::chrono::minutes(5));
 
         trainer.train(training_images, training_labels);
 
@@ -255,9 +291,26 @@ int main(int argc, char** argv)
         cout << "training num_wrong: " << num_wrong << endl;
         cout << "training accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
 
+        // Let's also see if the network can correctly classify the testing images.  Since
+        // MNIST is an easy dataset, we should see at least 99% accuracy.
+        predicted_labels = net(testing_images);
+        num_right = 0;
+        num_wrong = 0;
+        for (size_t i = 0; i < testing_images.size(); ++i)
+        {
+            if (predicted_labels[i] == testing_labels[i])
+                ++num_right;
+            else
+                ++num_wrong;
+
+        }
+        cout << "testing num_right: " << num_right << endl;
+        cout << "testing num_wrong: " << num_wrong << endl;
+        cout << "testing accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
 
 
-
+        net_to_xml(net, "../results/lenet_4.xml");
+        bp = 2;
 
 
 

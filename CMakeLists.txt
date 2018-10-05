@@ -24,9 +24,9 @@ set(exe_name "pg")
 
 
 if(WIN32)
-	include(D:/dlib-19.12/dlib/cmake)
+	include(D:/dlib/dlib/cmake)
 else()
-	include(~/dlib-19.12/dlib/cmake)
+	include(~/dlib/dlib/cmake)
 endif()
 
 set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")

@@ -6,7 +6,7 @@
 
 #include "file_parser.h"
 
-extern const uint32_t img_depth = 3;
-extern const uint32_t secondary = 2;
+extern const uint32_t img_depth = 6;
+extern const uint32_t secondary = 1;
 
 #endif // end PG_H_

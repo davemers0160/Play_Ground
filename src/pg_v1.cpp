@@ -193,6 +193,51 @@ int main(int argc, char** argv)
         //bp = 1;
         //// ----------------------------------------------------------------------------------------
 
+        float tr, ar, tl, al;
+        tl = -1;
+        al = 0.25;
+        tr = 1;
+        ar = 0.25;
+        std::vector<double> x, f1, f2;
+        parse_input_range("-32:0.002:32", x);
+
+        f1.resize(x.size());
+        f2.resize(x.size());
+
+
+        start_time = chrono::system_clock::now();
+        for (idx = 0; idx < x.size(); ++idx)
+        {
+
+            if (x[idx] >= tr)
+                f1[idx] = tr + ar * (x[idx] - tr);
+            else if (x[idx] <= tl)
+                f1[idx] = tl + al * (x[idx] - tl);
+            else
+                f1[idx] = x[idx];
+        }
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << "old time: " << elapsed_time.count() << std::endl;
+
+
+        uint8_t t1=0, t2=0;
+
+        start_time = chrono::system_clock::now();
+        for (idx = 0; idx < x.size(); ++idx)
+        {
+            t1 = (uint8_t)(x[idx] >= tr);
+            t2 = (uint8_t)(x[idx] <= tl);
+
+            f2[idx] = t1 * (tr + ar * (x[idx] - tr)) + t2 * (tl + al * (x[idx] - tl)) + (uint8_t)(!(t1||t2))*x[idx];
+        }
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << "new time: " << elapsed_time.count() << std::endl;
+
+        bp = 3;
+
+        //// ----------------------------------------------------------------------------------------
 
         //std::string rx_message = "{\"prod_line\": \"OS-1-64\", \"prod_pn\": \"840-101396-02\", \"prod_sn\": \"991805000142\", \"base_pn\": \"000-101323-01\", \"base_sn\": \"11E0211\", \"image_rev\": \"ousteros-image-prod-aries-v1.2.0-201804232039\", \"build_rev\": \"v1.2.0\", \"proto_rev\": \"v1.1.0\", \"build_date\": \"2018-05-02T18:37:13Z\", \"status\": \"RUNNING\"}";
 
@@ -268,7 +313,7 @@ int main(int argc, char** argv)
         trainer.set_mini_batch_size(128);
         trainer.be_verbose();
 
-        trainer.set_synchronization_file("../results/mnist_sync_srelu_4", std::chrono::minutes(5));
+        trainer.set_synchronization_file("../results/mnist_sync_srelu_5", std::chrono::minutes(5));
 
         trainer.train(training_images, training_labels);
 

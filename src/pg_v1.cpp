@@ -169,9 +169,15 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
-        //std::string image_location = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Aloe/";
-        //std::string filename = "disp1.png";
+        std::string image_location = "D:/IUPUI/Test_Data/rw/Auditorium2/lidar/";
+        std::string filename = "lidar_rng_left_00000.png";
 
+        cv::Mat ld_img = cv::imread((image_location + filename), cv::IMREAD_ANYDEPTH);
+
+        dlib::matrix<uint16_t> f_tmp;
+        dlib::load_image(f_tmp, (image_location + filename));
+
+        bp = 1;
 // ----------------------------------------------------------------------------------------
         //std::vector<std::string> data;
         //std::string lpMsgBuf;

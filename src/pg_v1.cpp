@@ -52,18 +52,34 @@
 #include "ycrcb_pixel.h"
 #include "num2string.h"
 #include "file_parser.h"
-#include "load_dfd_data.h"
-#include "dfd_array_cropper.h"
+#include "load_dfd_rw_data.h"
+//#include "dfd_array_cropper.h"
 #include "rot_90.h"
 #include "read_binary_image.h" 
 #include "make_dir.h"
 #include "dlib_srelu.h"
 //#include "dlib_elu.h"
 #include "center_cropper.h"
+#include "dfd_cropper_rw.h"
 
-//#include "dfd_net_v8d.h"
+#include "dfd_net_v14_ml.h"
 
 using namespace std;
+
+// -------------------------------GLOBALS--------------------------------------
+
+extern const uint32_t img_depth;
+extern const uint32_t secondary;
+std::string platform;
+std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> trn, te, trn_crop, te_crop;
+std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
+
+
+std::string version;
+std::string net_name = "dfd_net_";
+std::string net_sync_name = "dfd_sync_";
+std::string logfileName = "dfd_net_";
+std::string gorgon_savefile = "gorgon_dfd_";
 
 // ----------------------------------------------------------------------------------------
 
@@ -113,22 +129,6 @@ double schwefel(dlib::matrix<double> x)
 }	// end of schwefel
 
 
-
-// ----------------------------------------------------------------------------------------
-//
-//void get_mat(uint32_t &height, uint32_t &width, dlib::matrix<float> &dimg)
-//{
-//
-//    float *d2;
-//
-//    std::string file_name = "D:/Projects/MATAS/data/training/arresting/3ITYIHDWlPM_38.resnet18.bin";
-//
-//    read_binary_image(file_name, width, height, d2);
-//    dimg = dlib::mat(d2, height, width);
-//
-//}
-
-
 // ----------------------------------------------------------------------------------------
 
 int main(int argc, char** argv)
@@ -143,15 +143,18 @@ int main(int argc, char** argv)
     unsigned long training_duration = 1;  // number of minutes to train 
     auto elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
+    std::vector<double> stop_criteria;
+    uint64_t num_crops;
+    std::pair<uint64_t, uint64_t> crop_size;
+    std::vector<uint32_t> filter_num;
+    uint64_t max_one_step_count;
+
     std::vector<std::vector<std::string>> training_file;
     std::string data_directory;
-    std::string train_inputfile;
+    std::string train_inputfile, test_inputfile;
     std::vector<std::pair<std::string, std::string>> tr_image_files;
 
-    std::vector<dlib::matrix<uint16_t>> gt_train;
-    std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> tr;
-
-    dlib::matrix<uint16_t> gt_crop;
+    dlib::matrix<uint16_t> g_crop;
     std::array<dlib::matrix<uint16_t>, img_depth> tr_crop;
 
     std::string platform;
@@ -169,15 +172,6 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
-        std::string image_location = "D:/IUPUI/Test_Data/rw/Auditorium2/lidar/";
-        std::string filename = "lidar_rng_left_00000.png";
-
-        cv::Mat ld_img = cv::imread((image_location + filename), cv::IMREAD_ANYDEPTH);
-
-        dlib::matrix<uint16_t> f_tmp;
-        dlib::load_image(f_tmp, (image_location + filename));
-
-        bp = 1;
 // ----------------------------------------------------------------------------------------
         //std::vector<std::string> data;
         //std::string lpMsgBuf;
@@ -198,7 +192,7 @@ int main(int argc, char** argv)
 
         //bp = 1;
         //// ----------------------------------------------------------------------------------------
-
+        /*
         float tr, ar, tl, al;
         tl = -1;
         al = 0.25;
@@ -242,7 +236,7 @@ int main(int argc, char** argv)
         std::cout << "new time: " << elapsed_time.count() << std::endl;
 
         bp = 3;
-
+        */
         //// ----------------------------------------------------------------------------------------
 
         //std::string rx_message = "{\"prod_line\": \"OS-1-64\", \"prod_pn\": \"840-101396-02\", \"prod_sn\": \"991805000142\", \"base_pn\": \"000-101323-01\", \"base_sn\": \"11E0211\", \"image_rev\": \"ousteros-image-prod-aries-v1.2.0-201804232039\", \"build_rev\": \"v1.2.0\", \"proto_rev\": \"v1.1.0\", \"build_date\": \"2018-05-02T18:37:13Z\", \"status\": \"RUNNING\"}";
@@ -260,9 +254,16 @@ int main(int argc, char** argv)
         //}
         //bp = 2;
 
-/*
+        std::string parseFilename = argv[1];
+
+        // parse through the supplied csv file
+        parse_dnn_data_file(parseFilename, version, stop_criteria, train_inputfile, test_inputfile, num_crops, crop_size, filter_num);
+        training_duration = stop_criteria[0];
+        max_one_step_count = (uint64_t)stop_criteria[1];
+
+
         // parse through the supplied training csv file
-        train_inputfile = "../dfd_train_data_one2.txt";
+        //train_inputfile = "../dfd_train_data_one2.txt";
         parseCSVFile(train_inputfile, training_file);
 
         // the first line in this file is now the data directory
@@ -275,16 +276,37 @@ int main(int argc, char** argv)
         std::cout << "Loading training images..." << std::endl;
 
         start_time = chrono::system_clock::now();
-        loadData(training_file, data_directory, tr, gt_train, tr_image_files);
+        //load_dfd_rw_data(training_file, data_directory, trn, gt_train, tr_image_files);
         stop_time = chrono::system_clock::now();
 
-        uint32_t crop_w = 400;
-        uint32_t crop_h = 352;
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << "Loaded " << trn.size() << " training image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
 
-        center_cropper(tr[0], tr_crop, crop_w, crop_h);
-        center_cropper(gt_train[0], gt_crop, crop_w, crop_h);
-*/
+
+        uint64_t crop_w = 400;
+        uint64_t crop_h = 352;
+
+        //center_cropper(trn[0], tr_crop, crop_size.second, crop_size.first);
+        //center_cropper(gt_train[0], g_crop, crop_w, crop_h);
+
         bp = 0;
+
+
+        dfd_cropper cropper;
+        cropper.set_chip_dims(crop_size);
+        cropper.set_seed(time(0));
+        cropper.set_scale_x(6);
+        cropper.set_scale_y(18);
+
+        //cropper(num_crops, trn, gt_train, trn_crop, gt_crop);
+
+
+
+        dfd_net_type dfd_net;
+
+        std::cout << dfd_net << std::endl;
+
+        bp = 2;
 
         // ----------------------------------------------------------------------------------------
 

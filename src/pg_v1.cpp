@@ -146,6 +146,7 @@ int main(int argc, char** argv)
     std::vector<double> stop_criteria;
     uint64_t num_crops;
     std::pair<uint64_t, uint64_t> crop_size;
+    std::vector<std::pair<uint64_t, uint64_t>> crop_sizes = { {1,1}, {38,148} };
     std::vector<uint32_t> filter_num;
     uint64_t max_one_step_count;
 
@@ -292,7 +293,7 @@ int main(int argc, char** argv)
         bp = 0;
 
 
-        dfd_cropper cropper;
+        dfd_rw_cropper cropper;
         cropper.set_chip_dims(crop_size);
         cropper.set_seed(time(0));
         cropper.set_scale_x(6);

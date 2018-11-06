@@ -140,7 +140,7 @@ int main(int argc, char** argv)
     typedef std::chrono::duration<double> d_sec;
     auto start_time = chrono::system_clock::now();
     auto stop_time = chrono::system_clock::now();
-    unsigned long training_duration = 1;  // number of minutes to train 
+    unsigned long training_duration = 1;  // number of hours to train 
     auto elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
     std::vector<double> stop_criteria;
@@ -255,136 +255,136 @@ int main(int argc, char** argv)
         //}
         //bp = 2;
 
-        std::string parseFilename = argv[1];
+        //std::string parseFilename = argv[1];
 
-        // parse through the supplied csv file
-        parse_dnn_data_file(parseFilename, version, stop_criteria, train_inputfile, test_inputfile, num_crops, crop_size, filter_num);
-        training_duration = stop_criteria[0];
-        max_one_step_count = (uint64_t)stop_criteria[1];
-
-
-        // parse through the supplied training csv file
-        //train_inputfile = "../dfd_train_data_one2.txt";
-        parseCSVFile(train_inputfile, training_file);
-
-        // the first line in this file is now the data directory
-        data_directory = training_file[0][0];
-        training_file.erase(training_file.begin());
-
-        std::cout << "data_directory:       " << data_directory << std::endl << std::endl;
-        std::cout << "Training image sets to parse: " << training_file.size() << std::endl;
-
-        std::cout << "Loading training images..." << std::endl;
-
-        start_time = chrono::system_clock::now();
-        //load_dfd_rw_data(training_file, data_directory, trn, gt_train, tr_image_files);
-        stop_time = chrono::system_clock::now();
-
-        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
-        std::cout << "Loaded " << trn.size() << " training image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
+        //// parse through the supplied csv file
+        //parse_dnn_data_file(parseFilename, version, stop_criteria, train_inputfile, test_inputfile, num_crops, crop_size, filter_num);
+        //training_duration = stop_criteria[0];
+        //max_one_step_count = (uint64_t)stop_criteria[1];
 
 
-        uint64_t crop_w = 400;
-        uint64_t crop_h = 352;
+        //// parse through the supplied training csv file
+        ////train_inputfile = "../dfd_train_data_one2.txt";
+        //parseCSVFile(train_inputfile, training_file);
 
-        //center_cropper(trn[0], tr_crop, crop_size.second, crop_size.first);
-        //center_cropper(gt_train[0], g_crop, crop_w, crop_h);
+        //// the first line in this file is now the data directory
+        //data_directory = training_file[0][0];
+        //training_file.erase(training_file.begin());
 
-        bp = 0;
+        //std::cout << "data_directory:       " << data_directory << std::endl << std::endl;
+        //std::cout << "Training image sets to parse: " << training_file.size() << std::endl;
 
+        //std::cout << "Loading training images..." << std::endl;
 
-        dfd_rw_cropper cropper;
-        cropper.set_chip_dims(crop_size);
-        cropper.set_seed(time(0));
-        cropper.set_scale_x(6);
-        cropper.set_scale_y(18);
+        //start_time = chrono::system_clock::now();
+        ////load_dfd_rw_data(training_file, data_directory, trn, gt_train, tr_image_files);
+        //stop_time = chrono::system_clock::now();
 
-        //cropper(num_crops, trn, gt_train, trn_crop, gt_crop);
-
-
-
-        dfd_net_type dfd_net;
-
-        std::cout << dfd_net << std::endl;
-
-        bp = 2;
-
-        // ----------------------------------------------------------------------------------------
+        //elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        //std::cout << "Loaded " << trn.size() << " training image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
 
 
-        // MNIST is broken into two parts, a training set of 60000 images and a test set of
-        // 10000 images.  Each image is labeled so that we know what hand written digit is
-        // depicted.  These next statements load the dataset into memory.
-        std::vector<dlib::matrix<unsigned char>> training_images;
-        std::vector<unsigned long>         training_labels;
-        std::vector<dlib::matrix<unsigned char>> testing_images;
-        std::vector<unsigned long>         testing_labels;
-        dlib::load_mnist_dataset(argv[1], training_images, training_labels, testing_images, testing_labels);
+        //uint64_t crop_w = 400;
+        //uint64_t crop_h = 352;
 
-        using net_type = dlib::loss_multiclass_log<
-            dlib::fc<10,
-            dlib::relu<dlib::fc<84,
-            dlib::srelu<dlib::fc<120,
-            dlib::max_pool<2, 2, 2, 2, dlib::srelu<dlib::con<16, 5, 5, 1, 1,
-            dlib::max_pool<2, 2, 2, 2, dlib::srelu<dlib::con<6, 5, 5, 1, 1,
-            dlib::input<dlib::matrix<unsigned char>>
-            >>>>>>>>>>>>;
+        ////center_cropper(trn[0], tr_crop, crop_size.second, crop_size.first);
+        ////center_cropper(gt_train[0], g_crop, crop_w, crop_h);
 
-        //net_type net;
-        net_type net(dlib::srelu_(0, 0.1, 1, 1), dlib::srelu_(0, 0.1, 1, 1), dlib::srelu_(0, 0.1, 1, 1));
+        //bp = 0;
 
 
-        std::cout << net << std::endl;
+        //dfd_rw_cropper cropper;
+        //cropper.set_chip_dims(crop_size);
+        //cropper.set_seed(time(0));
+        //cropper.set_scale_x(6);
+        //cropper.set_scale_y(18);
 
-        dlib::dnn_trainer<net_type, dlib::sgd> trainer(net, dlib::sgd(), { 0 });
-        trainer.set_learning_rate(0.01);
-        trainer.set_min_learning_rate(0.0001);
-        trainer.set_mini_batch_size(128);
-        trainer.be_verbose();
-
-        trainer.set_synchronization_file("../results/mnist_sync_srelu_5", std::chrono::minutes(5));
-
-        trainer.train(training_images, training_labels);
-
-        net.clean();
+        ////cropper(num_crops, trn, gt_train, trn_crop, gt_crop);
 
 
-        std::vector<unsigned long> predicted_labels = net(training_images);
-        int num_right = 0;
-        int num_wrong = 0;
-        // And then let's see if it classified them correctly.
-        for (size_t i = 0; i < training_images.size(); ++i)
-        {
-            if (predicted_labels[i] == training_labels[i])
-                ++num_right;
-            else
-                ++num_wrong;
 
-        }
-        cout << "training num_right: " << num_right << endl;
-        cout << "training num_wrong: " << num_wrong << endl;
-        cout << "training accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
+        //dfd_net_type dfd_net;
 
-        // Let's also see if the network can correctly classify the testing images.  Since
-        // MNIST is an easy dataset, we should see at least 99% accuracy.
-        predicted_labels = net(testing_images);
-        num_right = 0;
-        num_wrong = 0;
-        for (size_t i = 0; i < testing_images.size(); ++i)
-        {
-            if (predicted_labels[i] == testing_labels[i])
-                ++num_right;
-            else
-                ++num_wrong;
+        //std::cout << dfd_net << std::endl;
 
-        }
-        cout << "testing num_right: " << num_right << endl;
-        cout << "testing num_wrong: " << num_wrong << endl;
-        cout << "testing accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
+        //bp = 2;
+
+        //// ----------------------------------------------------------------------------------------
 
 
-        net_to_xml(net, "../results/lenet_4.xml");
-        bp = 2;
+        //// MNIST is broken into two parts, a training set of 60000 images and a test set of
+        //// 10000 images.  Each image is labeled so that we know what hand written digit is
+        //// depicted.  These next statements load the dataset into memory.
+        //std::vector<dlib::matrix<unsigned char>> training_images;
+        //std::vector<unsigned long>         training_labels;
+        //std::vector<dlib::matrix<unsigned char>> testing_images;
+        //std::vector<unsigned long>         testing_labels;
+        //dlib::load_mnist_dataset(argv[1], training_images, training_labels, testing_images, testing_labels);
+
+        //using net_type = dlib::loss_multiclass_log<
+        //    dlib::fc<10,
+        //    dlib::relu<dlib::fc<84,
+        //    dlib::srelu<dlib::fc<120,
+        //    dlib::max_pool<2, 2, 2, 2, dlib::srelu<dlib::con<16, 5, 5, 1, 1,
+        //    dlib::max_pool<2, 2, 2, 2, dlib::srelu<dlib::con<6, 5, 5, 1, 1,
+        //    dlib::input<dlib::matrix<unsigned char>>
+        //    >>>>>>>>>>>>;
+
+        ////net_type net;
+        //net_type net(dlib::srelu_(0, 0.1, 1, 1), dlib::srelu_(0, 0.1, 1, 1), dlib::srelu_(0, 0.1, 1, 1));
+
+
+        //std::cout << net << std::endl;
+
+        //dlib::dnn_trainer<net_type, dlib::sgd> trainer(net, dlib::sgd(), { 0 });
+        //trainer.set_learning_rate(0.01);
+        //trainer.set_min_learning_rate(0.0001);
+        //trainer.set_mini_batch_size(128);
+        //trainer.be_verbose();
+
+        //trainer.set_synchronization_file("../results/mnist_sync_srelu_5", std::chrono::minutes(5));
+
+        //trainer.train(training_images, training_labels);
+
+        //net.clean();
+
+
+        //std::vector<unsigned long> predicted_labels = net(training_images);
+        //int num_right = 0;
+        //int num_wrong = 0;
+        //// And then let's see if it classified them correctly.
+        //for (size_t i = 0; i < training_images.size(); ++i)
+        //{
+        //    if (predicted_labels[i] == training_labels[i])
+        //        ++num_right;
+        //    else
+        //        ++num_wrong;
+
+        //}
+        //cout << "training num_right: " << num_right << endl;
+        //cout << "training num_wrong: " << num_wrong << endl;
+        //cout << "training accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
+
+        //// Let's also see if the network can correctly classify the testing images.  Since
+        //// MNIST is an easy dataset, we should see at least 99% accuracy.
+        //predicted_labels = net(testing_images);
+        //num_right = 0;
+        //num_wrong = 0;
+        //for (size_t i = 0; i < testing_images.size(); ++i)
+        //{
+        //    if (predicted_labels[i] == testing_labels[i])
+        //        ++num_right;
+        //    else
+        //        ++num_wrong;
+
+        //}
+        //cout << "testing num_right: " << num_right << endl;
+        //cout << "testing num_wrong: " << num_wrong << endl;
+        //cout << "testing accuracy:  " << num_right / (double)(num_right + num_wrong) << endl;
+
+
+        //net_to_xml(net, "../results/lenet_4.xml");
+        //bp = 2;
 
 
 

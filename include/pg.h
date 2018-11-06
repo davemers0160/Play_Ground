@@ -6,8 +6,8 @@
 
 #include "file_parser.h"
 
-extern const uint32_t img_depth = 6;
-extern const uint32_t secondary = 1;
+extern const uint32_t img_depth;
+extern const uint32_t secondary;
 
 void parse_dnn_data_file(std::string parseFilename, std::string &version, std::vector<double> &stop_criteria, std::string &training_file, std::string &test_file, uint64_t &num_crops, std::pair<uint64_t, uint64_t> &crop_size, std::vector<uint32_t> &filter_num)
 {

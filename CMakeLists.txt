@@ -64,16 +64,6 @@ endforeach()
 message("--------------------------------------------------------")
 message(" ")
 
-message(" ")
-message("--------------------------------------------------------")
-message("Project Includes: ")
-foreach(S ${project_includes})
-    message("  " ${S})
-endforeach()
-message("--------------------------------------------------------")
-message(" ")
-
-
 # find OpenCV
 find_package(OpenCV REQUIRED)
 if (OpenCV_FOUND)
@@ -82,6 +72,16 @@ if (OpenCV_FOUND)
 else()
 	message("OpenCV not found, so we won't build the project.")
 endif()
+
+
+message(" ")
+message("--------------------------------------------------------")
+message("Project Includes: ")
+foreach(S ${project_includes})
+    message("  " ${S})
+endforeach()
+message("--------------------------------------------------------")
+message(" ")
 
 
 include_directories(${project_includes})

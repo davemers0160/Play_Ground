@@ -50,7 +50,7 @@ endif()
 include(${COMMON_ROOT}/cmake_utils/use_cpp_11.cmake)
 include(${COMMON_ROOT}/cmake_utils/use_sse_avx.cmake)
 
-file(GLOB_RECURSE SOURCES "src/*.c*")
+file(GLOB SOURCES "src/*.c*")
 
 set(project_includes "include" "${COMMON_ROOT}/include" "${DFD_ROOT}/common")
 

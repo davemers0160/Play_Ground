@@ -25,9 +25,9 @@
 #include "dlib/matrix.h"
 #include "dlib/pixel.h"
 #include "dlib/image_io.h"
-#include "dlib/external/libpng/png.h"
-#include "dlib/external/libjpeg/jpeglib.h"
-#include "dlib/external/zlib/zlib.h"
+//#include "dlib/external/libpng/png.h"
+//#include "dlib/external/libjpeg/jpeglib.h"
+//#include "dlib/external/zlib/zlib.h"
 #include "dlib/image_transforms.h"
 #include <dlib/opencv.h>
 
@@ -131,8 +131,8 @@ int main(int argc, char** argv)
         dlib::matrix<float> ssim_map;
 
         // load in the images --  not done in real life but for here
-        std::string gt_image_name = "D:/IUPUI/Test_Data/rw/WS2/lidar/lidar_rng_right_00000_8bit.png";
-        std::string dm_image_name = "D:/IUPUI/PhD/Results/dfd_dnn_pso/itr1/dfd_pso_13/depthmap_image_v6_pso_13_01_test_00049.png";
+        std::string gt_image_name = "D:/IUPUI/Test_Data/rw/Auditorium2/lidar/lidar_rng_left_00000_8bit.png";
+        std::string dm_image_name = "D:/IUPUI/PhD/Results/dfd_dnn_pso/itr1/dfd_pso_13/depthmap_image_v6_pso_13_01_test_00004.png";
 
         dlib::load_image(dm_img, dm_image_name);
         dlib::load_image(tmp, gt_image_name);
@@ -181,7 +181,11 @@ int main(int argc, char** argv)
         bp = 2;
 
 
+        float v1 = dlib::variance(dlib::matrix_cast<float>(gt_img));
+        float v2 = dlib::variance(dlib::matrix_cast<float>(dm_img));
+        float v3 = dlib::variance(dlib::matrix_cast<float>(test_img));
 
+        bp = 3;
 
 
     }

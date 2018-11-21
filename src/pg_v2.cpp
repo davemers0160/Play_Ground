@@ -57,14 +57,14 @@
 //#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
 #include "rot_90.h"
-#include "dlib_srelu.h"
-#include "dlib_elu.h"
+//#include "dlib_srelu.h"
+//#include "dlib_elu.h"
 #include "center_cropper.h"
 #include "dfd_cropper_rw.h"
 
 // Network includes
-#include "dfd_net_rw_v6.h"
-#include "load_dfd_rw_data.h"
+//#include "dfd_net_rw_v6.h"
+//#include "load_dfd_rw_data.h"
 
 using namespace std;
 
@@ -73,8 +73,8 @@ using namespace std;
 extern const uint32_t img_depth;
 extern const uint32_t secondary;
 std::string platform;
-std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> trn, te, trn_crop, te_crop;
-std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
+//std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> trn, te, trn_crop, te_crop;
+//std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
 
 std::string version;
 std::string net_name = "dfd_net_";
@@ -109,7 +109,7 @@ int main(int argc, char** argv)
     std::vector<std::pair<std::string, std::string>> tr_image_files;
 
     dlib::matrix<uint16_t> g_crop;
-    std::array<dlib::matrix<uint16_t>, img_depth> tr_crop;
+    //std::array<dlib::matrix<uint16_t>, img_depth> tr_crop;
 
     std::string platform;
     getPlatform(platform);
@@ -126,6 +126,9 @@ int main(int argc, char** argv)
 
 // ----------------------------------------------------------------------------------------
         
+        std::vector<double> range;
+        parse_input_range("1:20:200", range);
+
 
         dlib::matrix<uint16_t> gt_img, tmp, tmp2, dm_img;
         dlib::matrix<float> ssim_map;

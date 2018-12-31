@@ -52,6 +52,7 @@
 #include "make_dir.h"
 #include "ssim.h"
 #include "dlib_matrix_threshold.h"
+#include "gorgon_capture.h"
 
 //#include "pso.h"
 //#include "ycrcb_pixel.h"
@@ -73,6 +74,7 @@ using namespace std;
 
 extern const uint32_t img_depth;
 extern const uint32_t secondary;
+extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
 std::string platform;
 std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> trn, te, trn_crop, te_crop;
 //std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
@@ -94,13 +96,14 @@ void check_matrix(img_type1 img)
 
 // ----------------------------------------------------------------------------------------
 
-template<typename pixel_type>
-void merge_channels(std::array<dlib::matrix<pixel_type>, img_depth> a_img, uint64_t index, dlib::matrix<dlib::rgb_pixel> &img)
+template<typename array_type>
+void merge_channels(array_type &a_img, uint64_t index, dlib::matrix<dlib::rgb_pixel> &img)
 {
     uint64_t r, c;
+    uint32_t channels = dlib::pixel_traits<dlib::rgb_pixel>::num;
 
-    DLIB_CASSERT(img_depth >= dlib::pixel_traits<dlib::rgb_pixel>::num, "Array depth < " 
-        << dlib::pixel_traits<dlib::rgb_pixel>::num);
+    DLIB_CASSERT(a_img.size() >= (channels + index), "Array image does not contain enough channels: "
+        << "Array Size: " << a_img.size() << "; index + channels: " << (channels + index));
 
     uint64_t rows = a_img[0].nr();
     uint64_t cols = a_img[0].nc();
@@ -120,11 +123,13 @@ void merge_channels(std::array<dlib::matrix<pixel_type>, img_depth> a_img, uint6
 
 // ----------------------------------------------------------------------------------------
 
-template<typename pixel_type>
-void split_channels(dlib::matrix<dlib::rgb_pixel> img, uint64_t index, std::array<dlib::matrix<pixel_type>, img_depth> &img_s)
+template<typename array_type>
+//void split_channels(dlib::matrix<dlib::rgb_pixel> img, uint64_t index, std::array<dlib::matrix<pixel_type>, img_depth> &img_s)
+void split_channels(dlib::matrix<dlib::rgb_pixel> &img, uint64_t index, array_type &img_s)
 {
     uint64_t idx, r, c;
-    uint32_t channels = 0;
+    uint32_t channels = dlib::pixel_traits<dlib::rgb_pixel>::num;
+
     // get the size of the image
     uint64_t rows = img.nr();
     uint64_t cols = img.nc();
@@ -142,10 +147,13 @@ void split_channels(dlib::matrix<dlib::rgb_pixel> img, uint64_t index, std::arra
     //    channels = 3;
     //}
 
-    //channels = dlib::pixel_traits<pixel_type1>::num;
+    DLIB_CASSERT(img_s.size() >= (channels+index), "Array image does not contain enough channels:"
+        << "Array Size: " << img_s.size() << "; index + channels: " << (channels + index));
 
-    DLIB_CASSERT(img_s.size() >= channels, "not the right size");
-
+    // set the size of the image
+    img_s[index + 0].set_size(rows, cols);
+    img_s[index + 1].set_size(rows, cols);
+    img_s[index + 2].set_size(rows, cols);
 
     for (r = 0; r < rows; ++r)
     {
@@ -156,16 +164,8 @@ void split_channels(dlib::matrix<dlib::rgb_pixel> img, uint64_t index, std::arra
             dlib::assign_pixel(img_s[index+0](r, c), p.red);
             dlib::assign_pixel(img_s[index+1](r, c), p.green);
             dlib::assign_pixel(img_s[index+2](r, c), p.blue);
-            //dlib::assign_pixel(p, d(r, c));
-            //dlib::assign_pixel(t[3](r, c), p.red);
-            //dlib::assign_pixel(t[4](r, c), p.green);
-            //dlib::assign_pixel(t[5](r, c), p.blue);
         }
     }
-
-
-   
-
 
 }   // end of split_channels
 
@@ -184,10 +184,9 @@ int main(int argc, char** argv)
 
     std::vector<double> stop_criteria;
     uint64_t num_crops;
-    std::pair<uint64_t, uint64_t> crop_size;
-    std::vector<std::pair<uint64_t, uint64_t>> crop_sizes = { {1,1}, {38,148} };
-    std::vector<uint32_t> filter_num;
-    uint64_t max_one_step_count;
+    //std::vector<std::pair<uint64_t, uint64_t>> crop_sizes = { {1,1}, {38,148} };
+    //std::vector<uint32_t> filter_num;
+    //uint64_t max_one_step_count;
 
     std::vector<std::vector<std::string>> training_file;
     std::string data_directory;
@@ -224,7 +223,7 @@ int main(int argc, char** argv)
         bp = 1;
 
         // setup the input image info
-        std::string data_directory = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Aloe/Illum2/Exp1/";
+        std::string data_directory = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Art/Illum2/Exp1/";
         std::string f_img = "view1.png";
         std::string d_img = "view1_lin_0.32_2.88.png";
 
@@ -239,8 +238,8 @@ int main(int argc, char** argv)
 
         // crop the images to the right network size
         // get image size
-        long rows = 352;
-        long cols = 416;
+        uint64_t rows = crop_sizes[1].first;
+        uint64_t cols = crop_sizes[1].second;
 
         f.set_size(rows, cols);
         d.set_size(rows, cols);
@@ -250,26 +249,29 @@ int main(int argc, char** argv)
         dlib::set_subm(d, 0, 0, rows, cols) = dlib::subm(d_tmp, 0, 0, rows, cols);
         
         // get the images size and resize the t array
-        for (int m = 0; m < img_depth; ++m)
-        {
-            t[m].set_size(f.nr(), f.nc());
-        }
+        //for (int m = 0; m < img_depth; ++m)
+        //{
+        //    t[m].set_size(f.nr(), f.nc());
+        //}
 
-        for (long r = 0; r < f.nr(); ++r)
-        {
-            for (long c = 0; c < f.nc(); ++c)
-            {
-                dlib::rgb_pixel p;
-                dlib::assign_pixel(p, f(r, c));
-                dlib::assign_pixel(t[0](r, c), p.red);
-                dlib::assign_pixel(t[1](r, c), p.green);
-                dlib::assign_pixel(t[2](r, c), p.blue);
-                dlib::assign_pixel(p, d(r, c));
-                dlib::assign_pixel(t[3](r, c), p.red);
-                dlib::assign_pixel(t[4](r, c), p.green);
-                dlib::assign_pixel(t[5](r, c), p.blue);
-            }
-        }
+        //for (long r = 0; r < f.nr(); ++r)
+        //{
+        //    for (long c = 0; c < f.nc(); ++c)
+        //    {
+        //        dlib::rgb_pixel p;
+        //        dlib::assign_pixel(p, f(r, c));
+        //        dlib::assign_pixel(t[0](r, c), p.red);
+        //        dlib::assign_pixel(t[1](r, c), p.green);
+        //        dlib::assign_pixel(t[2](r, c), p.blue);
+        //        dlib::assign_pixel(p, d(r, c));
+        //        dlib::assign_pixel(t[3](r, c), p.red);
+        //        dlib::assign_pixel(t[4](r, c), p.green);
+        //        dlib::assign_pixel(t[5](r, c), p.blue);
+        //    }
+        //}
+
+        split_channels(f, 0, t);
+        split_channels(d, 3, t);
 
         // run the image through the network
         dlib::matrix<uint16_t> map = dfd_net(t);
@@ -280,9 +282,31 @@ int main(int argc, char** argv)
         merge_channels(t, 0, t3);
 
         // start looking at how to view the inards
-        const auto& test = dlib::layer<0>(dfd_net).loss_details();
-        //auto t2 = test.compute_loss_value_and_gradient();
-        //const auto *t2 = test.to_label();
+        const auto& test = dlib::layer<50>(dfd_net).get_output();
+        const float *t2 = test.host();
+        uint64_t n = test.num_samples();
+        uint64_t k = test.k();
+        uint64_t nr = test.nr();
+        uint64_t nc = test.nc();
+        uint64_t img_size = nr * nc;
+        uint64_t offset = 0;
+
+        //dlib::matrix<float> o_img(nr, nc);
+        //uint64_t index = 0;
+
+        //for (uint64_t r = 0; r < nr; ++r)
+        //{
+        //    for (uint64_t c = 0; c < nc; ++c)
+        //    {
+        //        o_img(r, c) = *(t2 + (offset*img_size) + index);
+        //        ++index;
+        //    }
+        //}
+
+        gorgon_capture<50> gc_01(dfd_net);
+        gc_01.init(("../results/output_art_l50"));
+        gc_01.save_net_output(dfd_net);
+        gc_01.close_stream();
 
         bp = 3;
     }

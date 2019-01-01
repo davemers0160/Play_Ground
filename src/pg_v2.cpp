@@ -64,8 +64,9 @@
 #include "dfd_cropper_rw.h"
 
 // Network includes
-#include "dfd_net_v14_pso_01.h"
-//#include "dfd_net_rw_v17.h"
+//#include "dfd_net_v14.h"
+//#include "dfd_net_v14_pso_01.h"
+#include "dfd_net_rw_v19.h"
 #include "load_dfd_rw_data.h"
 
 using namespace std;
@@ -74,7 +75,7 @@ using namespace std;
 
 extern const uint32_t img_depth;
 extern const uint32_t secondary;
-extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
+//extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
 std::string platform;
 std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> trn, te, trn_crop, te_crop;
 //std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
@@ -210,13 +211,13 @@ int main(int argc, char** argv)
         int bp = 0;
 
         // get the location of the network
-        std::string net_name = "../nets/dfd_net_pso_01_03_HPC.dat";
+        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/1916100.pbs01_4_nets/nets/dfd_net_v14a_61_U_32_HPC.dat";
         
         //declare the network
         dfd_net_type dfd_net;
 
         // deserialize the network
-        //dlib::deserialize(net_name) >> dfd_net;
+        dlib::deserialize(net_name) >> dfd_net;
 
         std::cout << dfd_net << std::endl;
 
@@ -238,8 +239,8 @@ int main(int argc, char** argv)
 
         // crop the images to the right network size
         // get image size
-        uint64_t rows = crop_sizes[1].first;
-        uint64_t cols = crop_sizes[1].second;
+        uint64_t rows = 368;// crop_sizes[1].first;
+        uint64_t cols = 400;// crop_sizes[1].second;
 
         f.set_size(rows, cols);
         d.set_size(rows, cols);
@@ -278,18 +279,18 @@ int main(int argc, char** argv)
 
         bp = 2;
 
-        dlib::matrix < dlib::rgb_pixel> t3;
-        merge_channels(t, 0, t3);
+        //dlib::matrix < dlib::rgb_pixel> t3;
+        //merge_channels(t, 0, t3);
 
         // start looking at how to view the inards
-        const auto& test = dlib::layer<50>(dfd_net).get_output();
-        const float *t2 = test.host();
-        uint64_t n = test.num_samples();
-        uint64_t k = test.k();
-        uint64_t nr = test.nr();
-        uint64_t nc = test.nc();
-        uint64_t img_size = nr * nc;
-        uint64_t offset = 0;
+        //const auto& test = dlib::layer<50>(dfd_net).get_output();
+        //const float *t2 = test.host();
+        //uint64_t n = test.num_samples();
+        //uint64_t k = test.k();
+        //uint64_t nr = test.nr();
+        //uint64_t nc = test.nc();
+        //uint64_t img_size = nr * nc;
+        //uint64_t offset = 0;
 
         //dlib::matrix<float> o_img(nr, nc);
         //uint64_t index = 0;
@@ -304,9 +305,94 @@ int main(int argc, char** argv)
         //}
 
         gorgon_capture<50> gc_01(dfd_net);
-        gc_01.init(("../results/output_art_l50"));
+        gc_01.init(("../results/dfd_v14a_output_art_L50"));
         gc_01.save_net_output(dfd_net);
         gc_01.close_stream();
+
+        gorgon_capture<46> gc_02(dfd_net);
+        gc_02.init(("../results/dfd_v14a_output_art_L46"));
+        gc_02.save_net_output(dfd_net);
+        gc_02.close_stream();
+
+        gorgon_capture<45> gc_03(dfd_net);
+        gc_03.init(("../results/dfd_v14a_output_art_L45"));
+        gc_03.save_net_output(dfd_net);
+        gc_03.close_stream();
+
+        gorgon_capture<42> gc_04(dfd_net);
+        gc_04.init(("../results/dfd_v14a_output_art_L42"));
+        gc_04.save_net_output(dfd_net);
+        gc_04.close_stream();
+
+        gorgon_capture<38> gc_05(dfd_net);
+        gc_05.init(("../results/dfd_v14a_output_art_L38"));
+        gc_05.save_net_output(dfd_net);
+        gc_05.close_stream();
+
+        gorgon_capture<37> gc_06(dfd_net);
+        gc_06.init(("../results/dfd_v14a_output_art_L37"));
+        gc_06.save_net_output(dfd_net);
+        gc_06.close_stream();
+
+        gorgon_capture<34> gc_07(dfd_net);
+        gc_07.init(("../results/dfd_v14a_output_art_L34"));
+        gc_07.save_net_output(dfd_net);
+        gc_07.close_stream();
+
+        gorgon_capture<30> gc_08(dfd_net);
+        gc_08.init(("../results/dfd_v14a_output_art_L30"));
+        gc_08.save_net_output(dfd_net);
+        gc_08.close_stream();
+
+        gorgon_capture<29> gc_09(dfd_net);
+        gc_09.init(("../results/dfd_v14a_output_art_L29"));
+        gc_09.save_net_output(dfd_net);
+        gc_09.close_stream();
+
+        gorgon_capture<27> gc_10(dfd_net);
+        gc_10.init(("../results/dfd_v14a_output_art_L27"));
+        gc_10.save_net_output(dfd_net);
+        gc_10.close_stream();
+
+        gorgon_capture<22> gc_11(dfd_net);
+        gc_11.init(("../results/dfd_v14a_output_art_L22"));
+        gc_11.save_net_output(dfd_net);
+        gc_11.close_stream();
+
+        gorgon_capture<18> gc_12(dfd_net);
+        gc_12.init(("../results/dfd_v14a_output_art_L18"));
+        gc_12.save_net_output(dfd_net);
+        gc_12.close_stream();
+
+        gorgon_capture<17> gc_13(dfd_net);
+        gc_13.init(("../results/dfd_v14a_output_art_L17"));
+        gc_13.save_net_output(dfd_net);
+        gc_13.close_stream();
+
+        gorgon_capture<10> gc_14(dfd_net);
+        gc_14.init(("../results/dfd_v14a_output_art_L10"));
+        gc_14.save_net_output(dfd_net);
+        gc_14.close_stream();
+
+        gorgon_capture<6> gc_15(dfd_net);
+        gc_15.init(("../results/dfd_v14a_output_art_L06"));
+        gc_15.save_net_output(dfd_net);
+        gc_15.close_stream();
+
+        gorgon_capture<5> gc_16(dfd_net);
+        gc_16.init(("../results/dfd_v14a_output_art_L05"));
+        gc_16.save_net_output(dfd_net);
+        gc_16.close_stream();
+
+        gorgon_capture<2> gc_17(dfd_net);
+        gc_17.init(("../results/dfd_v14a_output_art_L02"));
+        gc_17.save_net_output(dfd_net);
+        gc_17.close_stream();
+
+        gorgon_capture<1> gc_18(dfd_net);
+        gc_18.init(("../results/dfd_v14a_output_art_L01"));
+        gc_18.save_net_output(dfd_net);
+        gc_18.close_stream();
 
         bp = 3;
     }

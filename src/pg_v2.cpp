@@ -211,8 +211,8 @@ int main(int argc, char** argv)
         int bp = 0;
 
         // get the location of the network
-        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2641623.pbs01_0_nets/nets/dfd_net_v14b_61_U_32_HPC.dat";
-        
+        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2645094.pbs_01_0_nets/nets/dfd_net_v14c_61_U_32_HPC.dat";
+
         //declare the network
         dfd_net_type dfd_net;
 
@@ -304,7 +304,7 @@ int main(int argc, char** argv)
         //    }
         //}
 
-        std::string save_location = "../results/dfd_net_v14b/dfd_v14b_output_";
+        std::string save_location = "../results/dfd_net_v14c/dfd_v14c_output_";
 
         gorgon_capture<50> gc_01(dfd_net);
         gc_01.init((save_location + "art_L50"));

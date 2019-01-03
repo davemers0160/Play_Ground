@@ -64,9 +64,9 @@
 #include "dfd_cropper_rw.h"
 
 // Network includes
-//#include "dfd_net_v14.h"
+#include "dfd_net_v14.h"
 //#include "dfd_net_v14_pso_01.h"
-#include "dfd_net_rw_v19.h"
+//#include "dfd_net_rw_v19.h"
 #include "load_dfd_rw_data.h"
 
 using namespace std;
@@ -211,7 +211,7 @@ int main(int argc, char** argv)
         int bp = 0;
 
         // get the location of the network
-        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/1916100.pbs01_4_nets/nets/dfd_net_v14a_61_U_32_HPC.dat";
+        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2641623.pbs01_0_nets/nets/dfd_net_v14b_61_U_32_HPC.dat";
         
         //declare the network
         dfd_net_type dfd_net;
@@ -304,93 +304,95 @@ int main(int argc, char** argv)
         //    }
         //}
 
+        std::string save_location = "../results/dfd_net_v14b/dfd_v14b_output_";
+
         gorgon_capture<50> gc_01(dfd_net);
-        gc_01.init(("../results/dfd_v14a_output_art_L50"));
+        gc_01.init((save_location + "art_L50"));
         gc_01.save_net_output(dfd_net);
         gc_01.close_stream();
 
         gorgon_capture<46> gc_02(dfd_net);
-        gc_02.init(("../results/dfd_v14a_output_art_L46"));
+        gc_02.init((save_location + "art_L46"));
         gc_02.save_net_output(dfd_net);
         gc_02.close_stream();
 
         gorgon_capture<45> gc_03(dfd_net);
-        gc_03.init(("../results/dfd_v14a_output_art_L45"));
+        gc_03.init((save_location + "art_L45"));
         gc_03.save_net_output(dfd_net);
         gc_03.close_stream();
 
         gorgon_capture<42> gc_04(dfd_net);
-        gc_04.init(("../results/dfd_v14a_output_art_L42"));
+        gc_04.init((save_location + "art_L42"));
         gc_04.save_net_output(dfd_net);
         gc_04.close_stream();
 
         gorgon_capture<38> gc_05(dfd_net);
-        gc_05.init(("../results/dfd_v14a_output_art_L38"));
+        gc_05.init((save_location + "art_L38"));
         gc_05.save_net_output(dfd_net);
         gc_05.close_stream();
 
         gorgon_capture<37> gc_06(dfd_net);
-        gc_06.init(("../results/dfd_v14a_output_art_L37"));
+        gc_06.init((save_location + "art_L37"));
         gc_06.save_net_output(dfd_net);
         gc_06.close_stream();
 
         gorgon_capture<34> gc_07(dfd_net);
-        gc_07.init(("../results/dfd_v14a_output_art_L34"));
+        gc_07.init((save_location + "art_L34"));
         gc_07.save_net_output(dfd_net);
         gc_07.close_stream();
 
         gorgon_capture<30> gc_08(dfd_net);
-        gc_08.init(("../results/dfd_v14a_output_art_L30"));
+        gc_08.init((save_location + "art_L30"));
         gc_08.save_net_output(dfd_net);
         gc_08.close_stream();
 
         gorgon_capture<29> gc_09(dfd_net);
-        gc_09.init(("../results/dfd_v14a_output_art_L29"));
+        gc_09.init((save_location + "art_L29"));
         gc_09.save_net_output(dfd_net);
         gc_09.close_stream();
 
         gorgon_capture<27> gc_10(dfd_net);
-        gc_10.init(("../results/dfd_v14a_output_art_L27"));
+        gc_10.init((save_location + "art_L27"));
         gc_10.save_net_output(dfd_net);
         gc_10.close_stream();
 
         gorgon_capture<22> gc_11(dfd_net);
-        gc_11.init(("../results/dfd_v14a_output_art_L22"));
+        gc_11.init((save_location + "art_L22"));
         gc_11.save_net_output(dfd_net);
         gc_11.close_stream();
 
         gorgon_capture<18> gc_12(dfd_net);
-        gc_12.init(("../results/dfd_v14a_output_art_L18"));
+        gc_12.init((save_location + "art_L18"));
         gc_12.save_net_output(dfd_net);
         gc_12.close_stream();
 
         gorgon_capture<17> gc_13(dfd_net);
-        gc_13.init(("../results/dfd_v14a_output_art_L17"));
+        gc_13.init((save_location + "art_L17"));
         gc_13.save_net_output(dfd_net);
         gc_13.close_stream();
 
         gorgon_capture<10> gc_14(dfd_net);
-        gc_14.init(("../results/dfd_v14a_output_art_L10"));
+        gc_14.init((save_location + "art_L10"));
         gc_14.save_net_output(dfd_net);
         gc_14.close_stream();
 
         gorgon_capture<6> gc_15(dfd_net);
-        gc_15.init(("../results/dfd_v14a_output_art_L06"));
+        gc_15.init((save_location + "art_L06"));
         gc_15.save_net_output(dfd_net);
         gc_15.close_stream();
 
         gorgon_capture<5> gc_16(dfd_net);
-        gc_16.init(("../results/dfd_v14a_output_art_L05"));
+        gc_16.init((save_location + "art_L05"));
         gc_16.save_net_output(dfd_net);
         gc_16.close_stream();
 
         gorgon_capture<2> gc_17(dfd_net);
-        gc_17.init(("../results/dfd_v14a_output_art_L02"));
+        gc_17.init((save_location + "art_L02"));
         gc_17.save_net_output(dfd_net);
         gc_17.close_stream();
 
         gorgon_capture<1> gc_18(dfd_net);
-        gc_18.init(("../results/dfd_v14a_output_art_L01"));
+        gc_18.init((save_location + "art_L01"));
         gc_18.save_net_output(dfd_net);
         gc_18.close_stream();
 

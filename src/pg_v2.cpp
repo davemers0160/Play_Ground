@@ -372,7 +372,7 @@ int main(int argc, char** argv)
         //}
 
         std::string save_location = "../results/dfd_net_v14i/dfd_v14i_output_";
-/*
+
         gorgon_capture<50> gc_01(dfd_net);
         gc_01.init((save_location + "art_L50"));
         gc_01.save_net_output(dfd_net);
@@ -402,7 +402,7 @@ int main(int argc, char** argv)
         gc_06.init((save_location + "art_L37"));
         gc_06.save_net_output(dfd_net);
         gc_06.close_stream();
-*/
+
         gorgon_capture<34> gc_07(dfd_net);
         gc_07.init((save_location + "art_L34"));
         gc_07.save_net_output(dfd_net);
@@ -443,6 +443,11 @@ int main(int argc, char** argv)
         gc_14.save_net_output(dfd_net);
         gc_14.close_stream();
 
+        gorgon_capture<13> gc_14a(dfd_net);
+        gc_14a.init((save_location + "art_L13"));
+        gc_14a.save_net_output(dfd_net);
+        gc_14a.close_stream();
+
         gorgon_capture<10> gc_15(dfd_net);
         gc_15.init((save_location + "art_L10"));
         gc_15.save_net_output(dfd_net);
@@ -457,6 +462,11 @@ int main(int argc, char** argv)
         gc_17.init((save_location + "art_L05"));
         gc_17.save_net_output(dfd_net);
         gc_17.close_stream();
+
+        gorgon_capture<4> gc_17a(dfd_net);
+        gc_17a.init((save_location + "art_L04"));
+        gc_17a.save_net_output(dfd_net);
+        gc_17a.close_stream();
 
         gorgon_capture<2> gc_18(dfd_net);
         gc_18.init((save_location + "art_L02"));

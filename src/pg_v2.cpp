@@ -96,6 +96,79 @@ void check_matrix(img_type1 img)
 }
 
 // ----------------------------------------------------------------------------------------
+template <typename img_type, typename T>
+void create_mask(img_type src, img_type &mask, T min_value, T max_value)
+{
+    uint64_t nr = src.nr();
+    uint64_t nc = src.nc();
+
+    mask.set_size(nr, nc);
+
+    for (uint64_t r = 0; r < nr; ++r)
+    {
+        for (uint64_t c = 0; c < nc; ++c)
+        {
+            if ((src(r, c) >= min_value) && (src(r,c) <= max_value))
+                mask(r, c) = 1;
+            else
+                mask(r, c) = 0;
+        }
+    }
+
+}   // end of create_mask
+
+// ----------------------------------------------------------------------------------------
+
+template <typename img_type, typename mask_type, typename T>
+void apply_mask(img_type src, img_type &dst, mask_type mask, T value)
+{
+    uint64_t nr, nc;
+
+    //if (dlib::is_matrix<img_type>::value == true)
+    //{
+    //    nr = src.nr();
+    //    nc = src.nc();
+
+    //    dst.set_size(nr, nc);
+
+    //    for (uint64_t r = 0; r < nr; ++r)
+    //    {
+    //        for (uint64_t c = 0; c < nc; ++c)
+    //        {
+    //            if (mask(r, c) == 0)
+    //                dst(r, c) = value;
+    //            else
+    //                dst(r, c) = src(r, c);
+    //        }
+    //    }
+
+    //}
+    //else
+    //{
+        nr = src[0].nr();
+        nc = src[0].nc();
+
+        for (uint64_t idx = 0; idx < src.size(); ++idx)
+        {
+            dst[idx].set_size(nr, nc);
+
+            for (uint64_t r = 0; r < nr; ++r)
+            {
+                for (uint64_t c = 0; c < nc; ++c)
+                {
+                    if (mask(r, c) == 0)
+                        dst[idx](r, c) = value;
+                    else
+                        dst[idx](r, c) = src[idx](r, c);
+                }
+            }
+        }
+
+    //}
+
+}   // end of apply_mask
+
+// ----------------------------------------------------------------------------------------
 
 template<typename array_type>
 void merge_channels(array_type &a_img, uint64_t index, dlib::matrix<dlib::rgb_pixel> &img)
@@ -211,7 +284,9 @@ int main(int argc, char** argv)
         int bp = 0;
 
         // get the location of the network
-        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2645094.pbs_01_0_nets/nets/dfd_net_v14c_61_U_32_HPC.dat";
+        //std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2645094.pbs_01_0_nets/nets/dfd_net_v14c_61_U_32_HPC.dat";
+        //std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2649400.pbs01_0_nets/nets/dfd_net_v14f_61_U_32_HPC.dat";
+        std::string net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2651620.pbs01_0_nets/nets/dfd_net_v14i_61_U_32_HPC.dat";
 
         //declare the network
         dfd_net_type dfd_net;
@@ -224,16 +299,19 @@ int main(int argc, char** argv)
         bp = 1;
 
         // setup the input image info
-        std::string data_directory = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Art/Illum2/Exp1/";
-        std::string f_img = "view1.png";
-        std::string d_img = "view1_lin_0.32_2.88.png";
+        std::string data_directory = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Art/";
+        std::string f_img = "Illum2/Exp1/view1.png";
+        std::string d_img = "Illum2/Exp1/view1_lin_0.32_2.88.png";
+        std::string dm_img = "disp1.png";
 
         // load the images
-        std::array<dlib::matrix<uint16_t>, img_depth> t;
+        std::array<dlib::matrix<uint16_t>, img_depth> t, tm;
         dlib::matrix<dlib::rgb_pixel> f, f_tmp, d, d_tmp;
+        dlib::matrix<uint16_t> dm_tmp, dm, mask;
 
         dlib::load_image(f_tmp, (data_directory+f_img));
         dlib::load_image(d_tmp, (data_directory+d_img));
+        dlib::load_image(dm_tmp, (data_directory + dm_img));
 
         //split_channels(f_tmp, t);
 
@@ -244,35 +322,24 @@ int main(int argc, char** argv)
 
         f.set_size(rows, cols);
         d.set_size(rows, cols);
-        
+        dm.set_size(rows, cols);
+
         // crop the image to fit into the net
         dlib::set_subm(f, 0, 0, rows, cols) = dlib::subm(f_tmp, 0, 0, rows, cols);
         dlib::set_subm(d, 0, 0, rows, cols) = dlib::subm(d_tmp, 0, 0, rows, cols);
-        
-        // get the images size and resize the t array
-        //for (int m = 0; m < img_depth; ++m)
-        //{
-        //    t[m].set_size(f.nr(), f.nc());
-        //}
+        dlib::set_subm(dm, 0, 0, rows, cols) = dlib::subm(dm_tmp, 0, 0, rows, cols);
 
-        //for (long r = 0; r < f.nr(); ++r)
-        //{
-        //    for (long c = 0; c < f.nc(); ++c)
-        //    {
-        //        dlib::rgb_pixel p;
-        //        dlib::assign_pixel(p, f(r, c));
-        //        dlib::assign_pixel(t[0](r, c), p.red);
-        //        dlib::assign_pixel(t[1](r, c), p.green);
-        //        dlib::assign_pixel(t[2](r, c), p.blue);
-        //        dlib::assign_pixel(p, d(r, c));
-        //        dlib::assign_pixel(t[3](r, c), p.red);
-        //        dlib::assign_pixel(t[4](r, c), p.green);
-        //        dlib::assign_pixel(t[5](r, c), p.blue);
-        //    }
-        //}
-
+        // split the channels and combine
         split_channels(f, 0, t);
         split_channels(d, 3, t);
+
+        // test the mask creation
+        create_mask(dm, mask, 140, 150);
+
+        // test the mask overlay feature
+        apply_mask(t, tm, mask, 0);
+
+
 
         // run the image through the network
         dlib::matrix<uint16_t> map = dfd_net(t);
@@ -304,8 +371,8 @@ int main(int argc, char** argv)
         //    }
         //}
 
-        std::string save_location = "../results/dfd_net_v14c/dfd_v14c_output_";
-
+        std::string save_location = "../results/dfd_net_v14i/dfd_v14i_output_";
+/*
         gorgon_capture<50> gc_01(dfd_net);
         gc_01.init((save_location + "art_L50"));
         gc_01.save_net_output(dfd_net);
@@ -335,7 +402,7 @@ int main(int argc, char** argv)
         gc_06.init((save_location + "art_L37"));
         gc_06.save_net_output(dfd_net);
         gc_06.close_stream();
-
+*/
         gorgon_capture<34> gc_07(dfd_net);
         gc_07.init((save_location + "art_L34"));
         gc_07.save_net_output(dfd_net);
@@ -371,30 +438,38 @@ int main(int argc, char** argv)
         gc_13.save_net_output(dfd_net);
         gc_13.close_stream();
 
-        gorgon_capture<10> gc_14(dfd_net);
-        gc_14.init((save_location + "art_L10"));
+        gorgon_capture<15> gc_14(dfd_net);
+        gc_14.init((save_location + "art_L15"));
         gc_14.save_net_output(dfd_net);
         gc_14.close_stream();
 
-        gorgon_capture<6> gc_15(dfd_net);
-        gc_15.init((save_location + "art_L06"));
+        gorgon_capture<10> gc_15(dfd_net);
+        gc_15.init((save_location + "art_L10"));
         gc_15.save_net_output(dfd_net);
         gc_15.close_stream();
 
-        gorgon_capture<5> gc_16(dfd_net);
-        gc_16.init((save_location + "art_L05"));
+        gorgon_capture<6> gc_16(dfd_net);
+        gc_16.init((save_location + "art_L06"));
         gc_16.save_net_output(dfd_net);
         gc_16.close_stream();
 
-        gorgon_capture<2> gc_17(dfd_net);
-        gc_17.init((save_location + "art_L02"));
+        gorgon_capture<5> gc_17(dfd_net);
+        gc_17.init((save_location + "art_L05"));
         gc_17.save_net_output(dfd_net);
         gc_17.close_stream();
 
-        gorgon_capture<1> gc_18(dfd_net);
-        gc_18.init((save_location + "art_L01"));
+        gorgon_capture<2> gc_18(dfd_net);
+        gc_18.init((save_location + "art_L02"));
         gc_18.save_net_output(dfd_net);
         gc_18.close_stream();
+
+        gorgon_capture<1> gc_19(dfd_net);
+        gc_19.init((save_location + "art_L01"));
+        gc_19.save_net_output(dfd_net);
+        gc_19.close_stream();
+
+
+        //using fc_type = dlib::
 
         bp = 3;
     }

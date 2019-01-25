@@ -311,16 +311,15 @@ int main(int argc, char** argv)
         //net_name = "D:/IUPUI/PhD/Results/dfd_dnn/2651620.pbs01_0_nets/nets/dfd_net_v14i_61_U_32_HPC.dat";
         //net_name = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/2646754.pbs01_0_nets/nets/dfd_net_v14e_61_U_32_HPC.dat";
         //net_name = "D:/Projects/MNIST/nets/mnist_net_L05_100.dat";
-        net_name = "D:/Projects/MNIST/nets/mnist_net_24.dat";
 
         //declare the network
         //dfd_net_type net;
-        mnist_net_type net;
+        //mnist_net_type net;
 
-        // deserialize the network
-        dlib::deserialize(net_name) >> net;
+        //// deserialize the network
+        //dlib::deserialize(net_name) >> net;
 
-        std::cout << net << std::endl;
+        //std::cout << net << std::endl;
 
         bp = 1;
 
@@ -514,57 +513,72 @@ int main(int argc, char** argv)
 //-----------------------------------------------------------------
 // MNIST Net
 
-        save_location = "D:/Projects/MNIST/results/net_06_16_120_84/";
+        //net_name = "D:/Projects/MNIST/nets/mnist_net_05_16_120_84.dat";
+        //net_name = "D:/Projects/MNIST/nets/mnist_net_05_15_120_84.dat";
+        //net_name = "D:/Projects/MNIST/nets/mnist_net_04_15_120_84.dat";
+        net_name = "D:/Projects/MNIST/nets/mnist_net_04_15_75_84_hpc.dat";
+        mnist_net_type net;
+
+        // deserialize the network
+        dlib::deserialize(net_name) >> net;
+
+        std::cout << net << std::endl;
+
+        save_location = "D:/Projects/MNIST/results/net_04_15_75_84_h/";
         save_name = "net_out_";
         std::vector<uint32_t> ti = { 0,1,2,3,4,7,8,11,18,61 };//   7, 2, 1, 0, 4, 9, 5, 6, 3, 8
 
         for (idx = 0; idx < ti.size(); ++idx)
         {
+            std::cout << "Running: " << testing_labels[ti[idx]] << std::endl;
+
             // run the image through the network
             unsigned long predicted_labels = net(testing_images[ti[idx]]);
+            std::string number = num2str(testing_labels[ti[idx]], "%02u/");
+            make_dir(save_location, number);
 
             gorgon_capture<11> gc_1(net);
-            gc_1.init((save_location + num2str(idx,"%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L11"));
+            gc_1.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L11"));
             gc_1.save_net_output(net);
             gc_1.close_stream();
 
             gorgon_capture<9> gc_1a(net);
-            gc_1a.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L09"));
+            gc_1a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L09"));
             gc_1a.save_net_output(net);
             gc_1a.close_stream();
 
             gorgon_capture<8> gc_2(net);
-            gc_2.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L08"));
+            gc_2.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L08"));
             gc_2.save_net_output(net);
             gc_2.close_stream();
 
             gorgon_capture<6> gc_2a(net);
-            gc_2a.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L06"));
+            gc_2a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L06"));
             gc_2a.save_net_output(net);
             gc_2a.close_stream();
 
             gorgon_capture<5> gc_3(net);
-            gc_3.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L05"));
+            gc_3.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L05"));
             gc_3.save_net_output(net);
             gc_3.close_stream();
 
             gorgon_capture<4> gc_3a(net);
-            gc_3a.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L04"));
+            gc_3a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L04"));
             gc_3a.save_net_output(net);
             gc_3a.close_stream();
 
             gorgon_capture<3> gc_4(net);
-            gc_4.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L03"));
+            gc_4.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L03"));
             gc_4.save_net_output(net);
             gc_4.close_stream();
 
             gorgon_capture<2> gc_4a(net);
-            gc_4a.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L02"));
+            gc_4a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L02"));
             gc_4a.save_net_output(net);
             gc_4a.close_stream();
 
             //gorgon_capture<1> gc_5(net);
-            //gc_5.init((save_location + num2str(idx, "%02u/") + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L01"));
+            //gc_5.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L01"));
             //gc_5.save_net_output(net);
             //gc_5.close_stream();
         }

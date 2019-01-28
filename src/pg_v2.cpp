@@ -253,12 +253,55 @@ void split_channels(dlib::matrix<dlib::rgb_pixel> &img, uint64_t index, array_ty
 
 }   // end of split_channels
 
+// ----------------------------------------------------------------------------------------
+
+// This block of statements defines the resnet-34 network
+
+template <template <int, template<typename>class, int, typename> class block, int N, template<typename>class BN, typename SUBNET>
+using residual = dlib::add_prev1<block<N, BN, 1, dlib::tag1<SUBNET>>>;
+
+template <template <int, template<typename>class, int, typename> class block, int N, template<typename>class BN, typename SUBNET>
+using residual_down = dlib::add_prev2<dlib::avg_pool<2, 2, 2, 2, dlib::skip1<dlib::tag2<block<N, BN, 2, dlib::tag1<SUBNET>>>>>>;
+
+template <int N, template <typename> class BN, int stride, typename SUBNET>
+using block = BN<dlib::con<N, 3, 3, 1, 1, dlib::relu<BN<dlib::con<N, 3, 3, stride, stride, SUBNET>>>>>;
+
+template <int N, typename SUBNET> using ares = dlib::relu<residual<block, N, dlib::affine, SUBNET>>;
+template <int N, typename SUBNET> using ares_down = dlib::relu<residual_down<block, N, dlib::affine, SUBNET>>;
+
+template <typename SUBNET> using level1 = ares<512, ares<512, ares_down<512, SUBNET>>>;
+template <typename SUBNET> using level2 = ares<256, ares<256, ares<256, ares<256, ares<256, ares_down<256, SUBNET>>>>>>;
+template <typename SUBNET> using level3 = ares<128, ares<128, ares<128, ares_down<128, SUBNET>>>>;
+template <typename SUBNET> using level4 = ares<64, ares<64, ares<64, SUBNET>>>;
+
+using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_everything<
+    level1<
+    level2<
+    level3<
+    level4<
+    dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<64, 7, 7, 2, 2,
+    dlib::input_rgb_image_sized<227>
+    >>>>>>>>>>>;
+
+using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
+    level1<
+    level2<
+    level3<
+    level4<
+    dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<64, 7, 7, 2, 2,
+    dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>
+    >>>>>>>>>>;
+
+
+
+// ----------------------------------------------------------------------------------------
+
 
 int main(int argc, char** argv)
 {
     std::string sdate, stime;
 
-    uint64_t idx, jdx;
+    uint64_t idx=0, jdx=0;
 
     typedef std::chrono::duration<double> d_sec;
     auto start_time = chrono::system_clock::now();
@@ -298,6 +341,36 @@ int main(int argc, char** argv)
     {
         int bp = 0;
 
+        std::vector<std::string> labels;
+        anet_type net_34;
+        dlib::deserialize("../nets/resnet34_1000_imagenet_classifier.dnn") >> net_34 >> labels;
+
+        std::cout << net_34 << std::endl;
+
+        anet_type2 net_34_2;
+
+
+        bp = 2;
+
+
+        std::cout << net_34_2 << std::endl;
+
+        dlib::layer<2>(net_34_2) = dlib::layer<3>(net_34);
+        //dlib::layer
+        
+        std::cout << net_34_2 << std::endl;
+
+        auto &layer_params = dlib::layer<5>(net_34_2).layer_details().get_layer_params();
+        const float* params_data = layer_params.host();
+
+        auto &layer_params2 = dlib::layer<6>(net_34).layer_details().get_layer_params();
+        const float* params_data2 = layer_params2.host();
+
+
+        auto &t2 = dlib::layer<143>(net_34_2);   // = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
+        //dlib::layer<143>(net_34_2) = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
+
+        //----------------------------------------------------------------
         data_directory = "D:/Projects/MNIST/data";
 
         // load the data in using the dlib built in function

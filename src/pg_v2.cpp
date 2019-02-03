@@ -87,14 +87,24 @@ std::string logfileName = "dfd_net_";
 std::string gorgon_savefile = "gorgon_dfd_";
 
 
+//using mnist_net_type = dlib::loss_multiclass_log<
+//    dlib::fc<10,
+//    dlib::prelu<dlib::fc<84,
+//    dlib::prelu<dlib::fc<120,
+//    dlib::max_pool<2, 2, 2, 2, dlib::prelu<dlib::con<16, 5, 5, 1, 1,
+//    dlib::max_pool<2, 2, 2, 2, dlib::prelu<dlib::con<6, 5, 5, 1, 1,
+//    dlib::input<dlib::matrix<unsigned char>>
+//    >>>>>>>>>>>>;
+
 using mnist_net_type = dlib::loss_multiclass_log<
     dlib::fc<10,
-    dlib::prelu<dlib::fc<84,
-    dlib::prelu<dlib::fc<120,
-    dlib::max_pool<2, 2, 2, 2, dlib::prelu<dlib::con<16, 5, 5, 1, 1,
-    dlib::max_pool<2, 2, 2, 2, dlib::prelu<dlib::con<6, 5, 5, 1, 1,
+    dlib::htan<dlib::fc<84,
+    dlib::sig<dlib::con<120, 5, 5, 1, 1,
+    dlib::sig<dlib::max_pool<2, 2, 2, 2, dlib::con<16, 5, 5, 1, 1,
+    dlib::sig<dlib::max_pool<2, 2, 2, 2, dlib::con<6, 5, 5, 1, 1,
     dlib::input<dlib::matrix<unsigned char>>
     >>>>>>>>>>>>;
+
 
 // ----------------------------------------------------------------------------------------
 
@@ -340,7 +350,7 @@ int main(int argc, char** argv)
     try
     {
         int bp = 0;
-
+        /*
         std::vector<std::string> labels;
         anet_type net_34;
         dlib::deserialize("../nets/resnet34_1000_imagenet_classifier.dnn") >> net_34 >> labels;
@@ -352,7 +362,7 @@ int main(int argc, char** argv)
 
         bp = 2;
 
-
+       
         std::cout << net_34_2 << std::endl;
 
         dlib::layer<2>(net_34_2) = dlib::layer<3>(net_34);
@@ -369,7 +379,7 @@ int main(int argc, char** argv)
 
         auto &t2 = dlib::layer<143>(net_34_2);   // = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
         //dlib::layer<143>(net_34_2) = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
-
+        */
         //----------------------------------------------------------------
         data_directory = "D:/Projects/MNIST/data";
 
@@ -589,7 +599,8 @@ int main(int argc, char** argv)
         //net_name = "D:/Projects/MNIST/nets/mnist_net_05_16_120_84.dat";
         //net_name = "D:/Projects/MNIST/nets/mnist_net_05_15_120_84.dat";
         //net_name = "D:/Projects/MNIST/nets/mnist_net_04_15_120_84.dat";
-        net_name = "D:/Projects/MNIST/nets/mnist_net_04_15_75_84_hpc.dat";
+        //net_name = "D:/Projects/MNIST/nets/mnist_net_06_16_51_55.dat";
+        net_name = "D:/Projects/MNIST/nets/mnist_net_v2_06_16_120_61.dat";
         mnist_net_type net;
 
         // deserialize the network
@@ -597,7 +608,7 @@ int main(int argc, char** argv)
 
         std::cout << net << std::endl;
 
-        save_location = "D:/Projects/MNIST/results/net_04_15_75_84_h/";
+        save_location = "D:/Projects/MNIST/results/net_v2_06_16_120_61/";
         save_name = "net_out_";
         std::vector<uint32_t> ti = { 0,1,2,3,4,7,8,11,18,61 };//   7, 2, 1, 0, 4, 9, 5, 6, 3, 8
 
@@ -615,45 +626,56 @@ int main(int argc, char** argv)
             gc_1.save_net_output(net);
             gc_1.close_stream();
 
-            gorgon_capture<9> gc_1a(net);
-            gc_1a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L09"));
+            //v2
+            gorgon_capture<10> gc_1a(net);
+            gc_1a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L10"));
             gc_1a.save_net_output(net);
             gc_1a.close_stream();
+
+            //v1
+            //gorgon_capture<9> gc_1a(net);
+            //gc_1a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L09"));
+            //gc_1a.save_net_output(net);
+            //gc_1a.close_stream();
 
             gorgon_capture<8> gc_2(net);
             gc_2.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L08"));
             gc_2.save_net_output(net);
             gc_2.close_stream();
 
-            gorgon_capture<6> gc_2a(net);
-            gc_2a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L06"));
+            //v2
+            gorgon_capture<7> gc_2a(net);
+            gc_2a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L07"));
             gc_2a.save_net_output(net);
             gc_2a.close_stream();
 
-            gorgon_capture<5> gc_3(net);
-            gc_3.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L05"));
+            gorgon_capture<6> gc_3(net);
+            gc_3.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L06"));
             gc_3.save_net_output(net);
             gc_3.close_stream();
+
+            //v1
+            //gorgon_capture<5> gc_3b(net);
+            //gc_3b.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L05"));
+            //gc_3b.save_net_output(net);
+            //gc_3b.close_stream();
 
             gorgon_capture<4> gc_3a(net);
             gc_3a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L04"));
             gc_3a.save_net_output(net);
             gc_3a.close_stream();
 
-            gorgon_capture<3> gc_4(net);
-            gc_4.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L03"));
-            gc_4.save_net_output(net);
-            gc_4.close_stream();
+            //v1
+            //gorgon_capture<3> gc_4(net);
+            //gc_4.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L03"));
+            //gc_4.save_net_output(net);
+            //gc_4.close_stream();
 
             gorgon_capture<2> gc_4a(net);
             gc_4a.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L02"));
             gc_4a.save_net_output(net);
             gc_4a.close_stream();
 
-            //gorgon_capture<1> gc_5(net);
-            //gc_5.init((save_location + number + save_name + num2str(testing_labels[ti[idx]], "%02u_") + "L01"));
-            //gc_5.save_net_output(net);
-            //gc_5.close_stream();
         }
 
         bp = 3;

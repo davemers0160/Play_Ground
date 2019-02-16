@@ -67,7 +67,8 @@
 #include "dfd_net_v14.h"
 //#include "dfd_net_v14_pso_01.h"
 //#include "dfd_net_rw_v19.h"
-#include "load_dfd_rw_data.h"
+//#include "load_dfd_rw_data.h"
+#include "load_dfd_data.h"
 
 using namespace std;
 
@@ -77,7 +78,7 @@ extern const uint32_t img_depth;
 extern const uint32_t secondary;
 //extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
 std::string platform;
-std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> trn, te, trn_crop, te_crop;
+std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> tr, te, trn_crop, te_crop;
 //std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
 
 //std::string version;
@@ -86,6 +87,7 @@ std::string net_sync_name = "dfd_sync_";
 std::string logfileName = "dfd_net_";
 std::string gorgon_savefile = "gorgon_dfd_";
 
+dlib::rand rnd(time(NULL));
 
 using mnist_net_type = dlib::loss_multiclass_log<
     dlib::fc<10,
@@ -123,6 +125,37 @@ void check_matrix(img_type1 img)
 }
 
 // ----------------------------------------------------------------------------------------
+
+template <typename image_type1>
+void make_random_cropping_rect(const image_type1& img, dlib::rectangle &rect_im, dlib::chip_dims dims= dlib::chip_dims(32,32))
+{
+    uint64_t x = 0, y = 0;
+
+    rect_im = dlib::resize_rect(rect_im, dims.cols, dims.rows);
+//    rect_gt = dlib::resize_rect(rect_gt, (long)(dims.cols / (double)scale_x), (long)(dims.rows / (double)scale_y));
+
+    if ((unsigned long)img.nc() <= rect_im.width())
+        x = 0;
+    else
+        x = (uint64_t)(rnd.get_integer(img.nc() - rect_im.width()));
+
+    if ((unsigned long)img.nr() <= rect_im.height())
+        y = 0;
+    else
+        y = (uint64_t)(rnd.get_integer(img.nr() - rect_im.height()));
+
+    // randomly shift the box around
+    dlib::point tr_off(x, y);
+    rect_im = dlib::move_rect(rect_im, tr_off);
+
+    //dlib::point gt_off(x, y);
+    //rect_gt = dlib::move_rect(rect_gt, gt_off);
+
+
+}	// end of make_random_cropping_rect 
+
+// ----------------------------------------------------------------------------------------
+
 template <typename img_type, typename T>
 void create_mask(img_type src, img_type &mask, T min_value, T max_value)
 {
@@ -336,15 +369,20 @@ int main(int argc, char** argv)
     std::vector<unsigned long> training_labels;
     std::vector<unsigned long> testing_labels;
 
-
     std::vector<std::vector<std::string>> training_file;
+    std::vector<std::vector<std::string>> test_file;
+
     std::string data_directory;
     std::string train_inputfile, test_inputfile;
-    std::vector<std::pair<std::string, std::string>> tr_image_files;
+    std::vector<std::pair<std::string, std::string>> tr_image_files, te_image_files;
+    std::vector<dlib::matrix<uint16_t>> gt_train, gt_test;
 
     dlib::matrix<uint16_t> g_crop;
+    dlib::rectangle rect_im, rect_gt;
+
     //std::array<dlib::matrix<uint16_t>, img_depth> tr_crop;
 
+    std::ofstream DataLogStream;
     std::string platform;
     getPlatform(platform);
     std::cout << "Platform: " << platform << std::endl;
@@ -423,46 +461,87 @@ int main(int argc, char** argv)
 
         bp = 1;
 
+        //----------------------------------------------------------------
+/*
+        DataLogStream.open("random_cropper_selection.txt", ios::out | ios::app);
+
+        train_inputfile = "D:/IUPUI/DfD/DfD_DNN/dfd_train_data_sm2.txt";
+
+        // parse through the supplied training csv file
+        parseCSVFile(train_inputfile, training_file);
+
+        // the first line in this file is now the data directory
+        data_directory = training_file[0][0];
+        training_file.erase(training_file.begin());
+
+        std::cout << "Loading training images..." << std::endl;
+
+        start_time = chrono::system_clock::now();
+        loadData(training_file, data_directory, tr, gt_train, tr_image_files);
+        stop_time = chrono::system_clock::now();
+
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << "Loaded " << tr.size() << " training image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
+
+        uint32_t crop_num = 32;
+        uint64_t img_index = 0;
+        
+        for (uint32_t kdx = 0; kdx < 63500; ++kdx)
+        {
+            for (uint32_t mdx = 0; mdx < crop_num; ++mdx)
+            {
+                img_index = rnd.get_integer(tr.size());
+                make_random_cropping_rect(tr[img_index][0], rect_im);
+                DataLogStream << img_index << "," << rect_im.left() << "," << rect_im.top() << std::endl;
+            }
+        }
+
+        DataLogStream.close();
+
+        bp = 3;
+*/
+        //-------------------------------------------------------------------
+
         // setup the input image info
-        data_directory = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Art/";
-        std::string f_img = "Illum2/Exp1/view1.png";
-        std::string d_img = "Illum2/Exp1/view1_lin_0.32_2.88.png";
-        std::string dm_img = "disp1.png";
+        //data_directory = "D:/IUPUI/Test_Data/Middlebury_Images_Third/Art/";
+        //std::string f_img = "Illum2/Exp1/view1.png";
+        //std::string d_img = "Illum2/Exp1/view1_lin_0.32_2.88.png";
+        //std::string dm_img = "disp1.png";
 
-        // load the images
-        std::array<dlib::matrix<uint16_t>, img_depth> t, tm;
-        dlib::matrix<dlib::rgb_pixel> f, f_tmp, d, d_tmp;
-        dlib::matrix<uint16_t> dm_tmp, dm, mask;
+        //// load the images
+        //std::array<dlib::matrix<uint16_t>, img_depth> t, tm;
+        //dlib::matrix<dlib::rgb_pixel> f, f_tmp, d, d_tmp;
+        //dlib::matrix<uint16_t> dm_tmp, dm, mask;
 
-        dlib::load_image(f_tmp, (data_directory+f_img));
-        dlib::load_image(d_tmp, (data_directory+d_img));
-        dlib::load_image(dm_tmp, (data_directory + dm_img));
+        //dlib::load_image(f_tmp, (data_directory+f_img));
+        //dlib::load_image(d_tmp, (data_directory+d_img));
+        //dlib::load_image(dm_tmp, (data_directory + dm_img));
 
-        //split_channels(f_tmp, t);
+        ////split_channels(f_tmp, t);
 
-        // crop the images to the right network size
-        // get image size
-        uint64_t rows = 368;// crop_sizes[1].first;
-        uint64_t cols = 400;// crop_sizes[1].second;
+        //// crop the images to the right network size
+        //// get image size
+        //uint64_t rows = 368;// crop_sizes[1].first;
+        //uint64_t cols = 400;// crop_sizes[1].second;
 
-        f.set_size(rows, cols);
-        d.set_size(rows, cols);
-        dm.set_size(rows, cols);
+        //f.set_size(rows, cols);
+        //d.set_size(rows, cols);
+        //dm.set_size(rows, cols);
 
-        // crop the image to fit into the net
-        dlib::set_subm(f, 0, 0, rows, cols) = dlib::subm(f_tmp, 0, 0, rows, cols);
-        dlib::set_subm(d, 0, 0, rows, cols) = dlib::subm(d_tmp, 0, 0, rows, cols);
-        dlib::set_subm(dm, 0, 0, rows, cols) = dlib::subm(dm_tmp, 0, 0, rows, cols);
+        //// crop the image to fit into the net
+        //dlib::set_subm(f, 0, 0, rows, cols) = dlib::subm(f_tmp, 0, 0, rows, cols);
+        //dlib::set_subm(d, 0, 0, rows, cols) = dlib::subm(d_tmp, 0, 0, rows, cols);
+        //dlib::set_subm(dm, 0, 0, rows, cols) = dlib::subm(dm_tmp, 0, 0, rows, cols);
 
-        // split the channels and combine
-        split_channels(f, 0, t);
-        split_channels(d, 3, t);
+        //// split the channels and combine
+        //split_channels(f, 0, t);
+        //split_channels(d, 3, t);
 
-        // test the mask creation
-        create_mask(dm, mask, 140, 150);
+        //// test the mask creation
+        //create_mask(dm, mask, 140, 150);
 
-        // test the mask overlay feature
-        apply_mask(t, tm, mask, 0);
+        //// test the mask overlay feature
+        //apply_mask(t, tm, mask, 0);
 
 
 
@@ -499,117 +578,148 @@ int main(int argc, char** argv)
 
 //-----------------------------------------------------------------
 // DFD Net
+
+        
+        std::cout << "Loading test images..." << std::endl;
+
+        test_inputfile = "D:/IUPUI/DfD/DfD_DNN/dfd_test_data_sm2.txt";
+        parseCSVFile(test_inputfile, test_file);
+        data_directory = test_file[0][0];
+        test_file.erase(test_file.begin());
+
+        start_time = chrono::system_clock::now();
+        loadData(test_file, data_directory, te, gt_test, te_image_files);
+        stop_time = chrono::system_clock::now();
+
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << "Loaded " << te.size() << " test image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
+
+        std::string net_version = "v14b";
+
+        save_location = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/";
+        save_name = "net_" + net_version + "_";
+        net_name = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/nets/dfd_net_v14b_61_U_32_HPC.dat";
+
+        dfd_net_type net;
+
+        // deserialize the network
+        dlib::deserialize(net_name) >> net;
+
+        std::cout << net << std::endl;
+
+        std::vector<std::string> data_name = { "art","books","reindeer" };
+        std::vector<uint32_t> ti = { 4, 22, 40 };
+
+        for (idx = 0; idx < ti.size(); ++idx)
+        {
+            std::cout << "Running: " << data_name[idx] << std::endl;
+            make_dir(save_location, data_name[idx]);
+
+            dlib::matrix<uint16_t> map = net(te[ti[idx]]);
+
+            //gorgon_capture<50> gc_01(net);
+            //gc_01.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L50"));
+            //gc_01.save_net_output(net);
+            //gc_01.close_stream();
+
+            //gorgon_capture<46> gc_02(net);
+            //gc_02.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L46"));
+            //gc_02.save_net_output(net);
+            //gc_02.close_stream();
+
+            //gorgon_capture<44> gc_03(net);
+            //gc_03.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L44"));
+            //gc_03.save_net_output(net);
+            //gc_03.close_stream();
+
+            gorgon_capture<42> gc_04(net);
+            gc_04.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L42"));
+            gc_04.save_net_output(net);
+            gc_04.close_stream();
+
+            gorgon_capture<38> gc_05(net);
+            gc_05.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L38"));
+            gc_05.save_net_output(net);
+            gc_05.close_stream();
+
+            gorgon_capture<36> gc_06(net);
+            gc_06.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L36"));
+            gc_06.save_net_output(net);
+            gc_06.close_stream();
+
+            gorgon_capture<34> gc_07(net);
+            gc_07.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L34"));
+            gc_07.save_net_output(net);
+            gc_07.close_stream();
+
+            //gorgon_capture<30> gc_08(net);
+            //gc_08.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L30"));
+            //gc_08.save_net_output(net);
+            //gc_08.close_stream();
+
+            //gorgon_capture<28> gc_09(net);
+            //gc_09.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L28"));
+            //gc_09.save_net_output(net);
+            //gc_09.close_stream();
+
+            //gorgon_capture<27> gc_10(net);
+            //gc_10.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L27"));
+            //gc_10.save_net_output(net);
+            //gc_10.close_stream();
+
+            //gorgon_capture<25> gc_10a(net);
+            //gc_10a.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L25"));
+            //gc_10a.save_net_output(net);
+            //gc_10a.close_stream();
+
+            //gorgon_capture<22> gc_11(net);
+            //gc_11.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L22"));
+            //gc_11.save_net_output(net);
+            //gc_11.close_stream();
+
+            //gorgon_capture<18> gc_12(net);
+            //gc_12.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L18"));
+            //gc_12.save_net_output(net);
+            //gc_12.close_stream();
+
+            //gorgon_capture<16> gc_13(net);
+            //gc_13.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L16"));
+            //gc_13.save_net_output(net);
+            //gc_13.close_stream();
+
+            //gorgon_capture<15> gc_14(net);
+            //gc_14.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L15"));
+            //gc_14.save_net_output(net);
+            //gc_14.close_stream();
+
+            gorgon_capture<13> gc_14a(net);
+            gc_14a.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L13"));
+            gc_14a.save_net_output(net);
+            gc_14a.close_stream();
+
+            gorgon_capture<10> gc_15(net);
+            gc_15.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L10"));
+            gc_15.save_net_output(net);
+            gc_15.close_stream();
+
+            //gorgon_capture<6> gc_16(net);
+            //gc_16.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L06"));
+            //gc_16.save_net_output(net);
+            //gc_16.close_stream();
+
+            //gorgon_capture<4> gc_17(net);
+            //gc_17.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L04"));
+            //gc_17.save_net_output(net);
+            //gc_17.close_stream();
+
+            //gorgon_capture<2> gc_18(net);
+            //gc_18.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L02"));
+            //gc_18.save_net_output(net);
+            //gc_18.close_stream();
+
+        }
+
 /*
-        save_location = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/v14v/";
-        save_name = "net_v14v_";
-
-        dlib::matrix<uint16_t> map = net(t);
-
-        //gorgon_capture<50> gc_01(net);
-        //gc_01.init((save_location + save_name + "art_L50"));
-        //gc_01.save_net_output(net);
-        //gc_01.close_stream();
-
-        //gorgon_capture<46> gc_02(net);
-        //gc_02.init((save_location + save_name + "art_L46"));
-        //gc_02.save_net_output(net);
-        //gc_02.close_stream();
-
-        //gorgon_capture<45> gc_03(net);
-        //gc_03.init((save_location + save_name + "art_L45"));
-        //gc_03.save_net_output(net);
-        //gc_03.close_stream();
-
-        gorgon_capture<42> gc_04(net);
-        gc_04.init((save_location + save_name + "art_L42"));
-        gc_04.save_net_output(net);
-        gc_04.close_stream();
-
-        gorgon_capture<38> gc_05(net);
-        gc_05.init((save_location + save_name + "art_L38"));
-        gc_05.save_net_output(net);
-        gc_05.close_stream();
-
-        gorgon_capture<37> gc_06(net);
-        gc_06.init((save_location + save_name + "art_L37"));
-        gc_06.save_net_output(net);
-        gc_06.close_stream();
-
-        gorgon_capture<34> gc_07(net);
-        gc_07.init((save_location + save_name + "art_L34"));
-        gc_07.save_net_output(net);
-        gc_07.close_stream();
-
-        gorgon_capture<30> gc_08(net);
-        gc_08.init((save_location + save_name + "art_L30"));
-        gc_08.save_net_output(net);
-        gc_08.close_stream();
-
-        gorgon_capture<29> gc_09(net);
-        gc_09.init((save_location + save_name + "art_L29"));
-        gc_09.save_net_output(net);
-        gc_09.close_stream();
-
-        gorgon_capture<27> gc_10(net);
-        gc_10.init((save_location + save_name + "art_L27"));
-        gc_10.save_net_output(net);
-        gc_10.close_stream();
-
-        gorgon_capture<22> gc_11(net);
-        gc_11.init((save_location + save_name + "art_L22"));
-        gc_11.save_net_output(net);
-        gc_11.close_stream();
-
-        gorgon_capture<18> gc_12(net);
-        gc_12.init((save_location + save_name + "art_L18"));
-        gc_12.save_net_output(net);
-        gc_12.close_stream();
-
-        gorgon_capture<17> gc_13(net);
-        gc_13.init((save_location + save_name + "art_L17"));
-        gc_13.save_net_output(net);
-        gc_13.close_stream();
-
-        gorgon_capture<15> gc_14(net);
-        gc_14.init((save_location + save_name + "art_L15"));
-        gc_14.save_net_output(net);
-        gc_14.close_stream();
-
-        gorgon_capture<13> gc_14a(net);
-        gc_14a.init((save_location + save_name + "art_L13"));
-        gc_14a.save_net_output(net);
-        gc_14a.close_stream();
-
-        gorgon_capture<10> gc_15(net);
-        gc_15.init((save_location + save_name + "art_L10"));
-        gc_15.save_net_output(net);
-        gc_15.close_stream();
-
-        gorgon_capture<6> gc_16(net);
-        gc_16.init((save_location + save_name + "art_L06"));
-        gc_16.save_net_output(net);
-        gc_16.close_stream();
-
-        //gorgon_capture<5> gc_17(net);
-        //gc_17.init((save_location + save_name + "art_L05"));
-        //gc_17.save_net_output(net);
-        //gc_17.close_stream();
-
-        //gorgon_capture<4> gc_17a(net);
-        //gc_17a.init((save_location + save_name + "art_L04"));
-        //gc_17a.save_net_output(net);
-        //gc_17a.close_stream();
-
-        gorgon_capture<2> gc_18(net);
-        gc_18.init((save_location + save_name + "art_L02"));
-        gc_18.save_net_output(net);
-        gc_18.close_stream();
-
-        //gorgon_capture<1> gc_19(net);
-        //gc_19.init((save_location + save_name + "art_L01"));
-        //gc_19.save_net_output(net);
-        //gc_19.close_stream();
- */       
 //-----------------------------------------------------------------
 // MNIST Net
 
@@ -617,7 +727,7 @@ int main(int argc, char** argv)
         //net_name = "D:/Projects/MNIST/nets/mnist_net_05_15_120_84.dat";
         //net_name = "D:/Projects/MNIST/nets/mnist_net_04_15_120_84.dat";
         //net_name = "D:/Projects/MNIST/nets/mnist_net_06_16_51_55.dat";
-        net_name = "D:/Projects/MNIST/nets/mnist_net_05_15_75_84.dat";
+        net_name = "D:/Projects/MNIST/nets/mnist_net_04_15_72_84.dat";
         //net_name = "D:/Projects/MNIST/nets/mnist_net_v2_06_16_120_61.dat";
         mnist_net_type net;
 
@@ -626,7 +736,7 @@ int main(int argc, char** argv)
 
         std::cout << net << std::endl;
 
-        save_location = "D:/Projects/MNIST/results/net_05_15_075_84/";
+        save_location = "D:/Projects/MNIST/results/net_04_15_072_84/";
         save_name = "net_out_";
         std::vector<uint32_t> ti = { 0,1,2,3,4,7,8,11,18,61 };//   7, 2, 1, 0, 4, 9, 5, 6, 3, 8
 
@@ -695,7 +805,7 @@ int main(int argc, char** argv)
             gc_4a.close_stream();
 
         }
-
+*/
         bp = 3;
     }
     catch (std::exception &e)

@@ -462,7 +462,7 @@ int main(int argc, char** argv)
         bp = 1;
 
         //----------------------------------------------------------------
-/*
+
         DataLogStream.open("random_cropper_selection.txt", ios::out | ios::app);
 
         train_inputfile = "D:/IUPUI/DfD/DfD_DNN/dfd_train_data_sm2.txt";
@@ -492,14 +492,14 @@ int main(int argc, char** argv)
             {
                 img_index = rnd.get_integer(tr.size());
                 make_random_cropping_rect(tr[img_index][0], rect_im);
-                DataLogStream << img_index << "," << rect_im.left() << "," << rect_im.top() << std::endl;
+                DataLogStream << img_index << "," << tr[img_index][0].nr() << "," << tr[img_index][0].nc() << "," << rect_im.left() << "," << rect_im.top() << std::endl;
             }
         }
 
         DataLogStream.close();
 
         bp = 3;
-*/
+        return 0;
         //-------------------------------------------------------------------
 
         // setup the input image info

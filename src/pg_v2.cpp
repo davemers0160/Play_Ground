@@ -70,6 +70,8 @@
 //#include "load_dfd_rw_data.h"
 #include "load_dfd_data.h"
 
+#include "cyclic_analysis.h"
+
 using namespace std;
 
 // -------------------------------GLOBALS--------------------------------------
@@ -462,7 +464,7 @@ int main(int argc, char** argv)
         bp = 1;
 
         //----------------------------------------------------------------
-
+/*
         DataLogStream.open("random_cropper_selection.txt", ios::out | ios::app);
 
         train_inputfile = "D:/IUPUI/DfD/DfD_DNN/dfd_train_data_sm2.txt";
@@ -500,6 +502,7 @@ int main(int argc, char** argv)
 
         bp = 3;
         return 0;
+        */
         //-------------------------------------------------------------------
 
         // setup the input image info
@@ -594,11 +597,11 @@ int main(int argc, char** argv)
         elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
         std::cout << "Loaded " << te.size() << " test image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
 
-        std::string net_version = "v14b";
+        std::string net_version = "v14c";
 
         save_location = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/";
         save_name = "net_" + net_version + "_";
-        net_name = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/nets/dfd_net_v14b_61_U_32_HPC.dat";
+        net_name = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/nets/dfd_net_v14c1_61_U_32_HPC.dat";
 
         dfd_net_type net;
 
@@ -632,40 +635,40 @@ int main(int argc, char** argv)
             //gc_03.save_net_output(net);
             //gc_03.close_stream();
 
-            gorgon_capture<42> gc_04(net);
-            gc_04.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L42"));
-            gc_04.save_net_output(net);
-            gc_04.close_stream();
+            //gorgon_capture<42> gc_04(net);
+            //gc_04.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L42"));
+            //gc_04.save_net_output(net);
+            //gc_04.close_stream();
 
-            gorgon_capture<38> gc_05(net);
-            gc_05.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L38"));
-            gc_05.save_net_output(net);
-            gc_05.close_stream();
+            //gorgon_capture<38> gc_05(net);
+            //gc_05.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L38"));
+            //gc_05.save_net_output(net);
+            //gc_05.close_stream();
 
-            gorgon_capture<36> gc_06(net);
-            gc_06.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L36"));
-            gc_06.save_net_output(net);
-            gc_06.close_stream();
+            //gorgon_capture<36> gc_06(net);
+            //gc_06.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L36"));
+            //gc_06.save_net_output(net);
+            //gc_06.close_stream();
 
             gorgon_capture<34> gc_07(net);
             gc_07.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L34"));
             gc_07.save_net_output(net);
             gc_07.close_stream();
 
-            //gorgon_capture<30> gc_08(net);
-            //gc_08.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L30"));
-            //gc_08.save_net_output(net);
-            //gc_08.close_stream();
+            gorgon_capture<30> gc_08(net);
+            gc_08.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L30"));
+            gc_08.save_net_output(net);
+            gc_08.close_stream();
 
-            //gorgon_capture<28> gc_09(net);
-            //gc_09.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L28"));
-            //gc_09.save_net_output(net);
-            //gc_09.close_stream();
+            gorgon_capture<28> gc_09(net);
+            gc_09.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L28"));
+            gc_09.save_net_output(net);
+            gc_09.close_stream();
 
-            //gorgon_capture<27> gc_10(net);
-            //gc_10.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L27"));
-            //gc_10.save_net_output(net);
-            //gc_10.close_stream();
+            gorgon_capture<27> gc_10(net);
+            gc_10.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L27"));
+            gc_10.save_net_output(net);
+            gc_10.close_stream();
 
             //gorgon_capture<25> gc_10a(net);
             //gc_10a.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L25"));
@@ -692,15 +695,15 @@ int main(int argc, char** argv)
             //gc_14.save_net_output(net);
             //gc_14.close_stream();
 
-            gorgon_capture<13> gc_14a(net);
-            gc_14a.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L13"));
-            gc_14a.save_net_output(net);
-            gc_14a.close_stream();
+            //gorgon_capture<13> gc_14a(net);
+            //gc_14a.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L13"));
+            //gc_14a.save_net_output(net);
+            //gc_14a.close_stream();
 
-            gorgon_capture<10> gc_15(net);
-            gc_15.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L10"));
-            gc_15.save_net_output(net);
-            gc_15.close_stream();
+            //gorgon_capture<10> gc_15(net);
+            //gc_15.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L10"));
+            //gc_15.save_net_output(net);
+            //gc_15.close_stream();
 
             //gorgon_capture<6> gc_16(net);
             //gc_16.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L06"));

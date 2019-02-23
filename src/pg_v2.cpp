@@ -597,11 +597,11 @@ int main(int argc, char** argv)
         elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
         std::cout << "Loaded " << te.size() << " test image sets in " << elapsed_time.count() / 60 << " minutes." << std::endl << std::endl;
 
-        std::string net_version = "v14c";
+        std::string net_version = "v14a";
 
         save_location = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/";
         save_name = "net_" + net_version + "_";
-        net_name = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/nets/dfd_net_v14c1_61_U_32_HPC.dat";
+        net_name = "D:/IUPUI/PhD/Results/dfd_dnn/dnn_reduction/" + net_version + "/nets/dfd_net_v14a_61_U_32_HPC.dat";
 
         dfd_net_type net;
 

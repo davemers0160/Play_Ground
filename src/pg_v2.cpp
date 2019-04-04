@@ -53,6 +53,9 @@
 #include "ssim.h"
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
+#include "mod.h"
+
+
 
 //#include "pso.h"
 //#include "ycrcb_pixel.h"
@@ -530,6 +533,20 @@ int main(int argc, char** argv)
     try
     {
         int bp = 0;
+
+
+        uint64_t a = mod(-100, 2048);
+
+        uint64_t b = mod(100, 2048);
+
+        uint64_t c = mod(0, 2048);
+
+        uint64_t d = mod(-5000, 2048);
+
+        uint64_t e = mod(5000, 2048);
+
+
+        bp = 2;
 
         /*
         dlib::matrix<float> M(8, 5);

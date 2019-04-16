@@ -53,7 +53,7 @@
 #include "file_parser.h"
 #include "read_binary_image.h" 
 #include "make_dir.h"
-//#include "ssim.h"
+#include "ssim.h"
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
 #include "modulo.h"
@@ -61,7 +61,7 @@
 
 
 //#include "pso.h"
-#include "ycrcb_pixel.h"
+//#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
 #include "rot_90.h"
 //#include "dlib_srelu.h"

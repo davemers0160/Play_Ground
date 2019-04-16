@@ -23,15 +23,21 @@ PROJECT(PlayGround_Project)
 set(exe_name "pg")
 
 
+
+set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")
+message("Platform: " ${PLATFORM})
+
 if(WIN32)
 	include(D:/dlib/dlib/cmake)
 else()
-	include(~/dlib/dlib/cmake)
+    if(${PLATFORM} STREQUAL "HPC")
+        include(~/dlib/dlib/cmake)
+    elseif(${PLATFORM} STREQUAL "SL02319")
+        include(/mnt/data/dlib-19.17/dlib/cmake)
+    else()
+        include(~/dlib/dlib/cmake)
+    endif()
 endif()
-
-set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")
-
-message("Platform: " ${PLATFORM})
 
 if(${PLATFORM} STREQUAL "Laptop")
     set(COMMON_ROOT "D:/Common")
@@ -42,6 +48,9 @@ elseif(${PLATFORM} STREQUAL "MainGear")
 elseif(${PLATFORM} STREQUAL "HPC")
     set(COMMON_ROOT "$HOME/Common")
     set(DFD_ROOT "$HOME/Projects/DFD")
+elseif(${PLATFORM} STREQUAL "SL02319")
+    set(COMMON_ROOT "/mnt/data/Common")
+    set(DFD_ROOT "/mnt/data/IUPUI/DfD")
 else()
     set(COMMON_ROOT "D:/Common")
     set(DFD_ROOT "D:/IUPUI/DFD")	

@@ -1,6 +1,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+#include <windows.h>
 #include "win_network_fcns.h"
+#endif
 
 //#include <winsock2.h>
 //#include <iphlpapi.h>
@@ -43,22 +46,22 @@
 // custom includes
 //#include "mmaplib.h"
 #include "pg.h"
-#include "mmap.h"
+//#include "mmap.h"
 #include "get_current_time.h"
 #include "get_platform.h"
 #include "num2string.h"
 #include "file_parser.h"
 #include "read_binary_image.h" 
 #include "make_dir.h"
-#include "ssim.h"
+//#include "ssim.h"
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
-#include "mod.h"
+#include "modulo.h"
 
 
 
 //#include "pso.h"
-//#include "ycrcb_pixel.h"
+#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
 #include "rot_90.h"
 //#include "dlib_srelu.h"
@@ -71,9 +74,9 @@
 //#include "dfd_net_v14_pso_01.h"
 //#include "dfd_net_rw_v19.h"
 //#include "load_dfd_rw_data.h"
-#include "load_dfd_data.h"
+//#include "load_dfd_data.h"
 
-#include "cyclic_analysis.h"
+//#include "cyclic_analysis.h"
 
 using namespace std;
 
@@ -150,6 +153,8 @@ dlib::matrix<double, 1, 3> eval_mnist_performance(net_type &net, std::vector<dli
 
 
 // ----------------------------------------------------------------------------------------
+/*
+
 template <typename T>
 const dlib::matrix<T> or(
     const dlib::matrix<T>& m1,
@@ -167,6 +172,8 @@ const dlib::matrix<T> or(
     }
         return result;
 }
+
+
 // ----------------------------------------------------------------------------------------
 template <typename T>
 const dlib::matrix<T> and(
@@ -185,6 +192,8 @@ const dlib::matrix<T> and(
     }
     return result;
 }
+*/
+
 // ----------------------------------------------------------------------------------------
 
 template <typename img_type1>
@@ -195,6 +204,7 @@ void check_matrix(img_type1 img)
 }
 
 // ----------------------------------------------------------------------------------------
+/*
 template <typename array_type>
 void calc_linkdist(array_type in, dlib::matrix<uint16_t> &d)
 {
@@ -261,6 +271,7 @@ void calc_linkdist(array_type in, dlib::matrix<uint16_t> &d)
 
 }
 
+*/
 
 // ----------------------------------------------------------------------------------------
 
@@ -548,6 +559,17 @@ int main(int argc, char** argv)
 
         bp = 2;
 
+
+
+        #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+            
+        #else
+            std::string exe_path = get_linux_path();
+            std::cout << "Path: " << exe_path << std::endl;
+        #endif        
+
+
+
         /*
         dlib::matrix<float> M(8, 5);
 
@@ -611,7 +633,7 @@ int main(int argc, char** argv)
         data_directory = "D:/Projects/MNIST/data";
 
         // load the data in using the dlib built in function
-        dlib::load_mnist_dataset(data_directory, training_images, training_labels, testing_images, testing_labels);
+        //dlib::load_mnist_dataset(data_directory, training_images, training_labels, testing_images, testing_labels);
 
 
         // get the location of the network
@@ -751,7 +773,7 @@ int main(int argc, char** argv)
 
 //-----------------------------------------------------------------
 // DFD Net
-
+/*
         
         std::cout << "Loading test images..." << std::endl;
 
@@ -890,6 +912,7 @@ int main(int argc, char** argv)
             gc_18.save_net_output(net);
             gc_18.close_stream();
 */
+/*
             gorgon_capture<1> gc_19(net);
             gc_19.init((save_location + data_name[idx] + "/" + save_name + data_name[idx] + "_L01"));
             gc_19.save_net_output(net);
@@ -902,7 +925,7 @@ int main(int argc, char** argv)
 
         }
 
-
+*/
 //-----------------------------------------------------------------
 // MNIST Net
 /*

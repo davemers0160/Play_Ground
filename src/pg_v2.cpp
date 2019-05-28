@@ -1,8 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
-#include <windows.h>
-#include "win_network_fcns.h"
+//#include <windows.h>
+//#include "win_network_fcns.h"
 #endif
 
 //#include <winsock2.h>
@@ -22,6 +22,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <type_traits>
 
 // dlib includes
 #include "dlib/rand.h"
@@ -273,6 +274,38 @@ void calc_linkdist(array_type in, dlib::matrix<uint16_t> &d)
 
 */
 
+
+// ----------------------------------------------------------------------------------------
+
+//template<int from, int to, typename net_type1, typename net_type2>
+//typename std::enable_if<from == to>::type
+//copy_net(net_type1 const&, net_type2&)
+//{
+//}
+
+template<int from, int to, typename net_type1, typename net_type2>
+typename std::enable_if<from >= to>::type
+copy_net(net_type1 const &in, net_type2 &out)
+{
+    dlib::layer<from>(out) = dlib::layer<from>(in);
+    //copy_net<from + 1, to>(in, out);
+}
+
+template<int from, int to, typename net_type1, typename net_type2>
+void copy_layer(net_type1 &in, net_type2 &out, uint64_t size)
+{
+    float* tmp1 = dlib::layer<from>(in).layer_details().get_layer_params().host();
+
+    auto &layer_params = dlib::layer<to>(out).layer_details().get_layer_params();
+    float* tmp2 = layer_params.host();
+
+
+    for (uint64_t idx = 0; idx < size; ++idx)
+    {
+        tmp2[idx] = tmp1[idx];
+    }
+}
+
 // ----------------------------------------------------------------------------------------
 
 template <typename image_type1>
@@ -377,81 +410,6 @@ void apply_mask(img_type src, img_type &dst, mask_type mask, T value)
 
 }   // end of apply_mask
 
-//// ----------------------------------------------------------------------------------------
-//
-//template<typename array_type>
-//void merge_channels(array_type &a_img, uint64_t index, dlib::matrix<dlib::rgb_pixel> &img)
-//{
-//    uint64_t r, c;
-//    uint32_t channels = dlib::pixel_traits<dlib::rgb_pixel>::num;
-//
-//    DLIB_CASSERT(a_img.size() >= (channels + index), "Array image does not contain enough channels: "
-//        << "Array Size: " << a_img.size() << "; index + channels: " << (channels + index));
-//
-//    uint64_t rows = a_img[0].nr();
-//    uint64_t cols = a_img[0].nc();
-//
-//    img.set_size(rows, cols);
-//
-//    for (r = 0; r < rows; ++r)
-//    {
-//        for (c = 0; c < cols; ++c)
-//        {
-//            dlib::rgb_pixel p((uint8_t)(a_img[index+0](r, c)), (uint8_t)(a_img[index+1](r, c)), (uint8_t)(a_img[index+2](r, c)));
-//            dlib::assign_pixel(img(r, c),p);
-//        }
-//    }
-//
-//}   // end of merge_channels
-//
-//// ----------------------------------------------------------------------------------------
-//
-//template<typename array_type>
-////void split_channels(dlib::matrix<dlib::rgb_pixel> img, uint64_t index, std::array<dlib::matrix<pixel_type>, img_depth> &img_s)
-//void split_channels(dlib::matrix<dlib::rgb_pixel> &img, uint64_t index, array_type &img_s)
-//{
-//    uint64_t r, c;
-//    uint32_t channels = dlib::pixel_traits<dlib::rgb_pixel>::num;
-//
-//    // get the size of the image
-//    uint64_t rows = img.nr();
-//    uint64_t cols = img.nc();
-//
-//    //if (dlib::pixel_traits<pixel_type1>::rgb_alpha == true)
-//    //{
-//    //    channels = 4;
-//    //}
-//    //else if (dlib::pixel_traits<pixel_type1>::grayscale == true)
-//    //{
-//    //    channels = 1;
-//    //}
-//    //else
-//    //{
-//    //    channels = 3;
-//    //}
-//
-//    DLIB_CASSERT(img_s.size() >= (channels+index), "Array image does not contain enough channels:"
-//        << "Array Size: " << img_s.size() << "; index + channels: " << (channels + index));
-//
-//    // set the size of the image
-//    img_s[index + 0].set_size(rows, cols);
-//    img_s[index + 1].set_size(rows, cols);
-//    img_s[index + 2].set_size(rows, cols);
-//
-//    for (r = 0; r < rows; ++r)
-//    {
-//        for (c = 0; c < cols; ++c)
-//        {
-//            dlib::rgb_pixel p;
-//            dlib::assign_pixel(p, img(r, c));
-//            dlib::assign_pixel(img_s[index+0](r, c), p.red);
-//            dlib::assign_pixel(img_s[index+1](r, c), p.green);
-//            dlib::assign_pixel(img_s[index+2](r, c), p.blue);
-//        }
-//    }
-//
-//}   // end of split_channels
-
 // ----------------------------------------------------------------------------------------
 
 // This block of statements defines the resnet-34 network
@@ -545,22 +503,6 @@ int main(int argc, char** argv)
     {
         int bp = 0;
 
-
-        uint64_t a = mod(-100, 2048);
-
-        uint64_t b = mod(100, 2048);
-
-        uint64_t c = mod(0, 2048);
-
-        uint64_t d = mod(-5000, 2048);
-
-        uint64_t e = mod(5000, 2048);
-
-
-        bp = 2;
-
-
-
         #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
             
         #else
@@ -568,28 +510,6 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif        
 
-
-
-        /*
-        dlib::matrix<float> M(8, 5);
-
-        M = 1.31460218679984, 1.22631993609018, 0.770218880057791, 0.871465120401718, 0.821862586343984,
-            0.290839209826240, 0.421744862391287, 0.659292687924627, 0.322683424296182, 1.18203230977354,
-            0.272670005393869, 0.316290493361358, 0.238991266007002, 0.318730016943175, 0.609978157745459,
-            0.435543201310578, 1.29273149894454, 0.602290347861418, 0.258742848173791, 1.26683335615185,
-            1.37164772969852, 0.614417962376544, 0.155566912816838, 0.361290574276894, 0.572207784557573,
-            0.832854503612060, 0.367096446893184, 0.843980325134916, 0.995702092607156, 0.310445427624136,
-            0.164384711198128, 0.415346222505658, 0.446289622696235, 0.593833463599330, 0.711001598525565,
-            0.119722115926062, 0.367475128577666, 1.12142047187763, 0.0409083885870048, 1.30039579526926;
-
-
-        dlib::matrix<uint16_t> d2;
-        calc_linkdist(M, d2);
-
-        bp = 1;
-        */
-
-        /*
         std::vector<std::string> labels;
         anet_type net_34;
         dlib::deserialize("../nets/resnet34_1000_imagenet_classifier.dnn") >> net_34 >> labels;
@@ -598,27 +518,49 @@ int main(int argc, char** argv)
 
         anet_type2 net_34_2;
 
-
         bp = 2;
-
        
         std::cout << net_34_2 << std::endl;
 
-        dlib::layer<2>(net_34_2) = dlib::layer<3>(net_34);
-        //dlib::layer
-        
-        std::cout << net_34_2 << std::endl;
+        //float* tmp1 = dlib::layer<6>(net_34).layer_details().get_layer_params().host();
+        //float* tmp2 = dlib::layer<6>(net_34_2).layer_details().get_layer_params().host();
 
-        auto &layer_params = dlib::layer<5>(net_34_2).layer_details().get_layer_params();
-        const float* params_data = layer_params.host();
+        //std::vector<float> pd(tmp1, tmp1 + 512);
+        //tmp2 = pd.data();
 
-        auto &layer_params2 = dlib::layer<6>(net_34).layer_details().get_layer_params();
-        const float* params_data2 = layer_params2.host();
+        //copy_net<6, 5>(net_34, net_34_2);
+
+        float* tmp1 = dlib::layer<6>(net_34).layer_details().get_layer_params().host();
+        float* tmp2 = dlib::layer<6>(net_34_2).layer_details().get_layer_params().host();
+
+        dlib::dnn_trainer<anet_type2, dlib::sgd> trainer(net_34_2, dlib::sgd());
+        //trainer.train_one_step(NULL, NULL);
+
+        std::cout << net_34_2.subnet();
+
+        net_34_2.subnet().subnet() = net_34.subnet().subnet().subnet();
 
 
-        auto &t2 = dlib::layer<143>(net_34_2);   // = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
-        //dlib::layer<143>(net_34_2) = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
-        */
+
+        //copy_layer<6, 6>(net_34, net_34_2, 512);
+
+        tmp2 = dlib::layer<6>(net_34_2).layer_details().get_layer_params().host();
+
+        //dlib::layer<2>(net_34_2) = dlib::layer<3>(net_34);
+        ////dlib::layer
+        //
+        //std::cout << net_34_2 << std::endl;
+
+        //auto &layer_params = dlib::layer<5>(net_34_2).layer_details().get_layer_params();
+        //const float* params_data = layer_params.host();
+
+        //auto &layer_params2 = dlib::layer<6>(net_34).layer_details().get_layer_params();
+        //const float* params_data2 = layer_params2.host();
+
+
+        //auto &t2 = dlib::layer<143>(net_34_2);   // = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
+        ////dlib::layer<143>(net_34_2) = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
+
 
         //----------------------------------------------------------------
         //test_net_type tnet;

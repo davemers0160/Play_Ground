@@ -67,6 +67,7 @@
 //#include "dlib_elu.h"
 #include "center_cropper.h"
 #include "dfd_cropper_rw.h"
+#include "copy_dlib_net.h"
 
 // Network includes
 #include "dfd_net_v14.h"
@@ -277,25 +278,109 @@ void calc_linkdist(array_type in, dlib::matrix<uint16_t> &d)
 
 // ----------------------------------------------------------------------------------------
 
-//template<int from, int to, typename net_type1, typename net_type2>
-//typename std::enable_if<from == to>::type
-//copy_net(net_type1 const&, net_type2&)
+
+//template<size_t from, size_t to, typename net_type1, typename net_type2>
+////typename std::enable_if<from >= to>::type
+//void copy_net(net_type1 &in, net_type2 &out)
 //{
+//    dlib::layer<to>(out).layer_details() = dlib::layer<from>(in).layer_details();
+//    //copy_net<from + 1, to>(in, out);
 //}
 
-template<int from, int to, typename net_type1, typename net_type2>
-//typename std::enable_if<from >= to>::type
-void copy_net(net_type1 &in, net_type2 &out)
+template<size_t from, size_t to, typename net_type1, typename net_type2>
+void copy_layer(net_type1 &from_net, net_type2 &to_net)
 {
-    dlib::layer<to>(out).layer_details() = dlib::layer<from>(in).layer_details();
-    //copy_net<from + 1, to>(in, out);
+    dlib::layer<to>(to_net).layer_details() = dlib::layer<from>(from_net).layer_details();
 }
 
-template<int from, int to, typename net_type1, typename net_type2>
-void copy_layer(net_type1 &in, net_type2 &out)
+/*
+namespace dlib
 {
-    dlib::layer<to>(out).layer_details() = dlib::layer<from>(in).layer_details();
-}
+
+    namespace cpnet
+    {
+        template <size_t begin, size_t end, size_t begin2>
+        struct copy_layer_loop
+        {
+            // this version of the recursion templte checks to see if the layer is part of the "add_layer" class
+            // layers like tag layers are not
+            template <typename F, typename T>
+            static typename std::enable_if<!is_add_layer<F>::value>::type invoke_functor(F&& from, T&& to)
+            {
+                // intentionally left empty
+                std::cout << "skipping: layer<" << begin << ">" << std::endl;
+            }
+
+            // this version will operate on all layers in the "add_layer" class
+            // the layer details will be copied from one layer to another
+            template <typename F, typename T>
+            static typename std::enable_if<is_add_layer<F>::value>::type invoke_functor(F&& from, T&& to)
+            {
+                std::cout << "copying: layer<" << begin << ">" << std::endl;
+                to.layer_details() = from.layer_details();
+            }
+
+            // this is the recursive call
+            template <typename net_type1, typename net_type2>
+            static void visit(
+                net_type1& from_net,
+                net_type2& to_net
+            )
+            {
+                invoke_functor(layer<begin>(from_net), layer<begin2>(to_net));
+
+                copy_layer_loop<begin + 1, end, begin2 + 1>::visit(from_net, to_net);
+            }
+        };
+
+        template <size_t end, size_t begin2>
+        struct copy_layer_loop<end, end, begin2>
+        {
+
+            template <typename F, typename T>
+            static typename std::enable_if<!is_add_layer<F>::value>::type invoke_functor(F&& from, T&& to)
+            {
+                // intentionally left empty
+                std::cout << "skipping: layer<" << end << ">" << std::endl;
+            }
+
+            template <typename F, typename T>
+            static typename std::enable_if<is_add_layer<F>::value>::type invoke_functor(F&& from, T&& to)
+            {
+                std::cout << "copying: layer<" << end << ">" << std::endl;
+                to.layer_details() = from.layer_details();
+            }
+
+            // Base case of recursion, i.e. the last iteration
+            template <typename net_type1, typename net_type2>
+            static void visit(
+                net_type1& from_net,
+                net_type2& to_net
+            )
+            {
+                invoke_functor(layer<end>(from_net), layer<begin2>(to_net));
+                std::cout << "copying complete!" << std::endl;
+            }
+        };
+
+    }   // end of cpnet namespace
+
+
+    // this most likely will be the copy net function in the end
+    template <size_t b1, size_t e1, size_t b2, typename net_type1, typename net_type2>
+    void copy_net(net_type1 &from_net, net_type2 &to_net)
+    {
+        // this does a check of the input ranges to determine if they are out of range for the input network
+        static_assert(b1 <= e1, "Invalid range");
+        static_assert(e1 <= net_type1::num_layers, "Invalid range");
+
+        // begin the layer copying process
+        cpnet::copy_layer_loop<b1, e1, b2>::visit(from_net, to_net);
+    }
+
+}   // end of dlib namespace
+
+*/
 
 // ----------------------------------------------------------------------------------------
 
@@ -515,18 +600,23 @@ int main(int argc, char** argv)
         std::cout << "net 34 v2" << std::endl;
         std::cout << net_34_2 << std::endl;
 
-        copy_layer<138, 137>(net_34, net_34_2);
-        //copy_layer<139, 138>(net_34, net_34_2);
-        copy_layer<140, 139>(net_34, net_34_2);
-        copy_layer<141, 140>(net_34, net_34_2);
-        copy_layer<142, 141>(net_34, net_34_2);
-        copy_layer<143, 142>(net_34, net_34_2);
+        //auto test = dlib::is_add_layer<dlib::layer<139>(net_34)>::value;
 
-        auto &ld12 = dlib::layer<139>(net_34);
-        auto &ld22 = dlib::layer<138>(net_34_2);
 
-        //auto& tmp1 = dlib::layer<139>(net_34).layer_details().get_layer_params();
-        auto& tmp2 = dlib::layer<138>(net_34_2);
+        dlib::copy_net<138, 143, 137>(net_34, net_34_2);
+
+        //copy_layer<138, 137>(net_34, net_34_2);         // con
+        //copy_layer<139, 138>(net_34, net_34_2);         // tag
+        //copy_layer<140, 139>(net_34, net_34_2);         // max_pool
+        //copy_layer<141, 140>(net_34, net_34_2);         // relu
+        //copy_layer<142, 141>(net_34, net_34_2);         // affine
+        //copy_layer<143, 142>(net_34, net_34_2);         // con
+
+        //auto &ld12 = dlib::layer<139>(net_34);
+        //auto &ld22 = dlib::layer<138>(net_34_2);
+
+        auto& tmp1 = dlib::layer<138>(net_34).layer_details().get_layer_params();
+        auto& tmp2 = dlib::layer<137>(net_34_2).layer_details().get_layer_params();
 
         auto& tmp3 = dlib::layer<140>(net_34).layer_details().get_layer_params();
         auto& tmp4 = dlib::layer<139>(net_34_2).layer_details().get_layer_params();

@@ -59,8 +59,6 @@
 #include "gorgon_capture.h"
 #include "modulo.h"
 
-
-
 //#include "pso.h"
 //#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
@@ -84,7 +82,9 @@ using namespace std;
 // -------------------------------GLOBALS--------------------------------------
 
 extern const uint32_t img_depth;
+extern const uint32_t array_depth = 3;
 extern const uint32_t secondary;
+
 //extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
 std::string platform;
 std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> tr, te, trn_crop, te_crop;
@@ -292,21 +292,9 @@ void copy_net(net_type1 &in, net_type2 &out)
 }
 
 template<int from, int to, typename net_type1, typename net_type2>
-void copy_layer(net_type1 &in, net_type2 &out, uint64_t size)
+void copy_layer(net_type1 &in, net_type2 &out)
 {
-    auto &layer_params_from = dlib::layer<from>(in).layer_details().get_layer_params();
-    float *lp_data_from = layer_params_from.host();
-
-
-    auto &layer_params_to = dlib::layer<to>(out).layer_details().get_layer_params();
-    float *lp_data_to = layer_params_to.host();
-
-    lp_data_to = lp_data_from;
-
-    //for (uint64_t idx = 0; idx < size; ++idx)
-    //{
-    //    tmp2[idx] = tmp1[idx];
-    //}
+    dlib::layer<to>(out).layer_details() = dlib::layer<from>(in).layer_details();
 }
 
 // ----------------------------------------------------------------------------------------
@@ -449,7 +437,8 @@ using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
     level3<
     level4<
     dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<64, 7, 7, 2, 2,
-    dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>
+    //dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>
+    dlib::input<std::array<dlib::matrix<uint8_t>, array_depth>>
     >>>>>>>>>>;
 
 
@@ -513,168 +502,47 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif        
 
+        anet_type2 net_34_2;
 
-        const char open = '{';
-        const char close = '}';
-        std::vector<std::string> p1,p2,p3, p4;
-        
-        std::string line1 = "abc, def, {1,2,3,4,5,6,dog}, {7,8,9,10,11,12,cat}, other";
-        std::string line2 = "{1,2,3,4,5,6,dog}, {7,8,9,10,11,12,cat}, other";
-        std::string line3 = "abc, def, {1,2,3,4,5,6,dog}, {7,8,9,10,11,12,cat}";
-        std::string line4 = "abc, def, other";
-
-        std::string file_name = "D:/Projects/Play_Ground/poly_example.txt";
-
-        //parseCSVFile(file_name, training_file);
-
-        parse_group_line(line1, open, close, p1);
-        parse_group_line(line2, open, close, p2);
-        parse_group_line(line3, open, close, p3);
-        parse_group_line(line4, open, close, p4);
-
-
-        std::vector<std::vector<std::string>> params;
-        parse_group_csv_file(file_name, open, close, params);
-
-
-        // parse the second param because it has a polygon
-        idx = 4;
-
-        // this gets the file names
-        std::string f1 = params[idx][0];
-        std::string f2 = params[idx][1];
-
-        uint64_t left, right, top, bottom;
-
-        // this now reads the label info
-        for (jdx = 2; jdx < params[idx].size(); ++jdx)
-        {
-            std::vector<std::string> label_info;
-
-            parseCSVLine(params[idx][jdx], label_info);
-
-            // get the label since it is the last element and the remove
-            std::string label_name = label_info.back();
-            label_info.pop_back();
-
-            // convert the strings to uints
-            std::vector<uint32_t> points(label_info.size());
-            for (uint32_t kdx = 0; kdx < label_info.size(); ++kdx)
-            {
-                points[kdx] = (uint32_t)std::stoi(label_info[kdx]);
-            }
-
-            // check the size of points.  If there are more than 4 points then the input is
-            // a polygon otherwise it is a rectangle
-            if (points.size() > 4)
-            {
-                // now assume that there are and equal number of x,y points
-                uint32_t div = points.size() >> 1;
-
-                const auto x = std::minmax_element(begin(points), begin(points) + div);
-                const auto y = std::minmax_element(begin(points) + div, end(points));
-
-                left = *x.first;
-                right = *x.second;
-                top = *y.first;
-                bottom = *y.second;
-            }
-            else
-            {
-                // create the rect from the x,y, w,h points
-                left = points[0];
-                top = points[1];
-                right = left + points[2];
-                bottom = top + points[3];
-                
-            }
-
-            dlib::rectangle r(left, top, right, bottom);
-            dlib::mmod_rect m_r(r, 0.0, label_name);
-
-        }
-
-
-
-        bp = 2;
-
-        //uint32_t l1 = 0; //(uint32_t)line.find(open);
-        //uint32_t l2 = 0;  //(uint32_t)line.find(close);
-
-        // parse the lines - find the first instance of a group and then the last one
-        // then separate the two sections
-        //uint32_t g_start = (uint32_t)line.find(open);
-        //uint32_t g_stop = (uint32_t)line.rfind(close);
-
-        //// get the group substring
-        //std::string sec_start = line.substr(0, g_start);
-        //std::string group = line.substr(g_start, g_stop - g_start + 1);
-        //std::string sec_end = line.substr(g_stop+1, line.length()-1);
-
-        //parse_line(sec_start, ',', params);
-        //parse_line(sec_end, ',', params);
-
-        //while (l2 < group.size())
-        //{
-        //    l1 = (uint32_t)group.find(open);
-        //    l2 = (uint32_t)group.find(close);
-        //    std::string g = group.substr(l1 + 1, l2 - l1 - 1);
-        //    trim(g);
-        //    if (g.size() > 0)
-        //    {
-        //        group_params.push_back(g);
-        //    }
-        //}
-
-        //stringstream gs(group);
-        //while (gs.good())
-        //{
-        //    std::string s1;
-        //    std::string s2;
-        //    std::getline(gs, s1, open);
-        //    std::getline(gs, s2, close);
-
-        //    trim(s2);
-        //    if (s2.size() > 0)
-        //    {
-        //        group_params.push_back(s2);
-        //    }
-        //}
-
-
-
-
-/*
         std::vector<std::string> labels;
         anet_type net_34;
         dlib::deserialize("../nets/resnet34_1000_imagenet_classifier.dnn") >> net_34 >> labels;
 
+
+        std::cout << "net 34" << std::endl;
         std::cout << net_34 << std::endl;
-
-        anet_type2 net_34_2;
-
-        bp = 2;
-       
+      
+        std::cout << "net 34 v2" << std::endl;
         std::cout << net_34_2 << std::endl;
 
-        //float* tmp1 = dlib::layer<6>(net_34).layer_details().get_layer_params().host();
-        //float* tmp2 = dlib::layer<6>(net_34_2).layer_details().get_layer_params().host();
+        copy_layer<138, 137>(net_34, net_34_2);
+        //copy_layer<139, 138>(net_34, net_34_2);
+        copy_layer<140, 139>(net_34, net_34_2);
+        copy_layer<141, 140>(net_34, net_34_2);
+        copy_layer<142, 141>(net_34, net_34_2);
+        copy_layer<143, 142>(net_34, net_34_2);
 
-        //std::vector<float> pd(tmp1, tmp1 + 512);
-        //tmp2 = pd.data();
+        auto &ld12 = dlib::layer<139>(net_34);
+        auto &ld22 = dlib::layer<138>(net_34_2);
 
-        auto &ld11 = dlib::layer<138>(net_34).layer_details();
-        auto &ld21 = dlib::layer<137>(net_34_2).layer_details();
+        //auto& tmp1 = dlib::layer<139>(net_34).layer_details().get_layer_params();
+        auto& tmp2 = dlib::layer<138>(net_34_2);
 
-        copy_net<138, 137>(net_34, net_34_2);
+        auto& tmp3 = dlib::layer<140>(net_34).layer_details().get_layer_params();
+        auto& tmp4 = dlib::layer<139>(net_34_2).layer_details().get_layer_params();
 
-        auto &ld12 = dlib::layer<138>(net_34).layer_details();
-        auto &ld22 = dlib::layer<137>(net_34_2).layer_details();
+        auto& tmp5 = dlib::layer<141>(net_34).layer_details().get_layer_params();
+        auto& tmp6 = dlib::layer<140>(net_34_2).layer_details().get_layer_params();
 
-        auto& tmp1 = dlib::layer<138>(net_34).layer_details().get_layer_params();
-        auto& tmp2 = dlib::layer<137>(net_34_2).layer_details().get_layer_params();
+        auto& tmp7 = dlib::layer<142>(net_34).layer_details();
+        auto& tmp8 = dlib::layer<141>(net_34_2).layer_details();
 
-        dlib::dnn_trainer<anet_type2, dlib::sgd> trainer(net_34_2, dlib::sgd());
+        auto& tmp9 = dlib::layer<143>(net_34).layer_details().get_layer_params();
+        auto& tmp10 = dlib::layer<142>(net_34_2).layer_details().get_layer_params();
+        
+        bp = 3;
+
+        //dlib::dnn_trainer<anet_type2, dlib::sgd> trainer(net_34_2, dlib::sgd());
         //trainer.train_one_step(NULL, NULL);
 
         //std::cout << net_34_2.subnet();
@@ -710,7 +578,7 @@ int main(int argc, char** argv)
 
         //auto& af_details = dlib::layer<4>(tnet).layer_details();
 
-*/
+
 
         //----------------------------------------------------------------
         data_directory = "D:/Projects/MNIST/data";

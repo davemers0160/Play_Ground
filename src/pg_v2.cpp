@@ -67,6 +67,7 @@
 //#include "dlib_elu.h"
 #include "center_cropper.h"
 #include "dfd_cropper_rw.h"
+#include "copy_dlib_net.h"
 
 // Network includes
 #include "dfd_net_v14.h"
@@ -515,18 +516,20 @@ int main(int argc, char** argv)
         std::cout << "net 34 v2" << std::endl;
         std::cout << net_34_2 << std::endl;
 
-        copy_layer<138, 137>(net_34, net_34_2);
+        copy_net<138, 143, 137>(net_34, net_34_2);
+
+        //copy_layer<138, 137>(net_34, net_34_2);
         //copy_layer<139, 138>(net_34, net_34_2);
-        copy_layer<140, 139>(net_34, net_34_2);
-        copy_layer<141, 140>(net_34, net_34_2);
-        copy_layer<142, 141>(net_34, net_34_2);
-        copy_layer<143, 142>(net_34, net_34_2);
+        //copy_layer<140, 139>(net_34, net_34_2);
+        //copy_layer<141, 140>(net_34, net_34_2);
+        //copy_layer<142, 141>(net_34, net_34_2);
+        //copy_layer<143, 142>(net_34, net_34_2);
 
-        auto &ld12 = dlib::layer<139>(net_34);
-        auto &ld22 = dlib::layer<138>(net_34_2);
+        //auto &ld12 = dlib::layer<139>(net_34);
+        //auto &ld22 = dlib::layer<138>(net_34_2);
 
-        //auto& tmp1 = dlib::layer<139>(net_34).layer_details().get_layer_params();
-        auto& tmp2 = dlib::layer<138>(net_34_2);
+        auto& tmp1 = dlib::layer<138>(net_34).layer_details().get_layer_params();
+        auto& tmp2 = dlib::layer<137>(net_34_2).layer_details().get_layer_params();
 
         auto& tmp3 = dlib::layer<140>(net_34).layer_details().get_layer_params();
         auto& tmp4 = dlib::layer<139>(net_34_2).layer_details().get_layer_params();

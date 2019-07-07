@@ -486,6 +486,9 @@ int main(int argc, char** argv)
 
         // set the learning rate multipliers: 0 means freeze the layers
         double r1 = 0.0, r2 = 0.0;
+
+        // This does the setting
+        // dlib::set_learning_rate<start_layer, end_layer>(net_name, r1, r2);
         dlib::set_learning_rate<6, 145>(net_34_2, r1, r2);
 
         // print out the net just to show that the multipliers have changed

@@ -22,8 +22,8 @@ cmake_minimum_required(VERSION 2.8.12)
 PROJECT(PlayGround_Project)
 set(exe_name "pg")
 
-
-
+# This looks for an environment variable called PLATFORM.  This can be used to point
+# cmake to various locations based on the individual machines that the code is complied on
 set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")
 message("Platform: " ${PLATFORM})
 
@@ -59,10 +59,10 @@ endif()
 include(${COMMON_ROOT}/cmake_utils/use_cpp_11.cmake)
 include(${COMMON_ROOT}/cmake_utils/use_sse_avx.cmake)
 
+# look for any *.c and *.cpp files
 file(GLOB SOURCES "src/*.c*")
 
 set(project_includes "include" "${COMMON_ROOT}/include" "${DFD_ROOT}/common")
-
 
 message(" ")
 message("--------------------------------------------------------")

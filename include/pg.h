@@ -27,7 +27,7 @@ void parse_dnn_data_file(std::string parseFilename, std::string &version, std::v
     */
 
     std::vector<std::vector<std::string>> params;
-    parseCSVFile(parseFilename, params);
+    parse_csv_file(parseFilename, params);
 
     for (uint64_t idx = 0; idx<params.size(); ++idx)
     {

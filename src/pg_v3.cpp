@@ -23,6 +23,7 @@
 #include <chrono>
 #include <string>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include <type_traits>
 
@@ -62,7 +63,7 @@
 //#include "dlib_srelu.h"
 //#include "dlib_elu.h"
 #include "center_cropper.h"
-#include "dfd_cropper_rw.h"
+#include "dfd_cropper.h"
 
 // new copy and set learning rate includes
 #include "copy_dlib_net.h"
@@ -443,6 +444,7 @@ int main(int argc, char** argv)
         #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
             
         #else
+            std::cout << "argv[0]: " << std::string(argv[0]) << std::endl;
             std::string exe_path = get_linux_path();
             std::cout << "Path: " << exe_path << std::endl;
         #endif        

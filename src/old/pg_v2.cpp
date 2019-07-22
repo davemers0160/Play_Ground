@@ -68,6 +68,7 @@
 #include "center_cropper.h"
 #include "dfd_cropper_rw.h"
 #include "copy_dlib_net.h"
+#include "dlib_set_learning_rates.h"
 
 // Network includes
 #include "dfd_net_v14.h"
@@ -382,6 +383,127 @@ namespace dlib
 
 */
 
+//// ----------------------------------------------------------------------------------------
+//
+//namespace dlib
+//{
+//    namespace impl
+//    {
+//        // This is for the cases where begin != end
+//        template <size_t begin, size_t end>
+//        struct vllr_loop
+//        {
+//            // This is where the work gets done.  The odd decltype is used to check if layer contains
+//            // the set_learning_rate_multiplier() fucntion
+//            template<typename net_type>
+//            static decltype(std::declval<net_type>().layer_details().set_learning_rate_multiplier(0))
+//            set_value(net_type &net, double r1, double r2)
+//            {
+//                net.layer_details().set_learning_rate_multiplier(r1);
+//                net.layer_details().set_bias_learning_rate_multiplier(r2);
+//            }
+//
+//            static void set_value(...)
+//            {
+//                // Intentionally left blank.  This handles the layers that don't have a 
+//                // set_learning_rate_multiplier() function
+//            }
+//
+//            // This is the fuction to call within the struct 
+//            template <typename net_type>
+//            static void visit(net_type &net, double r1, double r2)
+//            {
+//                // set the values for the current layer
+//                set_value(layer<begin>(net), r1, r2);
+//                // move on and increment the begining layer
+//                vllr_loop<begin + 1, end>::visit(net, r1, r2);
+//            }
+//        };
+//
+//        // This is for the cases where begin == end, i.e. the base case for the recursion
+//        template <size_t end>
+//        struct vllr_loop<end,end> 
+//        {   
+//
+//            // This is where the work gets done.  The odd decltype is used to check if layer contains
+//            // the set_learning_rate_multiplier() fucntion
+//            template<typename net_type>
+//            static decltype(std::declval<net_type>().layer_details().set_learning_rate_multiplier(0))
+//            set_value(net_type &net, double r1, double r2)
+//            {
+//                net.layer_details().set_learning_rate_multiplier(r1);
+//                net.layer_details().set_bias_learning_rate_multiplier(r2);
+//            }
+//
+//            static void set_value(...)
+//            {
+//                // Intentionally left blank.  This handles the layers that don't have a 
+//                // set_learning_rate_multiplier() function
+//            }
+//
+//            // This is the fuction to call within the struct 
+//            template <typename net_type>
+//            static void visit(net_type &net, double r1, double r2)
+//            {
+//                // set the values for the current layer
+//                set_value(layer<end>(net), r1, r2);
+//            }
+//        };
+//
+//    }   // end of impl namespace
+//
+//    // This is the main function to call when you want to set the following:
+//    //   - set_learning_rate_multiplier
+//    //   - set_bias_learning_rate_multiplier
+//    // Call it like this: dlib::set_learning_rate<0, 3>(net, r1, r2);
+//    //   - where net is your net and r1,r2 are the learning rate multipliers
+//    template<size_t begin, size_t end, typename net_type>
+//    void set_learning_rate(net_type &net, double r1, double r2)
+//    {
+//        // this does a check of the input ranges to determine if they are out of range for the input network
+//        static_assert(begin <= end, "Invalid range");
+//        static_assert(end <= net_type::num_layers, "Invalid range");
+//
+//        // begin the process of updating the learning rates
+//        impl::vllr_loop<begin, end>::visit(net, r1, r2);
+//    }
+//
+//}   // end of dlib namespace
+//
+//// ----------------------------------------------------------------------------------------
+
+
+//template<typename net_type>
+//inline decltype(std::declval<net_type>().layer_details().set_learning_rate_multiplier(0))
+//set_learning_rate_impl(net_type &net, double rate)
+//{
+//    net.layer_details().set_learning_rate_multiplier(rate);
+//    net.layer_details().set_bias_learning_rate_multiplier(rate);
+//}
+//
+//inline void set_learning_rate_impl(...)
+//{
+//}
+//
+//template<int from, int to, typename net_type>
+//typename std::enable_if<from == to>::type
+//set_learning_rate(net_type& net, double rate)
+//{
+//    set_learning_rate_impl(dlib::layer<from>(net), rate);
+//}
+//
+//template<int from, int to, typename net_type>
+//typename std::enable_if<from != to>::type
+//set_learning_rate(net_type &net, double rate)
+//{
+//    set_learning_rate_impl(dlib::layer<from>(net), rate);
+//    set_learning_rate<from + 1, to>(net, rate);
+//}
+
+
+
+
+
 // ----------------------------------------------------------------------------------------
 
 template <typename image_type1>
@@ -600,20 +722,14 @@ int main(int argc, char** argv)
         std::cout << "net 34 v2" << std::endl;
         std::cout << net_34_2 << std::endl;
 
-        //auto test = dlib::is_add_layer<dlib::layer<139>(net_34)>::value;
+        copy_net<138, 143, 137>(net_34, net_34_2);
 
-
-        dlib::copy_net<138, 143, 137>(net_34, net_34_2);
-
-        //copy_layer<138, 137>(net_34, net_34_2);         // con
-        //copy_layer<139, 138>(net_34, net_34_2);         // tag
-        //copy_layer<140, 139>(net_34, net_34_2);         // max_pool
-        //copy_layer<141, 140>(net_34, net_34_2);         // relu
-        //copy_layer<142, 141>(net_34, net_34_2);         // affine
-        //copy_layer<143, 142>(net_34, net_34_2);         // con
-
-        //auto &ld12 = dlib::layer<139>(net_34);
-        //auto &ld22 = dlib::layer<138>(net_34_2);
+        //copy_layer<138, 137>(net_34, net_34_2);
+        //copy_layer<139, 138>(net_34, net_34_2);
+        //copy_layer<140, 139>(net_34, net_34_2);
+        //copy_layer<141, 140>(net_34, net_34_2);
+        //copy_layer<142, 141>(net_34, net_34_2);
+        //copy_layer<143, 142>(net_34, net_34_2);
 
         auto& tmp1 = dlib::layer<138>(net_34).layer_details().get_layer_params();
         auto& tmp2 = dlib::layer<137>(net_34_2).layer_details().get_layer_params();
@@ -632,50 +748,19 @@ int main(int argc, char** argv)
         
         bp = 3;
 
-        //dlib::dnn_trainer<anet_type2, dlib::sgd> trainer(net_34_2, dlib::sgd());
-        //trainer.train_one_step(NULL, NULL);
+        double r1 = 10.0, r2 = 4.0;
+        dlib::set_learning_rate<130, 142>(net_34_2, r1, r2);
 
-        //std::cout << net_34_2.subnet();
+        std::cout << "net 34 v2" << std::endl;
+        std::cout << net_34_2 << std::endl;
 
-        //net_34_2.subnet().subnet() = net_34.subnet().subnet().subnet();
-
-
-
-        //copy_layer<137, 138>(net_34, net_34_2, 512);
-
-        //tmp2 = dlib::layer<6>(net_34_2).layer_details().get_layer_params().host();
-
-        //dlib::layer<2>(net_34_2) = dlib::layer<3>(net_34);
-        ////dlib::layer
-        //
-        //std::cout << net_34_2 << std::endl;
-
-        //auto &layer_params = dlib::layer<5>(net_34_2).layer_details().get_layer_params();
-        //const float* params_data = layer_params.host();
-
-        //auto &layer_params2 = dlib::layer<6>(net_34).layer_details().get_layer_params();
-        //const float* params_data2 = layer_params2.host();
-
-
-        //auto &t2 = dlib::layer<143>(net_34_2);   // = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
-        ////dlib::layer<143>(net_34_2) = dlib::input_rgb_image_pyramid<dlib::pyramid_down<6>>;
-
-
-        //----------------------------------------------------------------
-        //test_net_type tnet;
-
-        //std::cout << tnet << std::endl;
-
-        //auto& af_details = dlib::layer<4>(tnet).layer_details();
-
-
+        bp = 4;
 
         //----------------------------------------------------------------
         data_directory = "D:/Projects/MNIST/data";
 
         // load the data in using the dlib built in function
         //dlib::load_mnist_dataset(data_directory, training_images, training_labels, testing_images, testing_labels);
-
 
         // get the location of the network
         std::string net_name;

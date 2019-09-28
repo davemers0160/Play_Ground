@@ -1,4 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
+//#define WITHOUT_NUMPY 
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
 //#include <windows.h>
@@ -34,6 +35,7 @@
 #include "dlib/image_io.h"
 #include "dlib/image_transforms.h"
 #include "dlib/opencv.h"
+#include "dlib/gui_widgets.h"
 
 // OpenCV includes
 #include <opencv2/core/core.hpp>           
@@ -55,6 +57,7 @@
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
 #include "modulo.h"
+#include "overlay_bounding_box.h"
 
 //#include "pso.h"
 //#include "ycrcb_pixel.h"
@@ -63,11 +66,15 @@
 //#include "dlib_srelu.h"
 //#include "dlib_elu.h"
 #include "center_cropper.h"
-#include "dfd_cropper.h"
+//#include "dfd_cropper.h"
 
 // new copy and set learning rate includes
 #include "copy_dlib_net.h"
 #include "dlib_set_learning_rates.h"
+
+
+//#include "D:\Projects\matplotlib-cpp\matplotlibcpp.h"
+
 
 // Network includes
 //#include "dfd_net_v14.h"
@@ -75,20 +82,22 @@
 //#include "dfd_net_rw_v19.h"
 //#include "load_dfd_rw_data.h"
 //#include "load_dfd_data.h"
+//#include "resnet101_v1.h"
 
 //#include "cyclic_analysis.h"
 
 using namespace std;
+//namespace plt = matplotlibcpp;
 
 // -------------------------------GLOBALS--------------------------------------
 
-extern const uint32_t img_depth = 3;
-extern const uint32_t array_depth = 3;
+extern const uint32_t img_depth;
+extern const uint32_t array_depth;
 extern const uint32_t secondary;
 
 //extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
 std::string platform;
-std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> tr, te, trn_crop, te_crop;
+//std::vector<std::array<dlib::matrix<uint16_t>, img_depth>> tr, te, trn_crop, te_crop;
 //std::vector<dlib::matrix<uint16_t>> gt_train, gt_test, gt_crop, gt_te_crop;
 
 //std::string version;
@@ -341,6 +350,31 @@ void apply_mask(img_type src, img_type &dst, mask_type mask, T value)
 
 }   // end of apply_mask
 
+//// ----------------------------------------------------------------------------------------
+//
+//template<typename image_type>
+//void overlay_bounding_box(image_type &img, cv::Rect box_rect, std::string label, cv::Scalar color)
+//{
+//
+//    //int font_face = cv::FONT_HERSHEY_SIMPLEX;
+//    int font_face = cv::FONT_HERSHEY_PLAIN;
+//    int thickness = 2;
+//    int baseline = 0;
+//    double font_scale = 1.6;
+//
+//    // get the text size
+//    cv::Size text_size = cv::getTextSize(label, font_face, font_scale, thickness, &baseline);
+//
+//    // draw the bounding box
+//    cv::rectangle(img, box_rect, color, 2, cv::LINE_8);
+//
+//    cv::rectangle(img, box_rect.tl(), box_rect.tl() + cv::Point(text_size.width+2, text_size.height+4), color, -1);
+//
+//    cv::putText(img, label , box_rect.tl() + cv::Point(1, text_size.height+3), font_face, font_scale, cv::Scalar(0, 0, 0), thickness, cv::LINE_8, false);
+//
+//}   // end of overlay_bounding_box
+//
+
 // ----------------------------------------------------------------------------------------
 
 // This block of statements defines the resnet-34 network
@@ -376,17 +410,17 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
     >>>>>>>>>>>;
 
 // This is the new net that you want to copy
-using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
-    res33<512, 512,
-    // ----
-    level1<
-    level2<
-    level3<
-    level4<
-    dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<64, 7, 7, 2, 2,
-    // ----
-    dlib::input<std::array<dlib::matrix<uint8_t>, array_depth>>
-    >>>>>>>>>>>;
+//using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
+//    res33<512, 512,
+//    // ----
+//    level1<
+//    level2<
+//    level3<
+//    level4<
+//    dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<64, 7, 7, 2, 2,
+//    // ----
+//    dlib::input<std::array<dlib::matrix<uint8_t>, array_depth>>
+//    >>>>>>>>>>>;
 
 // ----------------------------------------------------------------------------------------
 
@@ -447,8 +481,65 @@ int main(int argc, char** argv)
             std::cout << "argv[0]: " << std::string(argv[0]) << std::endl;
             std::string exe_path = get_linux_path();
             std::cout << "Path: " << exe_path << std::endl;
-        #endif        
+        #endif  
 
+        std::string text = "Funny text inside the box";
+        int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+        double fontScale = 1.0;
+        int thickness = 2;
+        cv::Mat img(600, 140, CV_8UC3, cv::Scalar::all(0));
+        int baseline = 0;
+
+        dlib::matrix<dlib::rgb_pixel> img2 = dlib::uniform_matrix<dlib::rgb_pixel>(400, 400, dlib::rgb_pixel(0,0,0));
+
+        std::string label = "test_label";
+
+        dlib::rectangle rect(20, 20, 200, 200);
+        //overlay_bounding_box(dlib::toMat(img2), cv::Rect(20, 20, 200, 400), label, cv::Scalar(0, 0, 255));
+        dlib::rgb_pixel color(255, 0, 0);
+        dlib::mmod_rect box_label(rect, 0.0, label);
+
+        std::vector<dlib::mmod_rect> mmod_labels;
+
+        mmod_labels.push_back(box_label);
+
+        dlib::mmod_options options({ mmod_labels }, 60, 35, 0.75);
+
+        for (auto& w : options.detector_windows)
+            std::cout << "detector window width by height: " << w.width << " x " << w.height << ", " << w.label << std::endl;
+
+        overlay_bounding_box(img2, box_label, color);
+
+        dlib::image_window win0;
+
+
+        win0.clear_overlay();
+        win0.set_image(img2);
+        //win0.add_overlay(rect, dlib::rgb_pixel(255, 0, 0));
+        //win0.add_overlay(dlib::rectangle(20,20,20,20), dlib::rgb_pixel(255, 0, 0), label);
+
+
+        std::cin.ignore();
+
+/*
+        cv::Size text_size = cv::getTextSize(text, fontFace, fontScale, thickness, &baseline);
+        //baseline += thickness;
+
+        // center the text
+        cv::Point textOrg((img.cols - text_size.width) / 2, (img.rows + text_size.height) / 2);
+
+        // draw the box
+        cv::rectangle(img, textOrg + cv::Point(0, baseline), textOrg + cv::Point(text_size.width, -text_size.height), cv::Scalar(0, 0, 255), -1);
+        
+        // then put the text itself
+        cv::putText(img, text, textOrg, fontFace, fontScale, cv::Scalar(0,0,0), thickness, 8);
+*/
+        bp = 3;
+        //resnet_type net_101;
+
+        //std::cout << "net_101" << std::endl;
+        //std::cout << net_101 << std::endl;
+/*
         anet_type2 net_34_2;
 
         std::vector<std::string> labels;
@@ -496,7 +587,8 @@ int main(int argc, char** argv)
         // print out the net just to show that the multipliers have changed
         std::cout << "net 34 v2" << std::endl;
         std::cout << net_34_2 << std::endl;
-
+*/
+        //while (1);
         bp = 4;
 
 

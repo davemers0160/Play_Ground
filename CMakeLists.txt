@@ -19,6 +19,9 @@
 
 cmake_minimum_required(VERSION 2.8.12)
 
+#set(CMAKE_CXX_STANDARD 11)
+#set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 PROJECT(PlayGround_Project)
 set(exe_name "pg")
 
@@ -88,6 +91,9 @@ else()
 	message("OpenCV not found, so we won't build the project.")
 endif()
 
+#add_definitions(-DMATPLOTLIBCPP_PYTHON_HEADER=Python.h)
+#set(project_includes ${project_includes} D:/Python_3.6.5/include)
+#set(project_includes ${project_includes} D:/Python_3.6.5/Lib/site-packages/numpy/core/include)
 
 message(" ")
 message("--------------------------------------------------------")
@@ -98,6 +104,7 @@ endforeach()
 message("--------------------------------------------------------")
 message(" ")
 
+# link_directories(D:/Python_3.6.5/libs)
 
 include_directories(${project_includes})
 add_executable(${exe_name} ${SOURCES})

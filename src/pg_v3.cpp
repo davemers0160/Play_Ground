@@ -60,7 +60,7 @@
 #include "modulo.h"
 #include "overlay_bounding_box.h"
 
-//#include "pso.h"
+#include "pso.h"
 //#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
 #include "rot_90.h"
@@ -537,6 +537,24 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 
 // ----------------------------------------------------------------------------------------
 
+double schwefel(dlib::matrix<double> x)
+{
+    // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
+    // x_n = 420.968746
+
+    double result = 0.0;
+
+    for (int64_t c = 0; c < x.nc(); ++c)
+    {
+        result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
+    }
+
+    return result;
+
+}	// end of schwefel
+
+// ----------------------------------------------------------------------------------------
+
 
 int main(int argc, char** argv)
 {
@@ -596,24 +614,28 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
+        dlib::pso_options options(200, 20000, 2.4, 2.1, 1.0, 1, 1.0);
 
-        std::vector<std::vector<cv::Point> > squares;
+        // schwefel(dlib::matrix<double> x)
+
+        dlib::pso<double> p(options);
+
+        dlib::matrix<std::pair<double, double>, 1, 2> x_lim;
+        dlib::matrix<std::pair<double, double>, 1, 2> v_lim;
 
 
-        std::string filename = "D:/Projects/mnist_viewer/input_test.png";
+        x_lim(0, 0) = std::make_pair(-500.0, 500.0);
+        x_lim(0, 1) = std::make_pair(-500.0, 500.0);
+        //x_lim(0, 2) = std::make_pair(-500.0, 500.0);
+        v_lim(0, 0) = std::make_pair(-100.0, 100.0);
+        v_lim(0, 1) = std::make_pair(-100.0, 100.0);
+        //v_lim(0, 2) = std::make_pair(-1.0, 1.0);
 
-        cv::Mat image = cv::imread(filename, cv::IMREAD_COLOR);
+        p.init(x_lim, v_lim);
 
-        if (image.empty())
-        {
-            std::cout << "Couldn't load " << filename << std::endl;
-        }
+        p.run(schwefel);
 
-        findSquares(image, squares);
-        drawSquares(image, squares);
-
-        int c = cv::waitKey();
-
+        std::cin.ignore();
 
         bp = 3;
         //resnet_type net_101;

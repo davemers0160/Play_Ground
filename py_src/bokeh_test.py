@@ -4,6 +4,8 @@ import math
 import ctypes as ct
 import numpy as np
 import cv2 as cv
+import tkinter as tk
+from tkinter import filedialog
 import bokeh
 from bokeh.io import curdoc
 from bokeh.models import ColumnDataSource, Button
@@ -16,6 +18,7 @@ script_path = os.path.realpath(__file__)
 # set up some global variables that will be used throughout the code
 # read only
 update_time = 200
+
 
 use_webcam = False
 if use_webcam:
@@ -38,18 +41,25 @@ elif platform.system() == "Linux":
 else:
     quit()
 
-
 # read and write global
 
 
-
-def button_callback(btn):
+def button_callback(self):
     global x
     bp = 1
-    btn.label = "test2"
+    self.label = "test2"
+    root = tk.Tk()
+
+    file_types = [('png files', '.png'), ('all files', '.*')]
+    file_path = filedialog.askopenfilename(title="Select a file", initialdir=os.path.dirname(os.path.dirname(script_path)), filetypes=file_types)
+    print(file_path)
+    root.withdraw()
+    # root.quit()
+
 
 def update():
     global x
+
 
 def upload_fit_data(attr, old, new):
     print("fit data upload succeeded")
@@ -60,13 +70,10 @@ def upload_fit_data(attr, old, new):
 # MAIN
 # ---------------------------------------------------------------------
 
-
-
-file_input = FileInput(accept=".csv,.json,.txt", title="File")
+file_input = FileInput(accept=".csv,.json,.txt")
 file_input.on_change('value', upload_fit_data)
 
-
-b01 = Button(label='Test')
+b01 = Button(label='Test', width=100)
 b01.on_click(lambda: button_callback(b01))
 
 layout = column([b01, file_input])

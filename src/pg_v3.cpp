@@ -118,10 +118,10 @@ const char* wndname = "Square Detection Demo";
 // from pt0->pt1 and from pt0->pt2
 static double angle(cv::Point pt1, cv::Point pt2, cv::Point pt0)
 {
-    double dx1 = pt1.x - pt0.x;
-    double dy1 = pt1.y - pt0.y;
-    double dx2 = pt2.x - pt0.x;
-    double dy2 = pt2.y - pt0.y;
+    double dx1 = (double)pt1.x - (double)pt0.x;
+    double dy1 = (double)pt1.y - (double)pt0.y;
+    double dx2 = (double)pt2.x - (double)pt0.x;
+    double dy2 = (double)pt2.y - (double)pt0.y;
     return (dx1 * dx2 + dy1 * dy2) / sqrt((dx1 * dx1 + dy1 * dy1) * (dx2 * dx2 + dy2 * dy2) + 1e-10);
 }
 
@@ -191,7 +191,7 @@ static void findSquares(const cv::Mat& image, vector<vector<cv::Point> >& square
                     for (int j = 2; j < 5; j++)
                     {
                         // find the maximum cosine of the angle between joint edges
-                        double cosine = fabs(angle(approx[j % 4], approx[j - 2], approx[j - 1]));
+                        double cosine = std::abs(angle(approx[j % 4], approx[j - 2], approx[j - 1]));
                         maxCosine = MAX(maxCosine, cosine);
                     }
 
@@ -534,6 +534,43 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 //    // ----
 //    dlib::input<std::array<dlib::matrix<uint8_t>, array_depth>>
 //    >>>>>>>>>>>;
+
+// ----------------------------------------------------------------------------------------
+
+class particle
+{
+    double x1;
+    double x2;
+
+public:
+    particle() {}
+    particle(double x1_, double x2_) : x1(x1_), x2(x2_) {}
+
+    friend particle operator+(const particle& p1, const particle& p2)
+    {
+        //particle ret;
+        return particle(p1.x1 + p2.x1, p1.x2 + p2.x2);
+    }
+
+    friend particle operator*(const particle& p1, const particle& p2)
+    {
+        return particle(p1.x1 * p2.x1, p1.x2 * p2.x2);
+    }
+
+    template <typename T>
+    friend particle operator*(const T& v, const particle& p1)
+    {
+        return particle(p1.x1 * v, p1.x2 * v);
+    }
+
+    template <typename T>
+    friend particle operator*(const particle& p1, const T& v)
+    {
+        return particle(p1.x1 * v, p1.x2 * v);
+    }
+
+
+};
 
 // ----------------------------------------------------------------------------------------
 

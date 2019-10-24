@@ -1,5 +1,4 @@
 #define _CRT_SECURE_NO_WARNINGS
-//#define WITHOUT_NUMPY 
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
 //#include <windows.h>
@@ -73,10 +72,6 @@
 #include "copy_dlib_net.h"
 #include "dlib_set_learning_rates.h"
 
-
-//#include "D:\Projects\matplotlib-cpp\matplotlibcpp.h"
-
-
 // Network includes
 //#include "dfd_net_v14.h"
 //#include "dfd_net_v14_pso_01.h"
@@ -88,7 +83,6 @@
 //#include "cyclic_analysis.h"
 
 using namespace std;
-//namespace plt = matplotlibcpp;
 
 // -------------------------------GLOBALS--------------------------------------
 
@@ -108,7 +102,6 @@ std::string logfileName = "dfd_net_";
 std::string gorgon_savefile = "gorgon_dfd_";
 
 dlib::rand rnd(time(NULL));
-
 
 int thresh = 50, N = 11;
 const char* wndname = "Square Detection Demo";
@@ -546,6 +539,21 @@ public:
     particle() {}
     particle(double x1_, double x2_) : x1(x1_), x2(x2_) {}
 
+
+    double get_x1() { return x1; }
+    double get_x2() { return x2; }
+
+
+    void rand_init(dlib::rand& rnd, std::pair<particle, particle> limits)
+    {
+        x1 = rnd.get_double_in_range(limits.first.x1, limits.second.x1);
+        x2 = rnd.get_double_in_range(limits.first.x2, limits.second.x2);
+    }
+
+
+
+
+
     friend particle operator+(const particle& p1, const particle& p2)
     {
         //particle ret;
@@ -574,17 +582,22 @@ public:
 
 // ----------------------------------------------------------------------------------------
 
-double schwefel(dlib::matrix<double> x)
+//double schwefel(dlib::matrix<double> x)
+double schwefel(particle p)
 {
     // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
     // x_n = 420.968746
 
-    double result = 0.0;
+    //double result = 0.0;
+    double result = -p.get_x1() * std::sin(std::sqrt(std::abs(p.get_x1())));
+    result += -p.get_x2() * std::sin(std::sqrt(std::abs(p.get_x2())));
 
-    for (int64_t c = 0; c < x.nc(); ++c)
-    {
-        result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
-    }
+
+
+    //for (int64_t c = 0; c < x.nc(); ++c)
+    //{
+    //    result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
+    //}
 
     return result;
 
@@ -655,25 +668,29 @@ int main(int argc, char** argv)
 
         // schwefel(dlib::matrix<double> x)
 
-        dlib::pso<double> p(options);
+        //dlib::pso<double> p(options);
+        dlib::pso<particle> p(options);
 
-        dlib::matrix<std::pair<double, double>, 1, 2> x_lim;
-        dlib::matrix<std::pair<double, double>, 1, 2> v_lim;
+        //dlib::matrix<std::pair<double, double>, 1, 2> x_lim;
+        //dlib::matrix<std::pair<double, double>, 1, 2> v_lim;
+        std::pair<particle, particle> x_lim(particle(-500.0, -500.0), particle(500.0, 500.0));
+        std::pair<particle, particle> v_lim(particle(-50.0, -50.0), particle(50.0, 50.0));
 
-
-        x_lim(0, 0) = std::make_pair(-500.0, 500.0);
-        x_lim(0, 1) = std::make_pair(-500.0, 500.0);
+        //x_lim(0, 0) = std::make_pair(-500.0, 500.0);
+        //x_lim(0, 1) = std::make_pair(-500.0, 500.0);
         //x_lim(0, 2) = std::make_pair(-500.0, 500.0);
-        v_lim(0, 0) = std::make_pair(-100.0, 100.0);
-        v_lim(0, 1) = std::make_pair(-100.0, 100.0);
-        //v_lim(0, 2) = std::make_pair(-1.0, 1.0);
+        //v_lim(0, 0) = std::make_pair(-100.0, 100.0);
+        //v_lim(0, 1) = std::make_pair(-100.0, 100.0);
+        //v_lim(0, 2) = std::make_pair(-100.0, 100.0);
 
+
+        
         p.init(x_lim, v_lim);
-
+        
         p.run(schwefel);
 
         std::cin.ignore();
-
+        
         bp = 3;
         //resnet_type net_101;
 

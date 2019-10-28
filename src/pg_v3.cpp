@@ -532,79 +532,112 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 
 class particle
 {
-    double x1;
-    double x2;
+private:
 
 public:
+
+    dlib::matrix<double, 1, 4> x;
+
     particle() {}
-    particle(double x1_, double x2_) : x1(x1_), x2(x2_) {}
+    particle(dlib::matrix<double> x_) : x(x_) {}
 
+    dlib::matrix<double> get_x() { return x; }
 
-    double get_x1() { return x1; }
-    double get_x2() { return x2; }
-
-
+    // ----------------------------------------------------------------------------------------
     void rand_init(dlib::rand& rnd, std::pair<particle, particle> limits)
     {
-        x1 = rnd.get_double_in_range(limits.first.x1, limits.second.x1);
-        x2 = rnd.get_double_in_range(limits.first.x2, limits.second.x2);
+        for (uint32_t c = 0; c < (uint32_t)x.nc(); ++c)
+        {
+            x(0, c) = rnd.get_double_in_range(limits.first.x(0, c), limits.second.x(0, c));
+        }
     }
 
-
-
-
-
-    friend particle operator+(const particle& p1, const particle& p2)
+    // ----------------------------------------------------------------------------------------
+    void limit_check(std::pair<particle, particle> limits)
     {
-        //particle ret;
-        return particle(p1.x1 + p2.x1, p1.x2 + p2.x2);
+        for (uint32_t c = 0; c < (uint32_t)x.nc(); ++c)
+        {
+            x(0, c) = std::max(std::min(limits.second.x(0, c), x(0, c)), limits.first.x(0, c));
+        }
     }
 
-    friend particle operator*(const particle& p1, const particle& p2)
+    // ----------------------------------------------------------------------------------------
+    static particle get_rand_particle(dlib::rand& rnd)
     {
-        return particle(p1.x1 * p2.x1, p1.x2 * p2.x2);
+        particle p;
+        for (uint32_t c = 0; c < (uint32_t)p.x.nc(); ++c)
+        {
+            p.x(0, c) = rnd.get_random_double();
+        }
+        return p;
     }
 
-    template <typename T>
-    friend particle operator*(const T& v, const particle& p1)
+    // ----------------------------------------------------------------------------------------
+    inline friend const particle operator+(const particle& p1, const particle& p2)
     {
-        return particle(p1.x1 * v, p1.x2 * v);
+        //return particle(p1.x1 + p2.x1, p1.x2 + p2.x2);
+        return particle(p1.x + p2.x);
     }
 
-    template <typename T>
-    friend particle operator*(const particle& p1, const T& v)
+    // ----------------------------------------------------------------------------------------
+    inline friend const particle operator-(const particle& p1, const particle& p2)
     {
-        return particle(p1.x1 * v, p1.x2 * v);
+        //return particle(p1.x1 - p2.x1, p1.x2 - p2.x2);
+        return particle(p1.x - p2.x);
     }
 
+    // ----------------------------------------------------------------------------------------
+    inline friend const particle operator*(const particle& p1, const particle& p2)
+    {
+        //return particle(p1.x1 * p2.x1, p1.x2 * p2.x2);
+        return particle(dlib::pointwise_multiply(p1.x, p2.x));
+    }
+
+    // ----------------------------------------------------------------------------------------
+    //template <typename T>
+    inline friend const particle operator*(const particle& p1, double& v)
+    {
+        return particle(v * p1.x);
+    }
+
+    // ----------------------------------------------------------------------------------------
+    //template <typename T>
+    inline friend const particle operator*(double& v, const particle& p1)
+    {
+        return particle(v * p1.x);
+    }
 
 };
 
 // ----------------------------------------------------------------------------------------
+inline std::ostream& operator<< (
+    std::ostream& out,
+    const particle& item
+    )
+{
+    out << "x=" << dlib::csv << item.x;
+    return out;
+}
 
-//double schwefel(dlib::matrix<double> x)
+// ----------------------------------------------------------------------------------------	
 double schwefel(particle p)
 {
     // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
     // x_n = 420.968746
 
-    //double result = 0.0;
-    double result = -p.get_x1() * std::sin(std::sqrt(std::abs(p.get_x1())));
-    result += -p.get_x2() * std::sin(std::sqrt(std::abs(p.get_x2())));
+    double result = 0.0;
+    dlib::matrix<double> x = p.get_x();
 
-
-
-    //for (int64_t c = 0; c < x.nc(); ++c)
-    //{
-    //    result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
-    //}
+    for (int64_t c = 0; c < x.nc(); ++c)
+    {
+        result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
+    }
 
     return result;
 
 }	// end of schwefel
 
 // ----------------------------------------------------------------------------------------
-
 
 int main(int argc, char** argv)
 {
@@ -664,27 +697,26 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
-        dlib::pso_options options(200, 20000, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(5000, 2000, 2.4, 2.1, 1.0, 1, 1.0);
+
+        std::cout << "----------------------------------------------------------------------------------------" << std::endl;
+        std::cout << options << std::endl;
 
         // schwefel(dlib::matrix<double> x)
 
-        //dlib::pso<double> p(options);
         dlib::pso<particle> p(options);
 
-        //dlib::matrix<std::pair<double, double>, 1, 2> x_lim;
-        //dlib::matrix<std::pair<double, double>, 1, 2> v_lim;
-        std::pair<particle, particle> x_lim(particle(-500.0, -500.0), particle(500.0, 500.0));
-        std::pair<particle, particle> v_lim(particle(-50.0, -50.0), particle(50.0, 50.0));
+        dlib::matrix<double, 1, 4> x, v;
 
-        //x_lim(0, 0) = std::make_pair(-500.0, 500.0);
-        //x_lim(0, 1) = std::make_pair(-500.0, 500.0);
-        //x_lim(0, 2) = std::make_pair(-500.0, 500.0);
-        //v_lim(0, 0) = std::make_pair(-100.0, 100.0);
-        //v_lim(0, 1) = std::make_pair(-100.0, 100.0);
-        //v_lim(0, 2) = std::make_pair(-100.0, 100.0);
+        for (idx = 0; idx < x.nc(); ++idx)
+        {
+            x(0, idx) = 500;
+            v(0, idx) = 0.5;
+        }
 
+        std::pair<particle, particle> x_lim(particle(-x), particle(x));
+        std::pair<particle, particle> v_lim(particle(-v), particle(v));
 
-        
         p.init(x_lim, v_lim);
         
         p.run(schwefel);
@@ -692,6 +724,8 @@ int main(int argc, char** argv)
         std::cin.ignore();
         
         bp = 3;
+
+
         //resnet_type net_101;
 
         //std::cout << "net_101" << std::endl;

@@ -2,15 +2,21 @@ import platform
 import os
 import math
 import ctypes as ct
+import sys
+
 import numpy as np
 import cv2 as cv
-import tkinter as tk
-from tkinter import filedialog
+# import tkinter as tk
+# from tkinter import filedialog
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QFileDialog, QWidget, QApplication
 import bokeh
-from bokeh.io import curdoc
-from bokeh.models import ColumnDataSource, Button
-from bokeh.models.widgets import FileInput
-from bokeh.plotting import figure, show
+from bokeh import events
+from bokeh.io import curdoc, output_file, show
+from bokeh.layouts import widgetbox
+from bokeh.models import ColumnDataSource, Button, CustomJS
+from bokeh.models.widgets import FileInput, TextInput, Paragraph, PreText, Div, TableColumn, DataTable, DateFormatter
+from bokeh.plotting import figure  #, show
 from bokeh.layouts import column, row, Spacer
 
 script_path = os.path.realpath(__file__)
@@ -18,7 +24,9 @@ script_path = os.path.realpath(__file__)
 # set up some global variables that will be used throughout the code
 # read only
 update_time = 200
-
+app = QApplication([""])
+div = Div(width=1000)
+index = 0
 
 use_webcam = False
 if use_webcam:
@@ -41,50 +49,36 @@ elif platform.system() == "Linux":
 else:
     quit()
 
-# read and write global
 
+def button_callback():
+    global index, div
+    file_path = QFileDialog.getOpenFileName(None, "Select a file",  os.path.dirname(os.path.dirname(script_path)), "Image files (*.png *.jpg *.gif);;All files (*.*)")
+    # print(file_path[0])
 
-def button_callback(self):
-    global x
-    bp = 1
-    self.label = "test2"
-    root = tk.Tk()
-
-    file_types = [('png files', '.png'), ('all files', '.*')]
-    file_path = filedialog.askopenfilename(title="Select a file", initialdir=os.path.dirname(os.path.dirname(script_path)), filetypes=file_types)
-    print(file_path)
-    root.withdraw()
-    # root.quit()
-
-
-def update():
-    global x
-
-
-def upload_fit_data(attr, old, new):
-    print("fit data upload succeeded")
-    print(file_input.filename)
+    results = "<font size='3'>"
+    for idx in range(4):
+        results += str(idx) + ", " + str(idx) + ", " + str(idx) + ", " + str(idx) + ", " + "label" + "<br>"
+    # results += str(index) + ": " + file_path[0] + "<br>"
+    # results += str(index) + ": " + file_path[0] + "<br>"
+    results += file_path[0] + "<br>"
+    results += "</font>"
+    div.text = results #"<font size='4'>" + str(index) + ": " + file_path[0] + "</font>"
 
 
 # ---------------------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------------------
 
-file_input = FileInput(accept=".csv,.json,.txt")
-file_input.on_change('value', upload_fit_data)
+button = Button(label='Select File', width=100)
+button.on_click(button_callback)
 
-b01 = Button(label='Test', width=100)
-b01.on_click(lambda: button_callback(b01))
-
-layout = column([b01, file_input])
-
-# layout = column([row([column([p1, p2]), l12, l08]), row([Spacer(width=200, height=375), l02, l01])])
+layout = widgetbox(button, div)
 
 show(layout)
 
 doc = curdoc()
 doc.title = "MNIST Viewer"
 doc.add_root(layout)
-doc.add_periodic_callback(update, update_time)
+#doc.add_periodic_callback(update, update_time)
 
 # doc.hold('combine')

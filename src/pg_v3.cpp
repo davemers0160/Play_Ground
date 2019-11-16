@@ -82,6 +82,8 @@
 
 //#include "cyclic_analysis.h"
 
+#define M_PI 3.14159265358979323846
+
 using namespace std;
 
 // -------------------------------GLOBALS--------------------------------------
@@ -639,6 +641,82 @@ double schwefel(particle p)
 
 // ----------------------------------------------------------------------------------------
 
+class vehicle
+{
+private:
+
+public:
+	
+	uint8_t threshold = 100;
+	double bearing;
+    dlib::point f;
+    dlib::point b;
+	uint32_t max_range = 80;
+	std::vector<double> laser_angles = {-15.25, -10.25, -5.25, -0.25, 0.25, 5.25, 10.25, 15.25};
+	
+	std::vector<uint32_t> detection_range;
+	
+    vehicle() 
+    {
+        detection_range.resize(8);
+    }
+
+
+	double get_bearing(void)
+	{
+		return atan2((double)(f.y() - b.y()),(double)(f.x() - b.x()))*(180/M_PI);
+	}
+	
+	void get_ranges(dlib::matrix<uint8_t> map)
+	{
+		uint32_t idx;
+		uint32_t x, y;
+
+        uint32_t map_width = map.nc();
+        uint32_t map_height = map.nr();
+
+		bearing = get_bearing();
+		
+		for(idx=0; idx<laser_angles.size(); ++idx)
+		{
+			detection_range[idx] = max_range;
+			
+			for(uint32_t r=0; r<max_range; ++r)
+			{
+				//x = (uint32_t)(r*std::cos((bearing + laser_angles[idx]) + f.x()));
+				//y = (uint32_t)(r*std::sin((bearing + laser_angles[idx]) + f.y()));
+
+                x = (uint32_t)(r*cos(bearing + laser_angles[idx]) + f.x());
+                y = (uint32_t)(r*sin(bearing + laser_angles[idx]) + f.y());
+				
+                if (x<0 || x>(map_width-1))
+                {
+                    detection_range[idx] = r;
+                    break;
+                }
+
+                if (y<0 || y>(map_height-1))
+                {
+                    detection_range[idx] = r;
+                    break;
+                }
+
+				if(map(y,x) > threshold)
+				{
+					detection_range[idx] = r;
+					break;
+				}
+				
+			}
+			
+		}
+	}
+	
+	
+};
+
+// ----------------------------------------------------------------------------------------
+
 int main(int argc, char** argv)
 {
     std::string sdate, stime;
@@ -697,6 +775,14 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
+
+
+        dlib::matrix<uint8_t> map(20, 20);
+
+        vehicle v1;
+
+        v1.get_ranges(map);
+        
         dlib::pso_options options(5000, 2000, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;

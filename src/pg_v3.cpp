@@ -539,25 +539,28 @@ public:
     dlib::matrix<double, 1, 4> x;
 
     particle() {}
+
     particle(dlib::matrix<double> x_) : x(x_) {}
 
     dlib::matrix<double> get_x() { return x; }
 
     // ----------------------------------------------------------------------------------------
+    // This function is used to randomly initialize 
     void rand_init(dlib::rand& rnd, std::pair<particle, particle> limits)
     {
-        for (uint32_t c = 0; c < (uint32_t)x.nc(); ++c)
+        for (long idx = 0; idx < x.nc(); ++idx)
         {
-            x(0, c) = rnd.get_double_in_range(limits.first.x(0, c), limits.second.x(0, c));
+            x(0, idx) = rnd.get_double_in_range(limits.first.x(0, idx), limits.second.x(0, idx));
         }
     }
 
     // ----------------------------------------------------------------------------------------
+    // This fucntion checks 
     void limit_check(std::pair<particle, particle> limits)
     {
-        for (uint32_t c = 0; c < (uint32_t)x.nc(); ++c)
+        for (long idx = 0; idx < x.nc(); ++idx)
         {
-            x(0, c) = std::max(std::min(limits.second.x(0, c), x(0, c)), limits.first.x(0, c));
+            x(0, idx) = std::max(std::min(limits.second.x(0, idx), x(0, idx)), limits.first.x(0, idx));
         }
     }
 

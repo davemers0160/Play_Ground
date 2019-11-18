@@ -517,6 +517,12 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
     dlib::input_rgb_image_sized<227>
     >>>>>>>>>>>;
 
+
+// ----------------------------------------------------------------------------------------
+
+using car_net_type = dlib::loss_multiclass_log<dlib::fc<4, dlib::relu<dlib::fc<2, dlib::relu<dlib::fc<32, dlib::relu<dlib::fc<13, dlib::input<dlib::matrix<uint8_t>>>>>>>>>>;
+
+
 // This is the new net that you want to copy
 //using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
 //    res33<512, 512,
@@ -770,6 +776,7 @@ int main(int argc, char** argv)
     {
         int bp = 0;
 
+
         #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
             
         #else
@@ -782,10 +789,47 @@ int main(int argc, char** argv)
 
         dlib::matrix<uint8_t> map(20, 20);
 
+
+        car_net_type c_net;
+
+        std::cout << c_net << std::endl;
+
+        auto &t1 = dlib::layer<3>(c_net).layer_details();
+        auto &t1a = t1.get_layer_params();
+        auto t1b = t1a.host();
+
+        double intial_learning_rate = 0.0001;
+        dlib::dnn_trainer<car_net_type, dlib::adam> trainer(c_net, dlib::adam(0.0001, 0.9, 0.99), { 0 });
+        trainer.set_learning_rate(intial_learning_rate);
+        trainer.be_verbose();
+        //trainer.set_synchronization_file((sync_save_location + net_sync_name), std::chrono::minutes(5));
+        //trainer.set_iterations_without_progress_threshold(tp.steps_wo_progess);
+        trainer.set_test_iterations_without_progress_threshold(5000);
+        //trainer.set_learning_rate_shrink_factor(tp.learning_rate_shrink_factor);
+
+        std::cout << trainer << std::endl;
+
+        trainer.train_one_step({ map }, { 1 });
+        trainer.train_one_step({ map }, { 1 });
+
+
+        auto &t2 = dlib::layer<1>(c_net).layer_details();
+        auto &t3 = t2.get_layer_params();
+        auto t4 = t3.host();
+
+        auto& t5 = dlib::layer<3>(c_net).layer_details();
+        auto& t5a = t5.get_layer_params();
+        auto t5b = t5a.host();
+
+        // ----------------------------------------------------------------------------------------
+
         vehicle v1;
 
         v1.get_ranges(map);
         
+
+        // ----------------------------------------------------------------------------------------
+
         dlib::pso_options options(5000, 2000, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;

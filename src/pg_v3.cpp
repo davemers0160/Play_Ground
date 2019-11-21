@@ -846,7 +846,7 @@ int main(int argc, char** argv)
         auto result = dlib::find_min_global(schwefel2,
             {-500, -500, -500, -500}, // lower bounds
             { 500, 500, 500, 500 }, // upper bounds
-            dlib::max_function_calls(100));
+            dlib::max_function_calls(200));
         stop_time = chrono::system_clock::now();
         elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
@@ -854,7 +854,7 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
-        dlib::pso_options options(5000, 2000, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(4000, 1500, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;
@@ -876,7 +876,14 @@ int main(int argc, char** argv)
 
         p.init(x_lim, v_lim);
         
+        start_time = chrono::system_clock::now();
+
         p.run(schwefel);
+
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+
+        std::cout << "PSO (" << elapsed_time.count() << ")" << std::endl;
 
         std::cin.ignore();
         

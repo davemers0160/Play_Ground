@@ -35,6 +35,9 @@
 #include "dlib/image_transforms.h"
 #include "dlib/opencv.h"
 #include "dlib/gui_widgets.h"
+#include <dlib/optimization.h>
+#include <dlib/global_optimization.h>
+
 
 // OpenCV includes
 #include <opencv2/core.hpp>           
@@ -631,6 +634,17 @@ inline std::ostream& operator<< (
 }
 
 // ----------------------------------------------------------------------------------------	
+double schwefel2(double x0, double x1, double x2, double x3)
+{
+    double result = -x0 * std::sin(std::sqrt(std::abs(x0)));
+    result += -x1 * std::sin(std::sqrt(std::abs(x1)));
+    result += -x2 * std::sin(std::sqrt(std::abs(x2)));
+    result += -x3 * std::sin(std::sqrt(std::abs(x3)));
+
+    return result;
+}
+
+
 double schwefel(particle p)
 {
     // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
@@ -827,6 +841,16 @@ int main(int argc, char** argv)
 
         v1.get_ranges(map);
         
+
+        start_time = chrono::system_clock::now(); 
+        auto result = dlib::find_min_global(schwefel2,
+            {-500, -500, -500, -500}, // lower bounds
+            { 500, 500, 500, 500 }, // upper bounds
+            dlib::max_function_calls(100));
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+
+        std::cout << "find_min_global (" << elapsed_time.count() << "): " << result.x << ", " << result.y << std::endl;
 
         // ----------------------------------------------------------------------------------------
 

@@ -37,7 +37,7 @@
 #include "dlib/gui_widgets.h"
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
-
+#include <dlib/numeric_constants.h>
 
 // OpenCV includes
 #include <opencv2/core.hpp>           
@@ -523,7 +523,11 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 
 // ----------------------------------------------------------------------------------------
 
-using car_net_type = dlib::loss_multiclass_log<dlib::fc<4, dlib::relu<dlib::fc<2, dlib::relu<dlib::fc<32, dlib::relu<dlib::fc<13, dlib::input<dlib::matrix<uint8_t>>>>>>>>>>;
+using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
+    dlib::relu<dlib::fc<32, 
+    dlib::relu<dlib::fc<13, 
+    dlib::input<dlib::matrix<uint32_t>>
+    >> >> >>>;
 
 
 // This is the new net that you want to copy
@@ -566,7 +570,7 @@ public:
     }
 
     // ----------------------------------------------------------------------------------------
-    // This fucntion checks 
+    // This fucntion checks the particle value to ensure that the limits are not exceeded
     void limit_check(std::pair<particle, particle> limits)
     {
         for (long idx = 0; idx < x.nc(); ++idx)
@@ -636,7 +640,8 @@ inline std::ostream& operator<< (
 // ----------------------------------------------------------------------------------------	
 double schwefel2(double x0, double x1, double x2, double x3)
 {
-    double result = -x0 * std::sin(std::sqrt(std::abs(x0)));
+    double result = 0.0;
+    result += -x0 * std::sin(std::sqrt(std::abs(x0)));
     result += -x1 * std::sin(std::sqrt(std::abs(x1)));
     result += -x2 * std::sin(std::sqrt(std::abs(x2)));
     result += -x3 * std::sin(std::sqrt(std::abs(x3)));
@@ -650,15 +655,17 @@ double schwefel(particle p)
     // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
     // x_n = 420.968746
 
-    double result = 0.0;
     dlib::matrix<double> x = p.get_x();
+    //double result = 418.9829* x.nc();
 
-    for (int64_t c = 0; c < x.nc(); ++c)
-    {
-        result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
-    }
+    //for (int64_t c = 0; c < x.nc(); ++c)
+    //{
+    //    result += -x(0, c) * std::sin(std::sqrt(std::abs(x(0, c))));
+    //}
 
-    return result;
+    //return result;
+
+    return schwefel2(x(0, 0), x(0, 1), x(0, 2), x(0, 3));
 
 }	// end of schwefel
 
@@ -670,24 +677,62 @@ private:
 
 public:
 	
-	uint8_t threshold = 100;
+	uint8_t threshold = 200;
 	double bearing;
-    dlib::point f;
-    dlib::point b;
+    dlib::point F;
+    dlib::point B;
+    dlib::point L;
+    dlib::point R;
+
+    const uint32_t w_2 = 2;
+    const uint32_t length = 7;
+
 	uint32_t max_range = 80;
-	std::vector<double> laser_angles = {-15.25, -10.25, -5.25, -0.25, 0.25, 5.25, 10.25, 15.25};
+    std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
 	
-	std::vector<uint32_t> detection_range;
+	std::vector<uint32_t> detection_ranges;
 	
-    vehicle() 
+    vehicle(dlib::point F_, dlib::point B_) : F(F_), B(B_)
     {
-        detection_range.resize(8);
+
+        bearing = calc_bearing();
+
+        L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
+        R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
+
+        for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
+        {
+            detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+        }
+
+        detection_ranges.resize(detection_angles.size());
     }
 
+    vehicle(dlib::point F_, double bearing_)
+    {
+        F = F_;
+        bearing = bearing_*(dlib::pi / 180.0);
+        B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
 
-	double get_bearing(void)
+        L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
+        R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
+
+        for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
+        {
+            detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+        }
+
+        detection_ranges.resize(detection_angles.size());
+    }
+
+    double get_bearing(void) { return bearing * (180.0 / dlib::pi); }
+
+    double calc_bearing(void)	
 	{
-		return atan2((double)(f.y() - b.y()),(double)(f.x() - b.x()))*(180/M_PI);
+        if ((F.y() - B.y() == 0) && (F.x() - B.x()) == 0)
+            return 0.0;
+        else
+		    return std::atan2((double)(F.y() - B.y()),(double)(F.x() - B.x()));
 	}
 	
 	void get_ranges(dlib::matrix<uint8_t> map)
@@ -698,44 +743,98 @@ public:
         uint32_t map_width = map.nc();
         uint32_t map_height = map.nr();
 
-		bearing = get_bearing();
+		bearing = calc_bearing();
+
+        map(F.y(), F.x()) = 180;
+        map(L.y(), L.x()) = 128;
+        map(R.y(), R.x()) = 128;
+        map(B.y(), B.x()) = 180;
 		
-		for(idx=0; idx<laser_angles.size(); ++idx)
+		for(idx=0; idx< detection_angles.size(); ++idx)
 		{
-			detection_range[idx] = max_range;
+			detection_ranges[idx] = max_range;
 			
 			for(uint32_t r=0; r<max_range; ++r)
 			{
-				//x = (uint32_t)(r*std::cos((bearing + laser_angles[idx]) + f.x()));
-				//y = (uint32_t)(r*std::sin((bearing + laser_angles[idx]) + f.y()));
 
-                x = (uint32_t)(r*cos(bearing + laser_angles[idx]) + f.x());
-                y = (uint32_t)(r*sin(bearing + laser_angles[idx]) + f.y());
+                x = (uint32_t)(r*std::cos(bearing + detection_angles[idx]) + F.x());
+                y = (uint32_t)(r*std::sin(bearing + detection_angles[idx]) + F.y());
+
 				
                 if (x<0 || x>(map_width-1))
                 {
-                    detection_range[idx] = r;
+                    detection_ranges[idx] = r;
                     break;
                 }
 
                 if (y<0 || y>(map_height-1))
                 {
-                    detection_range[idx] = r;
+                    detection_ranges[idx] = r;
                     break;
                 }
 
 				if(map(y,x) > threshold)
 				{
-					detection_range[idx] = r;
-					break;
+					detection_ranges[idx] = r;
+                    break;
 				}
-				
+                map(y, x) = 128;
+
 			}
 			
 		}
-	}
+	}   // end of get_ranges
 	
-	
+    // ----------------------------------------------------------------------------------------
+
+    void move(double l, double r)
+    {
+        
+        L.x() = (uint32_t)(l * std::cos(bearing) + L.x());
+        L.y() = (uint32_t)(l * std::sin(bearing) + L.y());
+        R.x() = (uint32_t)(r * std::cos(bearing) + R.x());
+        R.y() = (uint32_t)(r * std::sin(bearing) + R.y());
+
+        double b2 = std::atan2((double)(L.y() - R.y()), (double)(L.x() - R.x()));
+
+        bearing = b2 - dlib::pi / 2;
+
+        F.x() = (uint32_t)std::floor((L.x() + R.x()) / 2.0 + 0.5);
+        F.y() = (uint32_t)std::floor((L.y() + R.y()) / 2.0 + 0.5);
+
+        B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
+
+    }   // end of move
+
+    // ----------------------------------------------------------------------------------------
+    
+    bool test_for_crash(dlib::matrix<uint8_t>& map)
+    {
+        bool crash = false;
+
+        if ((L.x() < 0) || L.x() >= map.nc())
+            crash = true;
+
+        if ((L.y() < 0) || L.y() >= map.nr())
+            crash = true;
+
+        if ((R.x() < 0) || R.x() >= map.nc())
+            crash = true;
+
+        if ((R.y() < 0) || R.y() >= map.nr())
+            crash = true;
+
+        if (map(L.y(), L.x()) > threshold)
+            crash = true;
+        else if (map(R.y(), R.x()) > threshold)
+            crash = true;
+
+        return crash;
+
+    }   // end of test_for_crash
+
+
+
 };
 
 // ----------------------------------------------------------------------------------------
@@ -799,10 +898,13 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
+        dlib::matrix<uint8_t> map;
+        dlib::load_image(map, "../test_map.png");
 
-
-        dlib::matrix<uint8_t> map(20, 20);
-
+        dlib::matrix<uint32_t> input(1, 28);
+        input = 7, 6, 4, 4, 4, 4, 6, 7, 7, 8, 9, 14, 20, 60, 60, 20, 14, 9, 8, 7, 7, 6, 4, 4, 4, 4, 6, 7;
+        dlib::matrix<float> motion(1, 2);
+        motion = 1.0, -1.0;
 
         car_net_type c_net;
 
@@ -823,8 +925,13 @@ int main(int argc, char** argv)
 
         std::cout << trainer << std::endl;
 
-        trainer.train_one_step({ map }, { 1 });
-        trainer.train_one_step({ map }, { 1 });
+        trainer.train_one_step({ input }, { motion });
+        trainer.train_one_step({ input }, { motion });
+
+
+        auto c_net2 = c_net.subnet();
+
+        std::cout << std::endl << c_net2 << std::endl;
 
 
         auto &t2 = dlib::layer<1>(c_net).layer_details();
@@ -837,24 +944,55 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
-        vehicle v1;
+        vehicle v1(dlib::point(10,10), 270);
 
-        v1.get_ranges(map);
+        //std::cout << "Bearing: " << v1.get_bearing() << std::endl;
+
+        bool crash = false;
+
+
+        while (crash == false)
+        {
+            v1.get_ranges(map);
+
+            dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(v1.detection_ranges));
+            
+            dlib::matrix<float> m2 = c_net(m3);
+
+            v1.move(2*m2(0, 0), 2*m2(1, 0));
+
+            crash = v1.test_for_crash(map);
         
+        }
 
-        start_time = chrono::system_clock::now(); 
-        auto result = dlib::find_min_global(schwefel2,
-            {-500, -500, -500, -500}, // lower bounds
-            { 500, 500, 500, 500 }, // upper bounds
-            dlib::max_function_calls(200));
-        stop_time = chrono::system_clock::now();
-        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
-        std::cout << "find_min_global (" << elapsed_time.count() << "): " << result.x << ", " << result.y << std::endl;
+        v1.move(-1.0, 2.0);
+
+        bool test = v1.test_for_crash(map);
+        v1.get_ranges(map);
+
+        v1.move(12, 12);
+        test = v1.test_for_crash(map);
+        v1.get_ranges(map);
+
+
+        
+        // ----------------------------------------------------------------------------------------
+
+        //start_time = chrono::system_clock::now(); 
+        //auto result = dlib::find_min_global(schwefel2,
+        //    {-500, -500, -500, -500}, // lower bounds
+        //    { 500, 500, 500, 500 }, // upper bounds
+        //    dlib::max_function_calls(2000));
+        //stop_time = chrono::system_clock::now();
+        //elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+
+        //cout.precision(6);
+        //std::cout << "find_min_global (" << elapsed_time.count() << "): " << result.x << ", " << result.y << std::endl;
 
         // ----------------------------------------------------------------------------------------
 
-        dlib::pso_options options(4000, 1500, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(5000, 1500, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;

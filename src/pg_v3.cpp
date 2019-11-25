@@ -38,6 +38,7 @@
 #include <dlib/optimization.h>
 #include <dlib/global_optimization.h>
 #include <dlib/numeric_constants.h>
+#include <dlib/geometry.h>
 
 // OpenCV includes
 #include <opencv2/core.hpp>           
@@ -524,8 +525,8 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 // ----------------------------------------------------------------------------------------
 
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
-    dlib::relu<dlib::fc<32, 
-    dlib::relu<dlib::fc<13, 
+    dlib::relu<dlib::fc<16, 
+    dlib::relu<dlib::fc<8, 
     dlib::input<dlib::matrix<uint32_t>>
     >> >> >>>;
 
@@ -551,21 +552,28 @@ private:
 
 public:
 
-    dlib::matrix<double, 1, 4> x;
+    dlib::matrix<double, 1, 2> x1;
+    dlib::matrix<double, 1, 2> x2;
 
     particle() {}
 
-    particle(dlib::matrix<double> x_) : x(x_) {}
+    //particle(dlib::matrix<double> x_) : x(x_) {}
+    particle(dlib::matrix<double> x1_, dlib::matrix<double> x2_) : x1(x1_), x2(x2_) {}
 
-    dlib::matrix<double> get_x() { return x; }
+    dlib::matrix<double> get_x1() { return x1; }
+    dlib::matrix<double> get_x2() { return x2; }
 
     // ----------------------------------------------------------------------------------------
     // This function is used to randomly initialize 
     void rand_init(dlib::rand& rnd, std::pair<particle, particle> limits)
     {
-        for (long idx = 0; idx < x.nc(); ++idx)
+        for (long idx = 0; idx < x1.nc(); ++idx)
         {
-            x(0, idx) = rnd.get_double_in_range(limits.first.x(0, idx), limits.second.x(0, idx));
+            x1(0, idx) = rnd.get_double_in_range(limits.first.x1(0, idx), limits.second.x1(0, idx));
+        }
+        for (long idx = 0; idx < x2.nc(); ++idx)
+        {
+            x2(0, idx) = rnd.get_double_in_range(limits.first.x2(0, idx), limits.second.x2(0, idx));
         }
     }
 
@@ -573,9 +581,13 @@ public:
     // This fucntion checks the particle value to ensure that the limits are not exceeded
     void limit_check(std::pair<particle, particle> limits)
     {
-        for (long idx = 0; idx < x.nc(); ++idx)
+        for (long idx = 0; idx < x1.nc(); ++idx)
         {
-            x(0, idx) = std::max(std::min(limits.second.x(0, idx), x(0, idx)), limits.first.x(0, idx));
+            x1(0, idx) = std::max(std::min(limits.second.x1(0, idx), x1(0, idx)), limits.first.x1(0, idx));
+        }
+        for (long idx = 0; idx < x2.nc(); ++idx)
+        {
+            x2(0, idx) = std::max(std::min(limits.second.x2(0, idx), x2(0, idx)), limits.first.x2(0, idx));
         }
     }
 
@@ -583,9 +595,14 @@ public:
     static particle get_rand_particle(dlib::rand& rnd)
     {
         particle p;
-        for (uint32_t c = 0; c < (uint32_t)p.x.nc(); ++c)
+        for (uint32_t c = 0; c < (uint32_t)p.x1.nc(); ++c)
         {
-            p.x(0, c) = rnd.get_random_double();
+            p.x1(0, c) = rnd.get_random_double();
+        }
+
+        for (uint32_t c = 0; c < (uint32_t)p.x2.nc(); ++c)
+        {
+            p.x2(0, c) = rnd.get_random_double();
         }
         return p;
     }
@@ -593,36 +610,38 @@ public:
     // ----------------------------------------------------------------------------------------
     inline friend const particle operator+(const particle& p1, const particle& p2)
     {
-        //return particle(p1.x1 + p2.x1, p1.x2 + p2.x2);
-        return particle(p1.x + p2.x);
+        return particle(p1.x1 + p2.x1, p1.x2 + p2.x2);
+        //return particle(p1.x + p2.x);
     }
 
     // ----------------------------------------------------------------------------------------
     inline friend const particle operator-(const particle& p1, const particle& p2)
     {
-        //return particle(p1.x1 - p2.x1, p1.x2 - p2.x2);
-        return particle(p1.x - p2.x);
+        return particle(p1.x1 - p2.x1, p1.x2 - p2.x2);
+        //return particle(p1.x - p2.x);
     }
 
     // ----------------------------------------------------------------------------------------
     inline friend const particle operator*(const particle& p1, const particle& p2)
     {
-        //return particle(p1.x1 * p2.x1, p1.x2 * p2.x2);
-        return particle(dlib::pointwise_multiply(p1.x, p2.x));
+        return particle(dlib::pointwise_multiply(p1.x1,p2.x1), dlib::pointwise_multiply(p1.x2,p2.x2));
+        //return particle(dlib::pointwise_multiply(p1.x, p2.x));
     }
 
     // ----------------------------------------------------------------------------------------
     //template <typename T>
     inline friend const particle operator*(const particle& p1, double& v)
     {
-        return particle(v * p1.x);
+        return particle(v * p1.x1, v * p1.x2);
+        //return particle(v * p1.x);
     }
 
     // ----------------------------------------------------------------------------------------
     //template <typename T>
     inline friend const particle operator*(double& v, const particle& p1)
     {
-        return particle(v * p1.x);
+        return particle(v * p1.x1, v * p1.x2);
+        //return particle(v * p1.x);
     }
 
 };
@@ -633,7 +652,7 @@ inline std::ostream& operator<< (
     const particle& item
     )
 {
-    out << "x=" << dlib::csv << item.x;
+    out << "x=" << dlib::csv << item.x1 << item.x2;
     return out;
 }
 
@@ -655,7 +674,8 @@ double schwefel(particle p)
     // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
     // x_n = 420.968746
 
-    dlib::matrix<double> x = p.get_x();
+    dlib::matrix<double> x1 = p.get_x1();
+    dlib::matrix<double> x2 = p.get_x2();
     //double result = 418.9829* x.nc();
 
     //for (int64_t c = 0; c < x.nc(); ++c)
@@ -665,7 +685,8 @@ double schwefel(particle p)
 
     //return result;
 
-    return schwefel2(x(0, 0), x(0, 1), x(0, 2), x(0, 3));
+    //return schwefel2(x(0, 0), x(0, 1), x(0, 2), x(0, 3));
+    return schwefel2(x1(0, 0), x1(0, 1), x2(0, 0), x2(0, 1));
 
 }	// end of schwefel
 
@@ -673,49 +694,60 @@ double schwefel(particle p)
 
 class vehicle
 {
-private:
+
 
 public:
 	
 	uint8_t threshold = 200;
 	double bearing;
+    const unsigned long width = 5;
+    const unsigned long length = 7;
+
     dlib::point F;
     dlib::point B;
     dlib::point L;
     dlib::point R;
+    dlib::point center;
 
-    const uint32_t w_2 = 2;
-    const uint32_t length = 7;
+    dlib::rectangle rect;
 
 	uint32_t max_range = 80;
     std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
 	
 	std::vector<uint32_t> detection_ranges;
 	
-    vehicle(dlib::point F_, dlib::point B_) : F(F_), B(B_)
+    vehicle(dlib::point TL_, dlib::point B_)
     {
 
-        bearing = calc_bearing();
 
-        L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
-        R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
 
-        for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
-        {
-            detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
-        }
 
-        detection_ranges.resize(detection_angles.size());
+        //bearing = calc_bearing();
+
+        //L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
+        //R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
+
+        //for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
+        //{
+        //    detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+        //}
+
+        //detection_ranges.resize(detection_angles.size());
     }
 
-    vehicle(dlib::point F_, double bearing_)
+    vehicle(dlib::point TL_, double bearing_)
     {
-        F = F_;
-        bearing = bearing_*(dlib::pi / 180.0);
-        B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
 
-        L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
-        R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
+
+        rect = dlib::rectangle(width, length);
+        dlib::move_rect(rect, TL_);
+
+        //F = F_;
+        bearing = bearing_*(dlib::pi / 180.0);
+        //B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
+
+        //L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
+        //R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
 
         for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
         {
@@ -833,7 +865,7 @@ public:
 
     }   // end of test_for_crash
 
-
+private:
 
 };
 
@@ -898,21 +930,22 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
+        dlib::matrix<dlib::rgb_pixel> color_map;
         dlib::matrix<uint8_t> map;
-        dlib::load_image(map, "../test_map.png");
+
+
+        dlib::load_image(color_map, "../test_map.png");
+
+        dlib::assign_image(map, color_map);
 
         dlib::matrix<uint32_t> input(1, 28);
         input = 7, 6, 4, 4, 4, 4, 6, 7, 7, 8, 9, 14, 20, 60, 60, 20, 14, 9, 8, 7, 7, 6, 4, 4, 4, 4, 6, 7;
-        dlib::matrix<float> motion(1, 2);
+        dlib::matrix<float> motion(2, 1);
         motion = 1.0, -1.0;
 
         car_net_type c_net;
 
         std::cout << c_net << std::endl;
-
-        auto &t1 = dlib::layer<3>(c_net).layer_details();
-        auto &t1a = t1.get_layer_params();
-        auto t1b = t1a.host();
 
         double intial_learning_rate = 0.0001;
         dlib::dnn_trainer<car_net_type, dlib::adam> trainer(c_net, dlib::adam(0.0001, 0.9, 0.99), { 0 });
@@ -925,26 +958,47 @@ int main(int argc, char** argv)
 
         std::cout << trainer << std::endl;
 
-        trainer.train_one_step({ input }, { motion });
-        trainer.train_one_step({ input }, { motion });
+        auto &t1a = dlib::layer<2>(c_net).layer_details().get_weights();
+        auto &t1a1 = dlib::layer<2>(c_net);
+
+        dlib::layer<2>(c_net).layer_details().setup(t1a1.subnet());
+        auto &t1b = dlib::layer<2>(c_net).layer_details().get_weights();
+
+        for (idx = 0; idx < 100; ++idx)
+        {
+            trainer.train_one_step({ input }, { motion });
+        }
+        //auto &t1c = dlib::layer<2>(c_net).layer_details().get_weights();
+        //trainer.train_one_step({ input }, { motion });
 
 
-        auto c_net2 = c_net.subnet();
+        dlib::net_to_xml(c_net, "car_net.xml");
 
-        std::cout << std::endl << c_net2 << std::endl;
+        //auto c_net2 = c_net.subnet();
+
+        //std::cout << std::endl << c_net2 << std::endl;
 
 
-        auto &t2 = dlib::layer<1>(c_net).layer_details();
-        auto &t3 = t2.get_layer_params();
-        auto t4 = t3.host();
+        //auto &t2a = dlib::layer<2>(c_net).layer_details();
+        //auto t2b= t2a.get_layer_params();
 
-        auto& t5 = dlib::layer<3>(c_net).layer_details();
-        auto& t5a = t5.get_layer_params();
-        auto t5b = t5a.host();
+        uint64_t l2_size = dlib::layer<2>(c_net).layer_details().get_layer_params().size();
+        auto l2_data = dlib::layer<2>(c_net).layer_details().get_layer_params().host();
+
+        // this is how to copy values into the network
+        //uint32_t index=0;
+        //for (idx = 0; idx < l2_size; ++idx,++index)
+        //    *(l2_data + idx) = index;
+
+        //dlib::net_to_xml(c_net, "car_net2.xml");
+
+        //auto& t5a = dlib::layer<3>(c_net).layer_details();
+        //auto& t5b = t5a.get_layer_params();
+        //auto t5c = t5b.host();
 
         // ----------------------------------------------------------------------------------------
 
-        vehicle v1(dlib::point(10,10), 270);
+        vehicle vh1(dlib::point(10,10), 270);
 
         //std::cout << "Bearing: " << v1.get_bearing() << std::endl;
 
@@ -953,28 +1007,27 @@ int main(int argc, char** argv)
 
         while (crash == false)
         {
-            v1.get_ranges(map);
+            vh1.get_ranges(map);
 
-            dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(v1.detection_ranges));
+            dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(vh1.detection_ranges));
             
             dlib::matrix<float> m2 = c_net(m3);
 
-            v1.move(2*m2(0, 0), 2*m2(1, 0));
+            vh1.move(2*m2(0, 0), 2*m2(1, 0));
 
-            crash = v1.test_for_crash(map);
+            crash = vh1.test_for_crash(map);
         
         }
 
 
-        v1.move(-1.0, 2.0);
+        vh1.move(-1.0, 2.0);
 
-        bool test = v1.test_for_crash(map);
-        v1.get_ranges(map);
+        bool test = vh1.test_for_crash(map);
+        vh1.get_ranges(map);
 
-        v1.move(12, 12);
-        test = v1.test_for_crash(map);
-        v1.get_ranges(map);
-
+        vh1.move(12, 12);
+        test = vh1.test_for_crash(map);
+        vh1.get_ranges(map);
 
         
         // ----------------------------------------------------------------------------------------
@@ -1001,16 +1054,22 @@ int main(int argc, char** argv)
 
         dlib::pso<particle> p(options);
 
-        dlib::matrix<double, 1, 4> x, v;
+        dlib::matrix<double, 1, 2> x1,x2, v1,v2;
 
-        for (idx = 0; idx < x.nc(); ++idx)
+        for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x(0, idx) = 500;
-            v(0, idx) = 0.5;
+            x1(0, idx) = 500;
+            v1(0, idx) = 0.5;
         }
 
-        std::pair<particle, particle> x_lim(particle(-x), particle(x));
-        std::pair<particle, particle> v_lim(particle(-v), particle(v));
+        for (idx = 0; idx < x2.nc(); ++idx)
+        {
+            x2(0, idx) = 500;
+            v2(0, idx) = 0.5;
+        }
+
+        std::pair<particle, particle> x_lim(particle(-x1,-x2), particle(x1,x2));
+        std::pair<particle, particle> v_lim(particle(-v1,-v2), particle(v1,v2));
 
         p.init(x_lim, v_lim);
         

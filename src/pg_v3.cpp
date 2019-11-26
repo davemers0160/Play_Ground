@@ -705,7 +705,7 @@ public:
     const uint32_t radius = 3;
 
     dlib::point F;
-    dlib::point R;
+    dlib::point B;
     //dlib::point BL;
     //dlib::point BR;
     //dlib::point C;
@@ -742,7 +742,7 @@ public:
         F = F_;
 
         bearing = bearing_*(dlib::pi / 180.0);
-        R = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
+        B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
 
         //L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
         //R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
@@ -759,10 +759,10 @@ public:
 
     double calc_bearing(void)	
 	{
-        if ((F.y() - R.y() == 0) && (F.x() - R.x()) == 0)
+        if ((F.y() - B.y() == 0) && (F.x() - B.x()) == 0)
             return 0.0;
         else
-		    return std::atan2((double)(F.y() - R.y()),(double)(F.x() - R.x()));
+            return std::atan2((double)(F.y() - B.y()), (double)(F.x() - B.x()));
 	}
 	
 	void get_ranges(dlib::matrix<uint8_t> map)
@@ -777,8 +777,8 @@ public:
 
         map(F.y(), F.x()) = 180;
         //map(L.y(), L.x()) = 128;
-        map(R.y(), R.x()) = 128;
-        //map(B.y(), B.x()) = 180;
+        //map(R.y(), R.x()) = 128;
+        map(B.y(), B.x()) = 128;
 		
 		for(idx=0; idx< detection_angles.size(); ++idx)
 		{
@@ -835,11 +835,13 @@ public:
         double dy = ((l + r) / 2.0) * std::sin(bearing);
 
         F = dlib::point(F.x() + dx, F.y() + dy);
+        B = dlib::point(B.x() + dx, B.y() + dy);
+
 
         //F.x() = (uint32_t)std::floor((L.x() + R.x()) / 2.0 + 0.5);
         //F.y() = (uint32_t)std::floor((L.y() + R.y()) / 2.0 + 0.5);
 
-        R = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
+        //B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
 
     }   // end of move
 
@@ -1005,26 +1007,42 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
-        vehicle vh1(dlib::point(12,10), 270);
+        vehicle vh1(dlib::point(11,10), 270);
 
         //std::cout << "Bearing: " << v1.get_bearing() << std::endl;
 
         bool crash = false;
 
 
-        while (crash == false)
-        {
-            vh1.get_ranges(map);
+        crash = vh1.test_for_crash(map);
+        vh1.get_ranges(map);
+        vh1.move(2, 2);
 
-            dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(vh1.detection_ranges));
-            
-            dlib::matrix<float> m2 = c_net(m3);
+        crash = vh1.test_for_crash(map);
+        vh1.get_ranges(map);
+        vh1.move(2, -2);
 
-            vh1.move(2*m2(0, 0), 2*m2(1, 0));
+        crash = vh1.test_for_crash(map);
+        vh1.get_ranges(map);
+        vh1.move(-2, 2);
 
-            crash = vh1.test_for_crash(map);
-        
-        }
+        crash = vh1.test_for_crash(map);
+        vh1.get_ranges(map);
+        vh1.move(-2, -2);
+
+        //while (crash == false)
+        //{
+        //    vh1.get_ranges(map);
+
+        //    dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(vh1.detection_ranges));
+        //    
+        //    dlib::matrix<float> m2 = c_net(m3);
+
+        //    vh1.move(2*m2(0, 0), 2*m2(1, 0));
+
+        //    crash = vh1.test_for_crash(map);
+        //
+        //}
 
 
         vh1.move(-1.0, 2.0);

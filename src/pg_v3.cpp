@@ -701,50 +701,48 @@ public:
 	uint8_t threshold = 200;
 	double bearing;
     const unsigned long width = 5;
-    const unsigned long length = 7;
+    const unsigned long length = 8;
+    const uint32_t radius = 3;
 
     dlib::point F;
-    dlib::point B;
-    dlib::point L;
     dlib::point R;
-    dlib::point center;
+    //dlib::point BL;
+    //dlib::point BR;
+    //dlib::point C;
 
-    dlib::rectangle rect;
+    //dlib::rectangle rect;
 
 	uint32_t max_range = 80;
     std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
 	
 	std::vector<uint32_t> detection_ranges;
 	
-    vehicle(dlib::point TL_, dlib::point B_)
+    //vehicle(dlib::point F_, dlib::point B_)
+    //{
+
+    //    F = F_;
+    //    B = B_;
+
+
+    //    //bearing = calc_bearing();
+
+    //    //L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
+    //    //R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
+
+    //    //for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
+    //    //{
+    //    //    detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+    //    //}
+
+    //    //detection_ranges.resize(detection_angles.size());
+    //}
+
+    vehicle(dlib::point F_, double bearing_)
     {
+        F = F_;
 
-
-
-
-        //bearing = calc_bearing();
-
-        //L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
-        //R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
-
-        //for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
-        //{
-        //    detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
-        //}
-
-        //detection_ranges.resize(detection_angles.size());
-    }
-
-    vehicle(dlib::point TL_, double bearing_)
-    {
-
-
-        rect = dlib::rectangle(width, length);
-        dlib::move_rect(rect, TL_);
-
-        //F = F_;
         bearing = bearing_*(dlib::pi / 180.0);
-        //B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
+        R = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
 
         //L = dlib::point((uint32_t)(w_2 * std::cos(bearing + dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing + dlib::pi/2) + F.y()));
         //R = dlib::point((uint32_t)(w_2 * std::cos(bearing - dlib::pi/2) + F.x()), (uint32_t)(w_2 * std::sin(bearing - dlib::pi/2) + F.y()));
@@ -761,10 +759,10 @@ public:
 
     double calc_bearing(void)	
 	{
-        if ((F.y() - B.y() == 0) && (F.x() - B.x()) == 0)
+        if ((F.y() - R.y() == 0) && (F.x() - R.x()) == 0)
             return 0.0;
         else
-		    return std::atan2((double)(F.y() - B.y()),(double)(F.x() - B.x()));
+		    return std::atan2((double)(F.y() - R.y()),(double)(F.x() - R.x()));
 	}
 	
 	void get_ranges(dlib::matrix<uint8_t> map)
@@ -775,18 +773,18 @@ public:
         uint32_t map_width = map.nc();
         uint32_t map_height = map.nr();
 
-		bearing = calc_bearing();
+        bearing = calc_bearing();// +dlib::pi;
 
         map(F.y(), F.x()) = 180;
-        map(L.y(), L.x()) = 128;
+        //map(L.y(), L.x()) = 128;
         map(R.y(), R.x()) = 128;
-        map(B.y(), B.x()) = 180;
+        //map(B.y(), B.x()) = 180;
 		
 		for(idx=0; idx< detection_angles.size(); ++idx)
 		{
 			detection_ranges[idx] = max_range;
 			
-			for(uint32_t r=0; r<max_range; ++r)
+			for(uint32_t r=1; r<max_range; ++r)
 			{
 
                 x = (uint32_t)(r*std::cos(bearing + detection_angles[idx]) + F.x());
@@ -822,19 +820,26 @@ public:
     void move(double l, double r)
     {
         
-        L.x() = (uint32_t)(l * std::cos(bearing) + L.x());
-        L.y() = (uint32_t)(l * std::sin(bearing) + L.y());
-        R.x() = (uint32_t)(r * std::cos(bearing) + R.x());
-        R.y() = (uint32_t)(r * std::sin(bearing) + R.y());
+        //L.x() = (uint32_t)(l * std::cos(bearing) + L.x());
+        //L.y() = (uint32_t)(l * std::sin(bearing) + L.y());
+        //R.x() = (uint32_t)(r * std::cos(bearing) + R.x());
+        //R.y() = (uint32_t)(r * std::sin(bearing) + R.y());
+        //double b2 = std::atan2((double)(L.y() - R.y()), (double)(L.x() - R.x()));
 
-        double b2 = std::atan2((double)(L.y() - R.y()), (double)(L.x() - R.x()));
+        double b2 = bearing + (l - r) / (double)length;
 
-        bearing = b2 - dlib::pi / 2;
 
-        F.x() = (uint32_t)std::floor((L.x() + R.x()) / 2.0 + 0.5);
-        F.y() = (uint32_t)std::floor((L.y() + R.y()) / 2.0 + 0.5);
+        bearing = b2;
 
-        B = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
+        double dx = ((l + r) / 2.0) * std::cos(bearing);
+        double dy = ((l + r) / 2.0) * std::sin(bearing);
+
+        F = dlib::point(F.x() + dx, F.y() + dy);
+
+        //F.x() = (uint32_t)std::floor((L.x() + R.x()) / 2.0 + 0.5);
+        //F.y() = (uint32_t)std::floor((L.y() + R.y()) / 2.0 + 0.5);
+
+        R = dlib::point(F.x() + (long)(length * std::cos(bearing)), F.y() + (long)(length * std::sin(bearing)));
 
     }   // end of move
 
@@ -844,22 +849,24 @@ public:
     {
         bool crash = false;
 
-        if ((L.x() < 0) || L.x() >= map.nc())
-            crash = true;
 
-        if ((L.y() < 0) || L.y() >= map.nr())
-            crash = true;
 
-        if ((R.x() < 0) || R.x() >= map.nc())
-            crash = true;
+        //if ((L.x() < 0) || L.x() >= map.nc())
+        //    crash = true;
 
-        if ((R.y() < 0) || R.y() >= map.nr())
-            crash = true;
+        //if ((L.y() < 0) || L.y() >= map.nr())
+        //    crash = true;
 
-        if (map(L.y(), L.x()) > threshold)
-            crash = true;
-        else if (map(R.y(), R.x()) > threshold)
-            crash = true;
+        //if ((R.x() < 0) || R.x() >= map.nc())
+        //    crash = true;
+
+        //if ((R.y() < 0) || R.y() >= map.nr())
+        //    crash = true;
+
+        //if (map(L.y(), L.x()) > threshold)
+        //    crash = true;
+        //else if (map(R.y(), R.x()) > threshold)
+        //    crash = true;
 
         return crash;
 
@@ -964,7 +971,7 @@ int main(int argc, char** argv)
         dlib::layer<2>(c_net).layer_details().setup(t1a1.subnet());
         auto &t1b = dlib::layer<2>(c_net).layer_details().get_weights();
 
-        for (idx = 0; idx < 100; ++idx)
+        for (idx = 0; idx < 20; ++idx)
         {
             trainer.train_one_step({ input }, { motion });
         }
@@ -998,7 +1005,7 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
-        vehicle vh1(dlib::point(10,10), 270);
+        vehicle vh1(dlib::point(12,10), 270);
 
         //std::cout << "Bearing: " << v1.get_bearing() << std::endl;
 

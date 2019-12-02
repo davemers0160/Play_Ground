@@ -507,6 +507,7 @@ using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
     > > > >>>;
 
 car_net_type c_net;
+dlib::image_window win;
 
 // This is the new net that you want to copy
 //using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
@@ -528,6 +529,7 @@ class particle
 private:
 
 public:
+    uint64_t number;
 
     dlib::matrix<double, 1, 42> x1;
     dlib::matrix<double, 1, 1020> x2;
@@ -549,6 +551,10 @@ public:
     dlib::matrix<double> get_x2() { return x2; }
     dlib::matrix<double> get_x3() { return x3; }
     dlib::matrix<double> get_x4() { return x4; }
+
+    void set_number(uint64_t n){ number = n; }
+
+    uint64_t get_number(void) { return number; }
 
     // ----------------------------------------------------------------------------------------
     // This function is used to randomly initialize 
@@ -845,18 +851,24 @@ public:
         long Rx = C.x() + floor((L / 2.0) * std::cos(h) + 0.5);
         long Ry = C.y() + floor((L / 2.0) * std::sin(h) + 0.5);
 
-        map(C.y(), C.x()) = 200;
+        //map(C.y(), C.x()) = 200;
 
-        if ((Lx < 0) || Lx >= map.nc())
+        if ((C.x() < 1) || C.x() >= map.nc() - 1)
             crash = true;
 
-        else if ((Ly < 0) || Ly >= map.nr())
+        else if ((C.y() < 1) || C.y() >= map.nr() - 1)
             crash = true;
 
-        else if ((Rx < 0) || Rx >= map.nc())
+        else if ((Lx < 1) || Lx >= map.nc()-1)
             crash = true;
 
-        else if ((Ry < 0) || Ry >= map.nr())
+        else if ((Ly < 1) || Ly >= map.nr()-1)
+            crash = true;
+
+        else if ((Rx < 1) || Rx >= map.nc()-1)
+            crash = true;
+
+        else if ((Ry < 1) || Ry >= map.nr()-1)
             crash = true;
 
         else if (map(Ly, Lx) > threshold)
@@ -896,13 +908,13 @@ private:
     void clear_line(dlib::matrix<uint8_t> &map)
     {
 
-        long x = C.x() - 10;
-        long y = C.y() - 10;
+        long x = C.x() - 11;
+        long y = C.y() - 11;
 
         x = std::min(std::max(x, 0L), map.nc()-1);
         y = std::min(std::max(y, 0L), map.nr()-1);
 
-        dlib::rectangle rect(x, y, x+20, y+20);
+        dlib::rectangle rect(x, y, x+22, y+22);
 
         dlib::matrix<uint8_t> sm = dlib::subm(map, rect);
         threshold_to_zero(sm, sm, 90, false);
@@ -920,10 +932,14 @@ double eval_net(particle p)
     dlib::matrix<dlib::rgb_pixel> color_map;
     dlib::matrix<uint8_t> map, map2;
 
+    dlib::point previous_point = dlib::point(11, 10);
+    dlib::point current_point;
+    double delta = 1.0;
+
     dlib::load_image(color_map, "../test_map.png");
     dlib::assign_image(map, color_map);
 
-    vehicle vh1(dlib::point(11, 10), 270);
+    vehicle vh1(previous_point, 270);
 
     bool crash = false;
 
@@ -956,25 +972,45 @@ double eval_net(particle p)
     for (idx = 0; idx < l5_size; ++idx)
         *(l5_data + idx) = (float)x4(0, idx);
 
-    dlib::image_window win;
+    uint32_t movement_count = 0;
+    
     while (crash == false)
     {
+        previous_point = vh1.C;
+        
         vh1.check_for_points(map);
         vh1.get_ranges(map, map2);
         win.clear_overlay();
+        win.set_title(num2str(p.get_number(), "Particle Number: %03d"));
         win.set_image(map2);
+
 
         dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(vh1.detection_ranges));
 
-        std::cout << dlib::csv << m3 << std::endl;
+        //std::cout << dlib::csv << m3 << std::endl;
 
         dlib::matrix<float> m2 = c_net(m3);
 
         vh1.move(2 * m2(0, 0), 2 * m2(1, 0));
 
+        double movement = (std::abs(vh1.C.x() - previous_point.x()) + std::abs(vh1.C.y() - previous_point.y())) / 2.0;
+
+        if(movement<delta)
+        {
+            
+            ++movement_count;
+        }
+        else
+        {
+            movement_count = 0;
+        }
+
         crash = vh1.test_for_crash(map);
 
-        dlib::sleep(750);
+        if (movement_count > 20)
+            crash = true;
+
+        dlib::sleep(20);
 
     }
 
@@ -1081,7 +1117,7 @@ int main(int argc, char** argv)
         dlib::layer<2>(c_net).layer_details().setup(t1a1.subnet());
         auto &t1b = dlib::layer<2>(c_net).layer_details().get_weights();
 
-        for (idx = 0; idx < 5000; ++idx)
+        for (idx = 0; idx < 100; ++idx)
         {
             trainer.train_one_step({ input }, { motion });
         }
@@ -1206,25 +1242,25 @@ int main(int argc, char** argv)
 
         for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x1(0, idx) = 100;
+            x1(0, idx) = 10;
             v1(0, idx) = 0.5;
         }
 
         for (idx = 0; idx < x2.nc(); ++idx)
         {
-            x2(0, idx) = 100;
+            x2(0, idx) = 10;
             v2(0, idx) = 0.5;
         }
 
         for (idx = 0; idx < x3.nc(); ++idx)
         {
-            x3(0, idx) = 100;
+            x3(0, idx) = 10;
             v3(0, idx) = 0.5;
         }
 
         for (idx = 0; idx < x4.nc(); ++idx)
         {
-            x4(0, idx) = 100;
+            x4(0, idx) = 10;
             v4(0, idx) = 0.5;
         }
 

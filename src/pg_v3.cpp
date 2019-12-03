@@ -502,12 +502,17 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
     dlib::fc<20, 
     dlib::fc<50,
-    dlib::fc<100,
+    dlib::fc<200,
     dlib::input<dlib::matrix<uint32_t>>
     > > > >>>;
 
 car_net_type c_net;
 dlib::image_window win;
+
+const uint64_t fc4_size = (1081 + 1) * 200;
+const uint64_t fc3_size = (200 + 1) * 50;
+const uint64_t fc2_size = (50 + 1) * 20;
+const uint64_t fc1_size = (20 + 1) * 2;
 
 // This is the new net that you want to copy
 //using anet_type2 = dlib::loss_mmod<dlib::con<1,9,9,1,1,
@@ -530,11 +535,12 @@ private:
 
 public:
     uint64_t number;
+    uint64_t iteration;
 
-    dlib::matrix<double, 1, 42> x1;
-    dlib::matrix<double, 1, 1020> x2;
-    dlib::matrix<double, 1, 5050> x3;
-    dlib::matrix<double, 1, 2900> x4;
+    dlib::matrix<double, 1, fc1_size> x1;
+    dlib::matrix<double, 1, fc2_size> x2;
+    dlib::matrix<double, 1, fc3_size> x3;           // (200 + 1) * 50
+    dlib::matrix<double, 1, fc4_size> x4;       //(1081 + 1) * 200
 
 
     particle() {}
@@ -719,7 +725,6 @@ double schwefel(particle p)
 class vehicle
 {
 
-
 public:
 	
 	uint8_t threshold = 240;
@@ -737,8 +742,9 @@ public:
 
 	uint32_t max_range = 80;
     //std::vector<double> detection_angles = { -135, -90, -45, 0, 45, 90, 135 };
-    std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
-	
+    //std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
+    std::vector<double> detection_angles;
+
 	std::vector<uint32_t> detection_ranges;
 
     vehicle(dlib::point C_, double heading_)
@@ -749,9 +755,12 @@ public:
 
         points = 0.0;
 
-        for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
+
+        for(double idx=-135; idx<=135; idx +=.25)
+        //for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
         {
-            detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+            //detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+            detection_angles.push_back(idx * (dlib::pi / 180.0));
         }
 
         detection_ranges.resize(detection_angles.size());
@@ -932,14 +941,14 @@ double eval_net(particle p)
     dlib::matrix<dlib::rgb_pixel> color_map;
     dlib::matrix<uint8_t> map, map2;
 
-    dlib::point previous_point = dlib::point(11, 10);
-    dlib::point current_point;
-    double delta = 1.0;
+    dlib::point starting_point = dlib::point(11, 10);
+    uint64_t current_points = 0;
+    uint64_t moves_without_points = 0;
 
     dlib::load_image(color_map, "../test_map.png");
     dlib::assign_image(map, color_map);
 
-    vehicle vh1(previous_point, 270);
+    vehicle vh1(starting_point, 270);
 
     bool crash = false;
 
@@ -972,16 +981,15 @@ double eval_net(particle p)
     for (idx = 0; idx < l5_size; ++idx)
         *(l5_data + idx) = (float)x4(0, idx);
 
-    uint32_t movement_count = 0;
+    uint64_t movement_count = 0;
     
     while (crash == false)
     {
-        previous_point = vh1.C;
+        //current_points = vh1.points;
         
         vh1.check_for_points(map);
         vh1.get_ranges(map, map2);
         win.clear_overlay();
-        win.set_title(num2str(p.get_number(), "Particle Number: %03d"));
         win.set_image(map2);
 
 
@@ -993,24 +1001,28 @@ double eval_net(particle p)
 
         vh1.move(2 * m2(0, 0), 2 * m2(1, 0));
 
-        double movement = (std::abs(vh1.C.x() - previous_point.x()) + std::abs(vh1.C.y() - previous_point.y())) / 2.0;
+        std::string title = "Particle Number: " + num2str(p.get_number(), "%03d") + ", B: " + num2str(vh1.heading*180.0/dlib::pi, "%2.4f") + ", L/R: " + num2str(m2(0, 0), "%2.4f/") + num2str(m2(1, 0), "%2.4f");
 
-        if(movement<delta)
+        win.set_title(title);
+
+        //double movement = (std::abs(vh1.C.x() - previous_point.x()) + std::abs(vh1.C.y() - previous_point.y())) / 2.0;
+
+        if(current_points == vh1.points)
         {
-            
             ++movement_count;
         }
         else
         {
+            current_points = vh1.points;
             movement_count = 0;
         }
 
         crash = vh1.test_for_crash(map);
 
-        if (movement_count > 20)
+        if (movement_count > 50)
             crash = true;
 
-        dlib::sleep(20);
+        //dlib::sleep(20);
 
     }
 
@@ -1088,10 +1100,11 @@ int main(int argc, char** argv)
 
         //dlib::assign_image(map, color_map);
 
-        dlib::matrix<uint32_t> input(1, 28);
-        input = 11, 10, 9, 8, 8, 8, 8, 9, 10, 11, 14, 18, 29, 80, 75, 26, 16, 12, 10, 8, 8, 7, 7, 7, 7, 8, 8, 10;
+        //dlib::matrix<uint32_t> input(1, 28);
+        //input = 11, 10, 9, 8, 8, 8, 8, 9, 10, 11, 14, 18, 29, 80, 75, 26, 16, 12, 10, 8, 8, 7, 7, 7, 7, 8, 8, 10;
         //dlib::matrix<uint32_t> input(1, 7);
         //input = 11, 8, 11, 80, 10, 7, 10;
+        dlib::matrix<uint32_t, 1, 1081> input = dlib::ones_matrix<uint32_t>(1, 1081);
 
         dlib::matrix<float> motion(2, 1);
         motion = 1.0, 1.0;
@@ -1225,7 +1238,7 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
-        dlib::pso_options options(20, 120, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(20, 300, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;
@@ -1235,33 +1248,33 @@ int main(int argc, char** argv)
         dlib::pso<particle> p(options);
 
         //dlib::matrix<double, 1, 2> x1,x2, v1,v2;
-        dlib::matrix<double, 1, 42> x1,v1;
-        dlib::matrix<double, 1, 1020> x2,v2;
-        dlib::matrix<double, 1, 5050> x3,v3;
-        dlib::matrix<double, 1, 2900> x4,v4;
+        dlib::matrix<double, 1, fc1_size> x1,v1;
+        dlib::matrix<double, 1, fc2_size> x2,v2;
+        dlib::matrix<double, 1, fc3_size> x3,v3;
+        dlib::matrix<double, 1, fc4_size> x4,v4;
 
         for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x1(0, idx) = 10;
-            v1(0, idx) = 0.5;
+            x1(0, idx) = 1;
+            v1(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x2.nc(); ++idx)
         {
-            x2(0, idx) = 10;
-            v2(0, idx) = 0.5;
+            x2(0, idx) = 1;
+            v2(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x3.nc(); ++idx)
         {
-            x3(0, idx) = 10;
-            v3(0, idx) = 0.5;
+            x3(0, idx) = 1;
+            v3(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x4.nc(); ++idx)
         {
-            x4(0, idx) = 10;
-            v4(0, idx) = 0.5;
+            x4(0, idx) = 1;
+            v4(0, idx) = 0.01;
         }
 
         std::pair<particle, particle> x_lim(particle(-x1,-x2,-x3,-x4), particle(x1,x2,x3,x4));

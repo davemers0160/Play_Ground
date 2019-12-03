@@ -1255,25 +1255,25 @@ int main(int argc, char** argv)
 
         for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x1(0, idx) = 1;
+            x1(0, idx) = 0.5;
             v1(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x2.nc(); ++idx)
         {
-            x2(0, idx) = 1;
+            x2(0, idx) = 0.5;
             v2(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x3.nc(); ++idx)
         {
-            x3(0, idx) = 1;
+            x3(0, idx) = 0.5;
             v3(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x4.nc(); ++idx)
         {
-            x4(0, idx) = 1;
+            x4(0, idx) = 0.5;
             v4(0, idx) = 0.01;
         }
 

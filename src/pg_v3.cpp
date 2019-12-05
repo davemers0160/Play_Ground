@@ -500,11 +500,11 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 // ----------------------------------------------------------------------------------------
 
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
-    dlib::fc<20, 
+    dlib::htan<dlib::fc<20,
     dlib::fc<50,
     dlib::fc<200,
-    dlib::input<dlib::matrix<uint32_t>>
-    > > > >>>;
+    dlib::htan<dlib::input<dlib::matrix<uint32_t>>>
+    > > >> >>>;
 
 car_net_type c_net;
 dlib::image_window win;
@@ -774,6 +774,8 @@ public:
         uint32_t map_width = map.nc();
         uint32_t map_height = map.nr();
 
+        //double h = heading + dlib::pi;
+
         dlib::assign_image(map2, map);
 
         map2(C.y(), C.x()) = 200;
@@ -785,8 +787,8 @@ public:
 			for(uint32_t r=1; r<max_range; ++r)
 			{
 
-                x = (uint32_t)floor(r*std::cos(heading + detection_angles[idx]+dlib::pi) + C.x() + 0.5);
-                y = (uint32_t)floor(r*std::sin(heading + detection_angles[idx]+dlib::pi) + C.y() + 0.5);
+                x = (uint32_t)floor(r*std::cos(heading + detection_angles[idx]) + C.x() + 0.5);
+                y = (uint32_t)floor(r*std::sin(heading + detection_angles[idx]) + C.y() + 0.5);
 
 				
                 if (x<0 || x>(map_width-1))
@@ -815,34 +817,54 @@ public:
 	
     // ----------------------------------------------------------------------------------------
 
-    void move(double vl, double vr)
+    //void move(double vl, double vr)
+    //{
+    //    double w = (vr - vl) / L;
+    //    double h = heading + dlib::pi;
+    //    double R = 0.0;
+    //    
+    //    long x_p = 0;
+    //    long y_p = 0;
+
+    //    if (std::abs(vr - vl) < 0.01)
+    //    {
+    //        x_p = C.x() + r * vr * std::cos(h);
+    //        y_p = C.y() + r * vr * std::sin(h);
+    //    }
+    //    else
+    //    {
+    //        R = (L / 2.0) * (vr + vl);
+
+    //        double ICCx = C.x() - R * std::sin(h);
+    //        double ICCy = C.y() + R * std::cos(h);
+
+    //        x_p = R * std::sin(h) * std::cos(w) + R * std::cos(h) * std::sin(w) + ICCx;
+    //        y_p = R * std::sin(h) * std::sin(w) - R * std::cos(h) * std::cos(w) + ICCy;
+    //    }
+
+    //    C = dlib::point(x_p, y_p);
+
+    //    heading += w;
+
+    //}   // end of move
+
+
+    void move(double fb, double lr)
     {
-        double w = (vr - vl) / L;
-        double h = heading + dlib::pi;
-        double R = 0.0;
-        
-        long x_p = 0;
-        long y_p = 0;
 
-        if (std::abs(vr - vl) < 0.001)
-        {
-            x_p = C.x() + r * vr * std::cos(h);
-            y_p = C.y() + r * vr * std::sin(h);
-        }
-        else
-        {
-            R = (L / 2.0) * (vr + vl);
+        heading += lr * (dlib::pi * 0.002777777778);
 
-            double ICCx = C.x() - R * std::sin(h);
-            double ICCy = C.y() + R * std::cos(h);
+        //heading += lr * (dlib::pi * 0.002777777778);    // 5/360
 
-            x_p = R * std::sin(h) * std::cos(w) + R * std::cos(h) * std::sin(w) + ICCx;
-            y_p = R * std::sin(h) * std::sin(w) - R * std::cos(h) * std::cos(w) + ICCy;
-        }
+        if (heading >= 2.0*dlib::pi)
+            heading -= 2.0*dlib::pi;
+        else if(heading <= -2.0*dlib::pi)
+            heading += 2.0*dlib::pi;
+
+        long x_p = C.x() + std::floor(fb * std::cos(heading) + 0.5);
+        long y_p = C.y() + std::floor(fb * std::sin(heading) + 0.5);
 
         C = dlib::point(x_p, y_p);
-
-        heading += w;
 
     }   // end of move
 
@@ -852,7 +874,8 @@ public:
     {
         bool crash = false;
 
-        double h = heading - dlib::pi/2.0;
+        //double h = heading - dlib::pi / 2.0;
+        double h = heading;
 
         long Lx = C.x() - floor((L / 2.0) * std::cos(h) + 0.5);
         long Ly = C.y() - floor((L / 2.0) * std::sin(h) + 0.5);
@@ -948,7 +971,7 @@ double eval_net(particle p)
     dlib::load_image(color_map, "../test_map.png");
     dlib::assign_image(map, color_map);
 
-    vehicle vh1(starting_point, 270);
+    vehicle vh1(starting_point, 90.0);
 
     bool crash = false;
 
@@ -960,22 +983,22 @@ double eval_net(particle p)
     for (idx = 0; idx < l2_size; ++idx)
         *(l2_data + idx) = (float)x1(0,idx);
 
-    long l3_size = dlib::layer<3>(c_net).layer_details().get_layer_params().size();
-    auto l3_data = dlib::layer<3>(c_net).layer_details().get_layer_params().host();
+    long l3_size = dlib::layer<4>(c_net).layer_details().get_layer_params().size();
+    auto l3_data = dlib::layer<4>(c_net).layer_details().get_layer_params().host();
     dlib::matrix<double> x2 = p.get_x2();
 
     for (idx = 0; idx < l3_size; ++idx)
         *(l3_data + idx) = (float)x2(0, idx);
 
-    long l4_size = dlib::layer<4>(c_net).layer_details().get_layer_params().size();
-    auto l4_data = dlib::layer<4>(c_net).layer_details().get_layer_params().host();
+    long l4_size = dlib::layer<5>(c_net).layer_details().get_layer_params().size();
+    auto l4_data = dlib::layer<5>(c_net).layer_details().get_layer_params().host();
     dlib::matrix<double> x3 = p.get_x3();
 
     for (idx = 0; idx < l4_size; ++idx)
         *(l4_data + idx) = (float)x3(0, idx);
 
-    long l5_size = dlib::layer<5>(c_net).layer_details().get_layer_params().size();
-    auto l5_data = dlib::layer<5>(c_net).layer_details().get_layer_params().host();
+    long l5_size = dlib::layer<6>(c_net).layer_details().get_layer_params().size();
+    auto l5_data = dlib::layer<6>(c_net).layer_details().get_layer_params().host();
     dlib::matrix<double> x4 = p.get_x4();
 
     for (idx = 0; idx < l5_size; ++idx)
@@ -999,9 +1022,16 @@ double eval_net(particle p)
 
         dlib::matrix<float> m2 = c_net(m3);
 
-        vh1.move(2 * m2(0, 0), 2 * m2(1, 0));
+        vh1.move(2 * m2(0, 0), m2(1, 0));
 
-        std::string title = "Particle Number: " + num2str(p.get_number(), "%03d") + ", B: " + num2str(vh1.heading*180.0/dlib::pi, "%2.4f") + ", L/R: " + num2str(m2(0, 0), "%2.4f/") + num2str(m2(1, 0), "%2.4f");
+        //vh1.move(2 * 1, 0);
+        //vh1.move(2 * 1, -0.5);
+
+        //vh1.move(2 * -1, 0.5);
+        //vh1.move(2 * -1, -0.5);
+
+
+        std::string title = "Particle Number: " + num2str(p.get_number(), "%03d") + ", B: " + num2str(vh1.heading*180.0/dlib::pi, "%2.4f") + ", L/R: " + num2str(2.0*m2(0, 0), "%2.4f/") + num2str(m2(1, 0), "%2.4f");
 
         win.set_title(title);
 
@@ -1019,7 +1049,7 @@ double eval_net(particle p)
 
         crash = vh1.test_for_crash(map);
 
-        if (movement_count > 50)
+        if (movement_count > 1000)
             crash = true;
 
         //dlib::sleep(20);
@@ -1130,7 +1160,7 @@ int main(int argc, char** argv)
         dlib::layer<2>(c_net).layer_details().setup(t1a1.subnet());
         auto &t1b = dlib::layer<2>(c_net).layer_details().get_weights();
 
-        for (idx = 0; idx < 100; ++idx)
+        for (idx = 0; idx < 10; ++idx)
         {
             trainer.train_one_step({ input }, { motion });
         }
@@ -1238,7 +1268,7 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
-        dlib::pso_options options(20, 300, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(30, 1000, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;
@@ -1255,8 +1285,8 @@ int main(int argc, char** argv)
 
         for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x1(0, idx) = 0.5;
-            v1(0, idx) = 0.01;
+            x1(0, idx) = 1.0;
+            v1(0, idx) = 0.001;
         }
 
         for (idx = 0; idx < x2.nc(); ++idx)

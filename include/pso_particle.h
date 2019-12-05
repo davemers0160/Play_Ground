@@ -10,9 +10,9 @@
 #include <dlib/serialize.h>
 
 
-const uint64_t fc4_size = (1081 + 1) * 200;
-const uint64_t fc3_size = (200 + 1) * 50;
-const uint64_t fc2_size = (50 + 1) * 20;
+const uint64_t fc4_size = (1081 + 1) * 500;
+const uint64_t fc3_size = (500 + 1) * 100;
+const uint64_t fc2_size = (100 + 1) * 20;
 const uint64_t fc1_size = (20 + 1) * 2;
 
 // ----------------------------------------------------------------------------------------

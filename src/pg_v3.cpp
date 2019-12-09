@@ -502,7 +502,7 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
     dlib::htan<dlib::fc<5,
     dlib::fc<10,
-    dlib::fc<20,
+    dlib::fc<50,
     dlib::input<dlib::matrix<float>>
     > > >> >>>;
 
@@ -589,7 +589,9 @@ public:
 	float max_range = 80.0;
     //std::vector<double> detection_angles = { -135, -90, -45, 0, 45, 90, 135 };
     //std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
-    std::vector<double> detection_angles;
+    std::vector<double> detection_angles = { -90.0, -45.0, -22.5, -11.0, -0.5, 0.5, 11.0, 22.5, 45.0, 90.0 };
+
+    //std::vector<double> detection_angles;
 
 	std::vector<float> detection_ranges;
 
@@ -601,13 +603,11 @@ public:
 
         points = 0.0;
 
-
-        for (double idx = -90; idx <= 90; idx += 22.5)
-        //for (double idx = -135; idx <= 135; idx += 0.25)
-        //for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
+        //for (double idx = -90; idx <= 90; idx += 22.5)
+        for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
         {
-            //detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
-            detection_angles.push_back(idx * (dlib::pi / 180.0));
+            detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
+            //detection_angles.push_back(idx * (dlib::pi / 180.0));
         }
 
         detection_ranges.resize(detection_angles.size());
@@ -699,8 +699,10 @@ public:
     void move(double fb, double lr)
     {
 
-        heading += lr * (dlib::pi * 0.002777777778);    // 1/360
-        // heading += lr * (dlib::pi * 0.0138888888889);    // 5/360
+        //heading += lr * (dlib::pi * 0.0027777777778);    // 1/360
+        heading += lr * (dlib::pi * 0.0055555555556);    // 2/360 
+        //heading += lr * (dlib::pi * 0.0083333333333);    // 3/360 
+        //heading += lr * (dlib::pi * 0.0138888888889);    // 5/360
 
         if (heading >= 2.0*dlib::pi)
             heading -= 2.0*dlib::pi;
@@ -786,7 +788,7 @@ private:
     void clear_line(dlib::matrix<uint8_t> &map)
     {
 
-        long offset = 1;
+        long offset = 3;
 
         //long x = C.x() - offset; // 11
         //long y = C.y() - offset; // 11
@@ -870,7 +872,7 @@ double eval_net(particle p)
 
         dlib::matrix<float> m2 = c_net(m3);
 
-        vh1.move(m2(0,0), m2(1, 0));
+        vh1.move(m2(0, 0), m2(1, 0));
 
         //vh1.move(2 * 1, 0);
         //vh1.move(2 * 1, -0.5);
@@ -893,7 +895,7 @@ double eval_net(particle p)
 
         crash = vh1.test_for_crash(map);
 
-        if (movement_count > 500)
+        if (movement_count > 1000)
         {
             std::cout << "Count" << std::endl;
             crash = true;
@@ -981,7 +983,7 @@ int main(int argc, char** argv)
         //input = 11, 10, 9, 8, 8, 8, 8, 9, 10, 11, 14, 18, 29, 80, 75, 26, 16, 12, 10, 8, 8, 7, 7, 7, 7, 8, 8, 10;
         //dlib::matrix<uint32_t> input(1, 7);
         //input = 11, 8, 11, 80, 10, 7, 10;
-        dlib::matrix<float, 1, 9> input = dlib::ones_matrix<float>(1, 9);
+        dlib::matrix<float, 1, 10> input = dlib::ones_matrix<float>(1, 10);
 
         dlib::matrix<float> motion(2, 1);
         motion = 1.0, 1.0;
@@ -1114,7 +1116,7 @@ int main(int argc, char** argv)
         //std::cout << "find_min_global (" << elapsed_time.count() << "): " << result.x << ", " << result.y << std::endl;
 
         // ----------------------------------------------------------------------------------------
-        dlib::load_image(color_map, "../test_map.png");
+        dlib::load_image(color_map, "../test_map_v2_2.png");
 
         dlib::pso_options options(40, 1000, 2.4, 2.1, 1.0, 1, 1.0);
 
@@ -1134,7 +1136,7 @@ int main(int argc, char** argv)
 
         for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x1(0, idx) = 1.0;
+            x1(0, idx) = 5.0;
             v1(0, idx) = 0.1;
         }
 

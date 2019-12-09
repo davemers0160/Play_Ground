@@ -11,8 +11,8 @@
 
 
 //const uint64_t fc4_size = (1081 + 1) * 500;
-const uint64_t fc4_size = (9 + 1) * 20;
-const uint64_t fc3_size = (20 + 1) * 10;
+const uint64_t fc4_size = (10 + 1) * 50;
+const uint64_t fc3_size = (50 + 1) * 10;
 const uint64_t fc2_size = (10 + 1) * 5;
 const uint64_t fc1_size = (5 + 1) * 2;
 

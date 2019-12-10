@@ -500,9 +500,9 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 // ----------------------------------------------------------------------------------------
 
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
-    dlib::htan<dlib::fc<5,
-    dlib::fc<10,
+    dlib::htan<dlib::fc<10,
     dlib::fc<50,
+    dlib::fc<250,
     dlib::input<dlib::matrix<float>>
     > > >> >>>;
 
@@ -788,18 +788,18 @@ private:
     void clear_line(dlib::matrix<uint8_t> &map)
     {
 
-        long offset = 3;
+        long offset = 4;
 
         //long x = C.x() - offset; // 11
         //long y = C.y() - offset; // 11
 
-        long x = std::min(std::max(C.x() - offset, 0L), map.nc() - 1);
-        long y = std::min(std::max(C.y() - offset, 0L), map.nr() - 1);
+        long x1 = std::min(std::max(C.x() - offset, 0L), map.nc() - 1);
+        long y1 = std::min(std::max(C.y() - offset, 0L), map.nr() - 1);
 
-        long w = std::min(C.x() + offset, map.nc() - 1); // 22
-        long h = std::min(C.y() + offset, map.nr() - 1); // 22
+        long x2 = std::min(C.x() + offset, map.nc() - 1); // 22
+        long y2 = std::min(C.y() + offset, map.nr() - 1); // 22
 
-        dlib::rectangle rect(x, y, w, h);
+        dlib::rectangle rect(x1, y1, x2, y2);
 
         dlib::matrix<uint8_t> sm = dlib::subm(map, rect);
         threshold_to_zero(sm, sm, 90, false);
@@ -880,7 +880,7 @@ double eval_net(particle p)
         //vh1.move(2 * -1, 0.5);
         //vh1.move(2 * -1, -0.5);
 
-        std::string title = "Particle Number: " + num2str(p.get_number(), "%03d") + ", B: " + num2str(vh1.heading*180.0/dlib::pi, "%2.4f") + ", L/R: " + num2str(m2(0, 0), "%2.4f/") + num2str(m2(1, 0), "%2.4f");
+        std::string title = "Particle Number: " + num2str(p.get_number(), "%03d") + ", B: " + num2str(vh1.heading*180.0/dlib::pi, "%2.4f") + ", L/R: " + num2str(m2(0, 0), "%2.4f/") + num2str(m2(1, 0), "%2.4f") + ", Points: " + num2str(-vh1.points, "%4.0f");
         win.set_title(title);
 
         if(current_points == vh1.points)
@@ -1118,7 +1118,7 @@ int main(int argc, char** argv)
         // ----------------------------------------------------------------------------------------
         dlib::load_image(color_map, "../test_map_v2_2.png");
 
-        dlib::pso_options options(40, 1000, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(40, 400, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;
@@ -1143,19 +1143,19 @@ int main(int argc, char** argv)
         for (idx = 0; idx < x2.nc(); ++idx)
         {
             x2(0, idx) = 100.0;
-            v2(0, idx) = 10.0;
+            v2(0, idx) = 1.0;
         }
 
         for (idx = 0; idx < x3.nc(); ++idx)
         {
             x3(0, idx) = 100.0;
-            v3(0, idx) = 10.0;
+            v3(0, idx) = 1.0;
         }
 
         for (idx = 0; idx < x4.nc(); ++idx)
         {
             x4(0, idx) = 100.0;
-            v4(0, idx) = 10.0;
+            v4(0, idx) = 1.0;
         }
 
         std::pair<particle, particle> x_lim(particle(-x1,-x2,-x3,-x4), particle(x1,x2,x3,x4));

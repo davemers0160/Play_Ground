@@ -500,13 +500,13 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 // ----------------------------------------------------------------------------------------
 
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
-    dlib::htan<dlib::fc<10,
-    dlib::fc<50,
-    dlib::fc<250,
+    dlib::multiply<dlib::fc<1,
+    dlib::multiply<dlib::fc<10,
+    dlib::multiply<dlib::fc<50,
     dlib::input<dlib::matrix<float>>
-    > > >> >>>;
+    >> >> >> >>>;
 
-car_net_type c_net;
+car_net_type c_net(dlib::multiply_(0.001), dlib::multiply_(0.5), dlib::multiply_(0.5));
 dlib::image_window win;
 dlib::matrix<dlib::rgb_pixel> color_map;
 
@@ -780,6 +780,11 @@ public:
             points += 10;
             clear_line(map);
         }
+        else if (map(C.y(), C.x()) == 170)
+        {
+            points += 100;
+            clear_line(map);
+        }
     }
 
 
@@ -802,7 +807,7 @@ private:
         dlib::rectangle rect(x1, y1, x2, y2);
 
         dlib::matrix<uint8_t> sm = dlib::subm(map, rect);
-        threshold_to_zero(sm, sm, 90, false);
+        threshold_to_zero(sm, sm, 250, false);
 
         dlib::set_subm(map, rect) = sm;
 
@@ -841,15 +846,15 @@ double eval_net(particle p)
     for (idx = 0; idx < l3_size; ++idx)
         *(l3_data + idx) = (float)x2(0, idx);
 
-    long l4_size = dlib::layer<5>(c_net).layer_details().get_layer_params().size();
-    auto l4_data = dlib::layer<5>(c_net).layer_details().get_layer_params().host();
+    long l4_size = dlib::layer<6>(c_net).layer_details().get_layer_params().size();
+    auto l4_data = dlib::layer<6>(c_net).layer_details().get_layer_params().host();
     dlib::matrix<double> x3 = p.get_x3();
 
     for (idx = 0; idx < l4_size; ++idx)
         *(l4_data + idx) = (float)x3(0, idx);
 
-    long l5_size = dlib::layer<6>(c_net).layer_details().get_layer_params().size();
-    auto l5_data = dlib::layer<6>(c_net).layer_details().get_layer_params().host();
+    long l5_size = dlib::layer<8>(c_net).layer_details().get_layer_params().size();
+    auto l5_data = dlib::layer<8>(c_net).layer_details().get_layer_params().host();
     dlib::matrix<double> x4 = p.get_x4();
 
     for (idx = 0; idx < l5_size; ++idx)
@@ -1118,7 +1123,7 @@ int main(int argc, char** argv)
         // ----------------------------------------------------------------------------------------
         dlib::load_image(color_map, "../test_map_v2_2.png");
 
-        dlib::pso_options options(40, 400, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(50, 500, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;
@@ -1143,19 +1148,19 @@ int main(int argc, char** argv)
         for (idx = 0; idx < x2.nc(); ++idx)
         {
             x2(0, idx) = 100.0;
-            v2(0, idx) = 1.0;
+            v2(0, idx) = 10.0;
         }
 
         for (idx = 0; idx < x3.nc(); ++idx)
         {
             x3(0, idx) = 100.0;
-            v3(0, idx) = 1.0;
+            v3(0, idx) = 10.0;
         }
 
         for (idx = 0; idx < x4.nc(); ++idx)
         {
             x4(0, idx) = 100.0;
-            v4(0, idx) = 1.0;
+            v4(0, idx) = 10.0;
         }
 
         std::pair<particle, particle> x_lim(particle(-x1,-x2,-x3,-x4), particle(x1,x2,x3,x4));

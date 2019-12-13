@@ -500,7 +500,7 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
 // ----------------------------------------------------------------------------------------
 
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
-    dlib::multiply<dlib::fc<1,
+    dlib::multiply<dlib::fc<5,
     dlib::multiply<dlib::fc<10,
     dlib::multiply<dlib::fc<50,
     dlib::input<dlib::matrix<float>>
@@ -793,20 +793,44 @@ private:
     void clear_line(dlib::matrix<uint8_t> &map)
     {
 
-        long offset = 4;
+        long offset = 11;
 
-        //long x = C.x() - offset; // 11
-        //long y = C.y() - offset; // 11
+        long x1 = std::min(std::max(C.x() - offset, 0L), map.nc() - 1); 
+        long y1 = std::min(std::max(C.y() - offset, 0L), map.nr() - 1); 
 
-        long x1 = std::min(std::max(C.x() - offset, 0L), map.nc() - 1);
-        long y1 = std::min(std::max(C.y() - offset, 0L), map.nr() - 1);
+        long x2 = std::min(C.x() + offset, map.nc() - 1); 
+        long y2 = std::min(C.y() + offset, map.nr() - 1); 
 
-        long x2 = std::min(C.x() + offset, map.nc() - 1); // 22
-        long y2 = std::min(C.y() + offset, map.nr() - 1); // 22
+        //long x1 = std::min(std::max(C.x() + (long)(offset * std::cos(heading + (dlib::pi / 2.0))), 0L), map.nc() - 1); 
+        //long y1 = std::min(std::max(C.y() + (long)(offset * std::sin(heading + (dlib::pi / 2.0))), 0L), map.nr() - 1); 
+
+        //long x2 = std::min(C.x() + (long)(offset * std::cos(heading - (dlib::pi / 2.0))), map.nc() - 1); 
+        //long y2 = std::min(C.y() + (long)(offset * std::sin(heading - (dlib::pi / 2.0))), map.nr() - 1); 
+
+        //dlib::point p1(x1,y1), p2(x2,y2);
+
+        //if (x1 > x2)
+        //{
+        //    p1.x() = x2;
+        //    p2.x() = x1;
+        //}
+
+        //if (y1 > y2)
+        //{
+        //    p1.y() = y2;
+        //    p2.y() = y1;
+        //}
 
         dlib::rectangle rect(x1, y1, x2, y2);
+        //dlib::rectangle rect(p1, p2);
 
         dlib::matrix<uint8_t> sm = dlib::subm(map, rect);
+
+        cv::Mat labelImage(cv::Size(sm.nc(), sm.nr()), CV_32S);
+        int nLabels = connectedComponents(dlib::toMat(sm), labelImage, 8);
+            
+            
+            
         threshold_to_zero(sm, sm, 250, false);
 
         dlib::set_subm(map, rect) = sm;
@@ -878,6 +902,8 @@ double eval_net(particle p)
         dlib::matrix<float> m2 = c_net(m3);
 
         vh1.move(m2(0, 0), m2(1, 0));
+
+
 
         //vh1.move(2 * 1, 0);
         //vh1.move(2 * 1, -0.5);
@@ -1148,7 +1174,7 @@ int main(int argc, char** argv)
         for (idx = 0; idx < x2.nc(); ++idx)
         {
             x2(0, idx) = 100.0;
-            v2(0, idx) = 10.0;
+            v2(0, idx) = 1.0;
         }
 
         for (idx = 0; idx < x3.nc(); ++idx)
@@ -1187,6 +1213,13 @@ int main(int argc, char** argv)
         
         bp = 3;
         
+
+        particle g_best;
+
+        //dlib::deserialize("gbest_690.dat") >> g_best;
+        dlib::deserialize(filename) >> g_best;
+
+        eval_net(g_best);
 
         //resnet_type net_101;
 

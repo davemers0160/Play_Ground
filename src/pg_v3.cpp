@@ -793,7 +793,7 @@ private:
     void clear_line(dlib::matrix<uint8_t> &map)
     {
 
-        long offset = 11;
+        long offset = 9;
 
         long x1 = std::min(std::max(C.x() - offset, 0L), map.nc() - 1); 
         long y1 = std::min(std::max(C.y() - offset, 0L), map.nr() - 1); 
@@ -1149,7 +1149,7 @@ int main(int argc, char** argv)
         // ----------------------------------------------------------------------------------------
         dlib::load_image(color_map, "../test_map_v2_2.png");
 
-        dlib::pso_options options(50, 500, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options options(100, 5000, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
         std::cout << options << std::endl;
@@ -1167,8 +1167,8 @@ int main(int argc, char** argv)
 
         for (idx = 0; idx < x1.nc(); ++idx)
         {
-            x1(0, idx) = 5.0;
-            v1(0, idx) = 0.1;
+            x1(0, idx) = 1.0;
+            v1(0, idx) = 0.01;
         }
 
         for (idx = 0; idx < x2.nc(); ++idx)
@@ -1180,13 +1180,13 @@ int main(int argc, char** argv)
         for (idx = 0; idx < x3.nc(); ++idx)
         {
             x3(0, idx) = 100.0;
-            v3(0, idx) = 10.0;
+            v3(0, idx) = 1.0;
         }
 
         for (idx = 0; idx < x4.nc(); ++idx)
         {
             x4(0, idx) = 100.0;
-            v4(0, idx) = 10.0;
+            v4(0, idx) = 1.0;
         }
 
         std::pair<particle, particle> x_lim(particle(-x1,-x2,-x3,-x4), particle(x1,x2,x3,x4));
@@ -1208,8 +1208,8 @@ int main(int argc, char** argv)
         dlib::serialize(filename) << p.G;
 
 
-
-        //std::cin.ignore();
+        std::cout << std::endl << "Ready to run G-Best particle..." << std::endl;
+        std::cin.ignore();
         
         bp = 3;
         

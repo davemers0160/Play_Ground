@@ -1002,6 +1002,11 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
+
+        anet_type net2(dlib::input_rgb_image_sized<227>(20.2,20.2,20.2));
+
+        std::cout << net2;
+
         //dlib::matrix<dlib::rgb_pixel> color_map;
         //dlib::matrix<uint8_t> map, map2;
 

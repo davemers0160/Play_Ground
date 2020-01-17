@@ -94,7 +94,7 @@ using namespace std;
 // -------------------------------GLOBALS--------------------------------------
 
 extern const uint32_t img_depth;
-extern const uint32_t array_depth;
+extern const uint32_t array_depth=3;
 extern const uint32_t secondary;
 
 //extern const std::vector<std::pair<uint64_t, uint64_t>> crop_sizes;
@@ -1002,10 +1002,26 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
+        test_inputfile = "D:/Projects/object_detection_data/open_images/test-box-annotations-bbox.csv";
+        parse_csv_file(test_inputfile, test_file);
+        std::string test_data_directory = test_file[0][0];
+        test_file.erase(test_file.begin());
+        std::vector<std::array<dlib::matrix<uint8_t>, array_depth>> test_images;
+        std::vector<std::vector<dlib::mmod_rect>> test_labels;
+        std::vector<std::string> te_image_files;
 
-        anet_type net2(dlib::input_rgb_image_sized<227>(20.2,20.2,20.2));
+        //load_oid_data(test_file, test_data_directory, test_images, test_labels, te_image_files);
 
-        std::cout << net2;
+
+        //std::vector<std::string> line = { "057677f8b281e963", "xclick", "/m/025dyy", "1", "0", "1",	"0.038348082", "0.9985251",	"0", "0", "0", "0",	"0" };
+        //std::vector<std::string> list = { "00371fbc0d38eab5", "009a31d9b7ed7f33", "01cfd6231b55de3c", "024f05451e4942bd", "057677f8b281e963", "0af4bb27bfdbf061" };
+
+        //auto lind = std::find(list.begin(), list.end(), line[0]);
+
+        //int index = std::distance(list.begin(), lind);
+        bp = 0;
+
+        // ----------------------------------------------------------------------------------------
 
         //dlib::matrix<dlib::rgb_pixel> color_map;
         //dlib::matrix<uint8_t> map, map2;

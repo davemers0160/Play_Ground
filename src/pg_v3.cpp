@@ -64,7 +64,7 @@
 #include "overlay_bounding_box.h"
 
 #include "pso.h"
-#include "pso_particle.h"
+//#include "pso_particle.h"
 //#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
 #include "rot_90.h"
@@ -544,7 +544,7 @@ double schwefel2(double x0, double x1, double x2, double x3)
     return result;
 }
 
-
+/*
 double schwefel(particle p)
 {
     // f(x_n) = -418.982887272433799807913601398*n = -837.965774544867599615827202796
@@ -565,6 +565,7 @@ double schwefel(particle p)
     return schwefel2(x1(0, 0), x1(0, 1), x2(0, 0), x2(0, 1));
 
 }	// end of schwefel
+*/
 
 // ----------------------------------------------------------------------------------------
 //
@@ -1021,6 +1022,39 @@ int main(int argc, char** argv)
         //int index = std::distance(list.begin(), lind);
         bp = 0;
 
+        int focus_step_count = 2000;
+        int max_focus_step = 2000;
+        int steps = 0;
+
+        std::vector<uint8_t> rx_data = {0, 0, 128, 0, 0, 175 };
+
+        for (idx = 0; idx < 20; ++idx)
+        {
+            char dir = (rx_data[2] & 0x80) >> 7;
+            steps = (rx_data[2] & 0x7F) << 24 | (rx_data[3] << 16) | (rx_data[4] << 8) | (rx_data[5]);
+
+            if (dir == 0)
+            {
+                if (steps + focus_step_count > max_focus_step)
+                {
+                    steps = max_focus_step - focus_step_count;
+                }
+
+                focus_step_count += steps;
+
+            }
+            else
+            {
+                if (focus_step_count - steps < 0)
+                {
+                    steps = focus_step_count;
+                }
+
+                focus_step_count -= steps;
+            }
+        }
+
+
         // ----------------------------------------------------------------------------------------
 
         //dlib::matrix<dlib::rgb_pixel> color_map;
@@ -1177,6 +1211,8 @@ int main(int argc, char** argv)
 
         // schwefel(dlib::matrix<double> x)
 
+
+        /*
         dlib::pso<particle> p(options);
         //p.set_syncfile("test.dat");
 
@@ -1241,7 +1277,7 @@ int main(int argc, char** argv)
         dlib::deserialize(filename) >> g_best;
 
         eval_net(g_best);
-
+*/
         //resnet_type net_101;
 
         //std::cout << "net_101" << std::endl;

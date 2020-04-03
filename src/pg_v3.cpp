@@ -1,7 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
-//#include <windows.h>
+#include <windows.h>
 //#include "win_network_fcns.h"
 //#include <winsock2.h>
 //#include <iphlpapi.h>
@@ -56,7 +56,8 @@
 #include "num2string.h"
 #include "file_parser.h"
 #include "read_binary_image.h" 
-#include "make_dir.h"
+//#include "make_dir.h"
+#include "file_ops.h"
 #include "ssim.h"
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
@@ -940,9 +941,53 @@ double schwefel(particle p)
 //    return -vh1.points;
 //}
 //
-//// ----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
+//void separate_paths(std::string full_path, std::vector<std::string> &path_list)
+//{
+//    const char* sep = "/\\";
+//    std::size_t file_sep = full_path.find_first_of(sep);
+//
+//    if (file_sep > full_path.length())
+//        return;
+//    
+//    do
+//    {
+//        path_list.push_back(full_path.substr(0, file_sep));
+//        full_path = full_path.substr(file_sep + 1, full_path.length() - 1);
+//        file_sep = full_path.find_first_of(sep);
+//    } while (file_sep < full_path.length());
+//
+//    if (full_path.length() > 0)
+//    {
+//        path_list.push_back(full_path);
+//    }
+//
+//}
+//
+//
+//int32_t recursive_mkdir(std::string full_path)
+//{
+//    int32_t status = -1;
+//    bool check;
+//    std::string test_path = "";
+//    std::vector<std::string> path_list;
+//
+//    separate_paths(full_path, path_list);
+//
+//    for (auto s : path_list)
+//    {
+//        test_path = test_path + s + "/";
+//        check = existence_check(test_path);
+//
+//        if (check == false)
+//            status = make_dir(test_path);
+//    }
+//
+//    return status;
+//}
 
+// ----------------------------------------------------------------------------------------
 
 int main(int argc, char** argv)
 {
@@ -994,6 +1039,20 @@ int main(int argc, char** argv)
     {
         int bp = 0;
 
+        std::string test_path = "../results/results1/results2";
+
+        bool huh = existence_check(test_path);
+        std::vector<std::string> path_list;
+        separate_paths(test_path, path_list);
+
+        // recursively run through the levels and test the top one first
+        // step one get the first folder
+        mkdir(test_path);
+
+
+
+
+        bp = 1;
 
         #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
             

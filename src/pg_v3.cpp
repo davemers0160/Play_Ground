@@ -63,6 +63,7 @@
 #include "gorgon_capture.h"
 #include "modulo.h"
 #include "overlay_bounding_box.h"
+#include "simplex_noise.h"
 
 #include "pso.h"
 //#include "pso_particle.h"
@@ -89,6 +90,7 @@
 //#include "cyclic_analysis.h"
 
 #define M_PI 3.14159265358979323846
+#define M_2PI 6.283185307179586476925286766559
 
 using namespace std;
 
@@ -112,7 +114,7 @@ std::string gorgon_savefile = "gorgon_dfd_";
 dlib::rand rnd(time(NULL));
 
 int thresh = 50, N = 11;
-const char* wndname = "Square Detection Demo";
+const char* window_name = "Test";
 
 // helper function:
 // finds a cosine of angle between vectors
@@ -568,280 +570,6 @@ double schwefel(particle p)
 }	// end of schwefel
 */
 
-// ----------------------------------------------------------------------------------------
-//
-//class vehicle
-//{
-//
-//public:
-//	
-//	uint8_t threshold = 240;
-//	double heading;
-//    const unsigned long width = 6;
-//    const unsigned long length = 8;
-//    const uint32_t radius = 1;
-//
-//    const double L = 6;     // wheel base
-//    const double r = 1;      // wheel radius
-//
-//    double points;
-//
-//    dlib::point C;
-//
-//	float max_range = 80.0;
-//    //std::vector<double> detection_angles = { -135, -90, -45, 0, 45, 90, 135 };
-//    //std::vector<double> detection_angles = {-135, -125, -115, -105, -95, -85, -75, -65, -55, -45, -35, -25, -15, -5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 95, 105, 115, 125, 135};
-//    std::vector<double> detection_angles = { -90.0, -45.0, -22.5, -11.0, -0.5, 0.5, 11.0, 22.5, 45.0, 90.0 };
-//
-//    //std::vector<double> detection_angles;
-//
-//	std::vector<float> detection_ranges;
-//
-//    vehicle(dlib::point C_, double heading_)
-//    {
-//        C = C_;
-//
-//        heading = heading_*(dlib::pi / 180.0);
-//
-//        points = 0.0;
-//
-//        //for (double idx = -90; idx <= 90; idx += 22.5)
-//        for (uint32_t idx = 0; idx < detection_angles.size(); ++idx)
-//        {
-//            detection_angles[idx] = detection_angles[idx] * (dlib::pi / 180.0);
-//            //detection_angles.push_back(idx * (dlib::pi / 180.0));
-//        }
-//
-//        detection_ranges.resize(detection_angles.size());
-//    }
-//
-//	void get_ranges(dlib::matrix<uint8_t> map, dlib::matrix<uint8_t> &map2)
-//	{
-//		uint32_t idx;
-//		uint32_t x, y;
-//
-//        uint32_t map_width = map.nc();
-//        uint32_t map_height = map.nr();
-//
-//        //double h = heading + dlib::pi;
-//
-//        dlib::assign_image(map2, map);
-//
-//        map2(C.y(), C.x()) = 200;
-//		
-//		for(idx=0; idx< detection_angles.size(); ++idx)
-//		{
-//			detection_ranges[idx] = 1.0;
-//			
-//			for(uint32_t r=1; r<max_range; ++r)
-//			{
-//
-//                x = (uint32_t)floor(r*std::cos(heading + detection_angles[idx]) + C.x() + 0.5);
-//                y = (uint32_t)floor(r*std::sin(heading + detection_angles[idx]) + C.y() + 0.5);
-//
-//				
-//                if (x<0 || x>(map_width-1))
-//                {
-//                    detection_ranges[idx] = r/ max_range;
-//                    break;
-//                }
-//
-//                if (y<0 || y>(map_height-1))
-//                {
-//                    detection_ranges[idx] = r/ max_range;
-//                    break;
-//                }
-//
-//				if(map(y,x) > threshold)
-//				{
-//					detection_ranges[idx] = r/ max_range;
-//                    break;
-//				}
-//                map2(y, x) = 128;
-//
-//			}
-//			
-//		}
-//	}   // end of get_ranges
-//	
-//    // ----------------------------------------------------------------------------------------
-//
-//    //void move(double vl, double vr)
-//    //{
-//    //    double w = (vr - vl) / L;
-//    //    double h = heading + dlib::pi;
-//    //    double R = 0.0;
-//    //    
-//    //    long x_p = 0;
-//    //    long y_p = 0;
-//
-//    //    if (std::abs(vr - vl) < 0.01)
-//    //    {
-//    //        x_p = C.x() + r * vr * std::cos(h);
-//    //        y_p = C.y() + r * vr * std::sin(h);
-//    //    }
-//    //    else
-//    //    {
-//    //        R = (L / 2.0) * (vr + vl);
-//
-//    //        double ICCx = C.x() - R * std::sin(h);
-//    //        double ICCy = C.y() + R * std::cos(h);
-//
-//    //        x_p = R * std::sin(h) * std::cos(w) + R * std::cos(h) * std::sin(w) + ICCx;
-//    //        y_p = R * std::sin(h) * std::sin(w) - R * std::cos(h) * std::cos(w) + ICCy;
-//    //    }
-//
-//    //    C = dlib::point(x_p, y_p);
-//
-//    //    heading += w;
-//
-//    //}   // end of move
-//
-//
-//    void move(double fb, double lr)
-//    {
-//
-//        //heading += lr * (dlib::pi * 0.0027777777778);    // 1/360
-//        heading += lr * (dlib::pi * 0.0055555555556);    // 2/360 
-//        //heading += lr * (dlib::pi * 0.0083333333333);    // 3/360 
-//        //heading += lr * (dlib::pi * 0.0138888888889);    // 5/360
-//
-//        if (heading >= 2.0*dlib::pi)
-//            heading -= 2.0*dlib::pi;
-//        else if(heading <= -2.0*dlib::pi)
-//            heading += 2.0*dlib::pi;
-//
-//        long x_p = C.x() + std::floor(fb * std::cos(heading) + 0.5);
-//        long y_p = C.y() + std::floor(fb * std::sin(heading) + 0.5);
-//
-//        C = dlib::point(x_p, y_p);
-//
-//    }   // end of move
-//
-//    // ----------------------------------------------------------------------------------------
-//    
-//    bool test_for_crash(dlib::matrix<uint8_t> map)
-//    {
-//        bool crash = false;
-//
-//        //double h = heading - dlib::pi / 2.0;
-//        double h = heading;
-//
-//        long Lx = C.x() - floor((L / 2.0) * std::cos(h) + 0.5);
-//        long Ly = C.y() - floor((L / 2.0) * std::sin(h) + 0.5);
-//
-//        long Rx = C.x() + floor((L / 2.0) * std::cos(h) + 0.5);
-//        long Ry = C.y() + floor((L / 2.0) * std::sin(h) + 0.5);
-//
-//        //map(C.y(), C.x()) = 200;
-//
-//        if ((C.x() < 1) || C.x() >= map.nc() - 1)
-//            crash = true;
-//
-//        else if ((C.y() < 1) || C.y() >= map.nr() - 1)
-//            crash = true;
-//
-//        else if ((Lx < 1) || Lx >= map.nc()-1)
-//            crash = true;
-//
-//        else if ((Ly < 1) || Ly >= map.nr()-1)
-//            crash = true;
-//
-//        else if ((Rx < 1) || Rx >= map.nc()-1)
-//            crash = true;
-//
-//        else if ((Ry < 1) || Ry >= map.nr()-1)
-//            crash = true;
-//
-//        else if (map(Ly, Lx) > threshold)
-//        {
-//            crash = true;
-//            map(Ly, Lx) = 100;
-//            map(Ry, Rx) = 150;
-//        }
-//        else if (map(Ry, Rx) > threshold)
-//        {
-//            crash = true;
-//            map(Ly, Lx) = 100;
-//            map(Ry, Rx) = 150;
-//        }
-//        else
-//        {
-//            map(Ly, Lx) = 100;
-//            map(Ry, Rx) = 150;
-//        }
-//
-//        return crash;
-//
-//    }   // end of test_for_crash
-//
-//    void check_for_points(dlib::matrix<uint8_t> &map)
-//    {
-//        if (map(C.y(), C.x()) == 85)
-//        {
-//            points += 10;
-//            clear_line(map);
-//        }
-//        else if (map(C.y(), C.x()) == 170)
-//        {
-//            points += 100;
-//            clear_line(map);
-//        }
-//    }
-//
-//
-//private:
-//
-//    void clear_line(dlib::matrix<uint8_t> &map)
-//    {
-//
-//        long offset = 9;
-//
-//        long x1 = std::min(std::max(C.x() - offset, 0L), map.nc() - 1); 
-//        long y1 = std::min(std::max(C.y() - offset, 0L), map.nr() - 1); 
-//
-//        long x2 = std::min(C.x() + offset, map.nc() - 1); 
-//        long y2 = std::min(C.y() + offset, map.nr() - 1); 
-//
-//        //long x1 = std::min(std::max(C.x() + (long)(offset * std::cos(heading + (dlib::pi / 2.0))), 0L), map.nc() - 1); 
-//        //long y1 = std::min(std::max(C.y() + (long)(offset * std::sin(heading + (dlib::pi / 2.0))), 0L), map.nr() - 1); 
-//
-//        //long x2 = std::min(C.x() + (long)(offset * std::cos(heading - (dlib::pi / 2.0))), map.nc() - 1); 
-//        //long y2 = std::min(C.y() + (long)(offset * std::sin(heading - (dlib::pi / 2.0))), map.nr() - 1); 
-//
-//        //dlib::point p1(x1,y1), p2(x2,y2);
-//
-//        //if (x1 > x2)
-//        //{
-//        //    p1.x() = x2;
-//        //    p2.x() = x1;
-//        //}
-//
-//        //if (y1 > y2)
-//        //{
-//        //    p1.y() = y2;
-//        //    p2.y() = y1;
-//        //}
-//
-//        dlib::rectangle rect(x1, y1, x2, y2);
-//        //dlib::rectangle rect(p1, p2);
-//
-//        dlib::matrix<uint8_t> sm = dlib::subm(map, rect);
-//
-//        cv::Mat labelImage(cv::Size(sm.nc(), sm.nr()), CV_32S);
-//        int nLabels = connectedComponents(dlib::toMat(sm), labelImage, 8);
-//            
-//            
-//            
-//        threshold_to_zero(sm, sm, 250, false);
-//
-//        dlib::set_subm(map, rect) = sm;
-//
-//    }   // end of get_points
-//};
-//
-//// ----------------------------------------------------------------------------------------
-//
 //double eval_net(particle p)
 //{
 //    long idx;
@@ -943,49 +671,52 @@ double schwefel(particle p)
 //
 // ----------------------------------------------------------------------------------------
 
-//void separate_paths(std::string full_path, std::vector<std::string> &path_list)
-//{
-//    const char* sep = "/\\";
-//    std::size_t file_sep = full_path.find_first_of(sep);
-//
-//    if (file_sep > full_path.length())
-//        return;
-//    
-//    do
-//    {
-//        path_list.push_back(full_path.substr(0, file_sep));
-//        full_path = full_path.substr(file_sep + 1, full_path.length() - 1);
-//        file_sep = full_path.find_first_of(sep);
-//    } while (file_sep < full_path.length());
-//
-//    if (full_path.length() > 0)
-//    {
-//        path_list.push_back(full_path);
-//    }
-//
-//}
-//
-//
-//int32_t recursive_mkdir(std::string full_path)
-//{
-//    int32_t status = -1;
-//    bool check;
-//    std::string test_path = "";
-//    std::vector<std::string> path_list;
-//
-//    separate_paths(full_path, path_list);
-//
-//    for (auto s : path_list)
-//    {
-//        test_path = test_path + s + "/";
-//        check = existence_check(test_path);
-//
-//        if (check == false)
-//            status = make_dir(test_path);
-//    }
-//
-//    return status;
-//}
+cv::Mat octave_image;
+
+const int scale_slider_max = 50;
+int scale_slider = 8;
+
+const int octave_slider_max = 30;
+int octave_slider = 5;
+
+const int per_slider_max = 100;
+int per_slider = 6;
+
+std::vector<cv::Vec3b> color = { cv::Vec3b(41,44,35), cv::Vec3b(57,91,61), cv::Vec3b(80,114,113), cv::Vec3b(64,126,132) };
+
+open_simplex_noise sn;
+
+
+static void on_trackbar(int, void*)
+{
+    double v;
+    uint32_t r, c;
+
+    double scale = 1.0/(double)(scale_slider+1);
+
+    double p = (double)(per_slider + 1) / 100.0;
+
+    for (r = 0; r < octave_image.rows; ++r)
+    {
+        for (c = 0; c < octave_image.cols; ++c)
+        {
+            v = sn.octave((double)r * scale, (double)c * scale, octave_slider+1, p*1.0);
+            uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * 20);
+            if(index<8)
+                octave_image.at<cv::Vec3b>(r, c) = color[0];
+            else if(index >= 8 && index < 10)
+                octave_image.at<cv::Vec3b>(r, c) = color[1];
+            else if (index >= 10 && index < 12)
+                octave_image.at<cv::Vec3b>(r, c) = color[2];
+            else
+                octave_image.at<cv::Vec3b>(r, c) = color[3];
+
+        }
+    }
+
+
+    cv::imshow(window_name, octave_image);
+}
 
 // ----------------------------------------------------------------------------------------
 
@@ -994,6 +725,7 @@ int main(int argc, char** argv)
     std::string sdate, stime;
 
     uint64_t idx=0, jdx=0;
+    uint64_t r, c;
 
     typedef std::chrono::duration<double> d_sec;
     auto start_time = chrono::system_clock::now();
@@ -1039,18 +771,82 @@ int main(int argc, char** argv)
     {
         int bp = 0;
 
-        std::string test_path = "../results/results1/results2";
 
-        bool huh = existence_check(test_path);
-        std::vector<std::string> path_list;
-        separate_paths(test_path, path_list);
+        //open_simplex_noise sn;
 
-        // recursively run through the levels and test the top one first
-        // step one get the first folder
-        mkdir(test_path);
+        //sn.init(time(NULL));
+        sn.init(0);
+
+        dlib::matrix<uint8_t> test1(320, 320);
+
+        //dlib::matrix<dlib::bgr_pixel> test1(320, 320);
+
+        octave_image = cv::Mat::zeros(cv::Size(320, 320), CV_8UC3);
+
+        cv::namedWindow(window_name, cv::WINDOW_NORMAL); // Create Window
+
+        cv::createTrackbar("Scale", window_name, &scale_slider, scale_slider_max, on_trackbar);
+        cv::createTrackbar("Octave", window_name, &octave_slider, octave_slider_max, on_trackbar);
+        cv::createTrackbar("Persistence", window_name, &per_slider, per_slider_max, on_trackbar);
+
+        on_trackbar(scale_slider, 0);
+        cv::waitKey(0);
 
 
 
+
+        //std::vector<dlib::bgr_pixel> color = { dlib::bgr_pixel(41,44,35), dlib::bgr_pixel(57,91,61), dlib::bgr_pixel(80,114,113), dlib::bgr_pixel(64,126,132) };
+        //std::vector<uint8_t> color = { 126, 114, 91, 44 };
+        double scale = 3.0;
+
+        for (r = 0; r < test1.nr(); ++r)
+        {
+            for (c = 0; c < test1.nc(); ++c)
+            {
+                double v = sn.evaluate((double)r*(1/ scale), (double)c*(1/ scale));
+                uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * color.size());
+                //test1(r, c) = color[index];
+                test1(r, c) = index;
+            }
+        }
+
+        dlib::matrix<uint8_t> test2(320, 320);// = dlib::zeros_matrix<dlib::bgr_pixel>(320, 320);
+
+        sn.init(time(NULL)+50);
+        for (r = 0; r < test2.nr(); ++r)
+        {
+            for (c = 0; c < test2.nc(); ++c)
+            {
+                double v = sn.evaluate((double)r * (1 / scale), (double)c * (1 / scale));
+                uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * color.size());
+                test2(r, c) = index;
+            }
+        }
+
+        dlib::matrix<uint8_t> test3(320, 320);
+
+        //for (r = 0; r < test3.nr(); ++r)
+        //{
+        //    for (c = 0; c < test3.nc(); ++c)
+        //    {
+        //        double v = sn.octave((double)r*(1 / 50.0), (double)c*(1 / 50.0), 4, 10);
+        //        uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * color.size());
+        //        test3(r, c) = index;
+        //    }
+        //}
+
+        //dlib::matrix<uint8_t> test4 = dlib::matrix_cast<uint8_t>(0.5* dlib::matrix_cast<float>(test2) + 0.5* dlib::matrix_cast<float>(rotate_90(test1,1)));
+        dlib::matrix<dlib::bgr_pixel> test4(320, 320);
+
+        //for (r = 0; r < test4.nr(); ++r)
+        //{
+        //    for (c = 0; c < test4.nc(); ++c)
+        //    {
+        //        uint8_t index = (uint8_t)((float)test2(r, c) * 0.5 + (float)test1(r, c) * 0.5);
+        //        //uint8_t index = (uint8_t)((1+test2a(r, c) + test1(r, c))%color.size());
+        //        test4(r, c) = color[index];
+        //    }
+        //}
 
         bp = 1;
 
@@ -1062,13 +858,13 @@ int main(int argc, char** argv)
             std::cout << "Path: " << exe_path << std::endl;
         #endif  
 
-        test_inputfile = "D:/Projects/object_detection_data/open_images/test-box-annotations-bbox.csv";
-        parse_csv_file(test_inputfile, test_file);
-        std::string test_data_directory = test_file[0][0];
-        test_file.erase(test_file.begin());
-        std::vector<std::array<dlib::matrix<uint8_t>, array_depth>> test_images;
-        std::vector<std::vector<dlib::mmod_rect>> test_labels;
-        std::vector<std::string> te_image_files;
+        //test_inputfile = "D:/Projects/object_detection_data/open_images/test-box-annotations-bbox.csv";
+        //parse_csv_file(test_inputfile, test_file);
+        //std::string test_data_directory = test_file[0][0];
+        //test_file.erase(test_file.begin());
+        //std::vector<std::array<dlib::matrix<uint8_t>, array_depth>> test_images;
+        //std::vector<std::vector<dlib::mmod_rect>> test_labels;
+        //std::vector<std::string> te_image_files;
 
         //load_oid_data(test_file, test_data_directory, test_images, test_labels, te_image_files);
 

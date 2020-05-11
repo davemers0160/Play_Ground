@@ -26,6 +26,7 @@
 #include <array>
 #include <algorithm>
 #include <type_traits>
+#include <list>
 
 // dlib includes
 #include "dlib/rand.h"
@@ -74,6 +75,7 @@
 //#include "dlib_elu.h"
 #include "center_cropper.h"
 //#include "dfd_cropper.h"
+#include "target_locator.h"
 
 // new copy and set learning rate includes
 #include "copy_dlib_net.h"
@@ -223,24 +225,6 @@ static void drawSquares(cv::Mat& image, const vector<vector<cv::Point> >& square
     cv::imshow("test", image);
 }
 
-
-//using mnist_net_type = dlib::loss_multiclass_log<
-//    dlib::fc<10,
-//    dlib::prelu<dlib::fc<84,
-//    dlib::prelu<dlib::fc<120,
-//    dlib::max_pool<2, 2, 2, 2, dlib::prelu<dlib::con<16, 5, 5, 1, 1,
-//    dlib::max_pool<2, 2, 2, 2, dlib::prelu<dlib::con<6, 5, 5, 1, 1,
-//    dlib::input<dlib::matrix<unsigned char>>
-//    >>>>>>>>>>>>;
-
-//using mnist_net_type = dlib::loss_multiclass_log<
-//    dlib::fc<10,
-//    dlib::htan<dlib::fc<84,
-//    dlib::sig<dlib::con<120, 5, 5, 1, 1,
-//    dlib::sig<dlib::max_pool<2, 2, 2, 2, dlib::con<16, 5, 5, 1, 1,
-//    dlib::sig<dlib::max_pool<2, 2, 2, 2, dlib::con<6, 5, 5, 1, 1,
-//    dlib::input<dlib::matrix<unsigned char>>
-//    >>>>>>>>>>>>;
 
 // ----------------------------------------------------------------------------------------
 /*
@@ -569,106 +553,6 @@ double schwefel(particle p)
 
 }	// end of schwefel
 */
-
-//double eval_net(particle p)
-//{
-//    long idx;
-//    dlib::matrix<uint8_t> map, map2;
-//
-//    dlib::point starting_point = dlib::point(12, 10);
-//    uint64_t current_points = 0;
-//    uint64_t moves_without_points = 0;
-//
-//    dlib::assign_image(map, color_map);
-//
-//    vehicle vh1(starting_point, 90.0);
-//
-//    bool crash = false;
-//
-//    long l2_size = dlib::layer<2>(c_net).layer_details().get_layer_params().size();
-//    auto l2_data = dlib::layer<2>(c_net).layer_details().get_layer_params().host();
-//    dlib::matrix<double> x1 = p.get_x1();
-//
-//    // copy values into the network
-//    for (idx = 0; idx < l2_size; ++idx)
-//        *(l2_data + idx) = (float)x1(0,idx);
-//
-//    long l3_size = dlib::layer<4>(c_net).layer_details().get_layer_params().size();
-//    auto l3_data = dlib::layer<4>(c_net).layer_details().get_layer_params().host();
-//    dlib::matrix<double> x2 = p.get_x2();
-//
-//    for (idx = 0; idx < l3_size; ++idx)
-//        *(l3_data + idx) = (float)x2(0, idx);
-//
-//    long l4_size = dlib::layer<6>(c_net).layer_details().get_layer_params().size();
-//    auto l4_data = dlib::layer<6>(c_net).layer_details().get_layer_params().host();
-//    dlib::matrix<double> x3 = p.get_x3();
-//
-//    for (idx = 0; idx < l4_size; ++idx)
-//        *(l4_data + idx) = (float)x3(0, idx);
-//
-//    long l5_size = dlib::layer<8>(c_net).layer_details().get_layer_params().size();
-//    auto l5_data = dlib::layer<8>(c_net).layer_details().get_layer_params().host();
-//    dlib::matrix<double> x4 = p.get_x4();
-//
-//    for (idx = 0; idx < l5_size; ++idx)
-//        *(l5_data + idx) = (float)x4(0, idx);
-//
-//    uint64_t movement_count = 0;
-//    
-//    while (crash == false)
-//    {
-//        //current_points = vh1.points;
-//        
-//        vh1.check_for_points(map);
-//        vh1.get_ranges(map, map2);
-//        win.clear_overlay();
-//        win.set_image(map2);
-//
-//        dlib::matrix<float> m3 = dlib::trans(dlib::mat(vh1.detection_ranges));
-//
-//        //std::cout << dlib::csv << m3 << std::endl;
-//
-//        dlib::matrix<float> m2 = c_net(m3);
-//
-//        vh1.move(m2(0, 0), m2(1, 0));
-//
-//
-//
-//        //vh1.move(2 * 1, 0);
-//        //vh1.move(2 * 1, -0.5);
-//
-//        //vh1.move(2 * -1, 0.5);
-//        //vh1.move(2 * -1, -0.5);
-//
-//        std::string title = "Particle Number: " + num2str(p.get_number(), "%03d") + ", B: " + num2str(vh1.heading*180.0/dlib::pi, "%2.4f") + ", L/R: " + num2str(m2(0, 0), "%2.4f/") + num2str(m2(1, 0), "%2.4f") + ", Points: " + num2str(-vh1.points, "%4.0f");
-//        win.set_title(title);
-//
-//        if(current_points == vh1.points)
-//        {
-//            ++movement_count;
-//        }
-//        else
-//        {
-//            current_points = vh1.points;
-//            movement_count = 0;
-//        }
-//
-//        crash = vh1.test_for_crash(map);
-//
-//        if (movement_count > 1000)
-//        {
-//            std::cout << "Count" << std::endl;
-//            crash = true;
-//        }
-//
-//    }
-//
-//    std::cout << "Particle Number: " << num2str(p.get_number(), "%03d") << ", Points: " << -vh1.points << std::endl;
-//    //dlib::sleep(200);
-//    return -vh1.points;
-//}
-//
 // ----------------------------------------------------------------------------------------
 
 cv::Mat octave_image;
@@ -718,8 +602,217 @@ static void on_trackbar(int, void*)
     cv::imshow(window_name, octave_image);
 }
 
-// ----------------------------------------------------------------------------------------
+//// ----------------------------------------------------------------------------------------
+//
+//typedef struct observation {
+//
+//    float range = 0;
+//    std::vector<float> point;
+//
+//    observation() = default;
+//
+//    observation(float r_, std::vector<float> p_)
+//    {
+//        range = r_;
+//        point = p_;
+//    }
+//
+//} observation;
 
+
+//class target_locator
+//{
+//
+//public:
+//
+//    // the unique identifier for the target
+//    uint32_t id;
+//
+//    // location of the target <- most likely unknown
+//    std::vector<float> location;
+//
+//    // observations of the target from a known position
+//    std::list<observation> obs;
+//    
+//    // ----------------------------------------------------------------------------------------
+//    target_locator() = default;
+//
+//    target_locator(uint32_t id_) : id(id_) {}
+//
+//    target_locator(uint32_t id_, std::list<observation> obs_) : id(id_)
+//    {
+//        obs = obs_;
+//    }
+//
+//    // ----------------------------------------------------------------------------------------
+//    void set_max_observations(uint32_t m_) { max_observations = m_; }
+//
+//    // ----------------------------------------------------------------------------------------
+//    void set_location(std::vector<float> point_)
+//    {
+//        location.clear();
+//        location = point_;
+//    }
+//
+//    // ----------------------------------------------------------------------------------------
+//    bool add_observation(observation new_obs)
+//    {
+//        bool add_obs = true;
+//        double r;
+//        for (observation o : obs)
+//        {
+//            r = get_range(o, new_obs.point);
+//            if (r < min_range)
+//                add_obs &= false;
+//        }
+//
+//        if (add_obs)
+//        {
+//            obs.push_front(new_obs);
+//            if (obs.size() > max_observations)
+//            {
+//                obs.pop_back();
+//            }
+//        }
+//
+//        return add_obs;
+//
+//    }   // end of add_observation
+//
+//    // ----------------------------------------------------------------------------------------
+//    double get_range(observation o1, std::vector<float> p1)
+//    {
+//        uint32_t idx;
+//        double r = 0;
+//
+//        if (o1.point.size() != p1.size())
+//        {
+//            std::cout << "position dimensions do not match..." << std::endl;
+//            return r;
+//        }
+//
+//        for (idx = 0; idx < o1.point.size(); ++idx)
+//        {
+//            r += (o1.point[idx] - p1[idx]) * (o1.point[idx] - p1[idx]);
+//        }
+//
+//        return std::sqrt(r);
+//
+//    }   // end of get_range
+//
+//    //double get_range(std::vector<float> point2)
+//    //{
+//    //    uint32_t idx;
+//    //    double r = 0;
+//
+//    //    if (point.size() != point2.size())
+//    //    {
+//    //        std::cout << "position dimensions do not match..." << std::endl;
+//    //        return r;
+//    //    }
+//
+//    //    for (idx = 0; idx < point.size(); ++idx)
+//    //    {
+//    //        r += (double)(point[idx] - point2[idx]) * (double)(point[idx] - point2[idx]);
+//    //    }
+//
+//    //    return std::sqrt(r);
+//
+//    //}   // end of get_range
+//
+//    // ----------------------------------------------------------------------------------------
+//    uint32_t get_position()
+//    {
+//        uint32_t idx, jdx;
+//        uint32_t stop_code = 0;
+//
+//        float error = 1.0;
+//        float delta = 1.0e-4;
+//        uint32_t iteration = 0;
+//        uint32_t max_iteration = 30;
+//
+//        // run a check to make sure that the inputs are the same size
+//        if ((obs.size() == 0) || (obs.front().point.size() == 0))
+//        {
+//            std::cout << "ranges and vehicles sizes do not match." << std::endl;
+//            return stop_code;
+//        }
+//
+//        // check for the minimum number of observations, typically one more than the number of 
+//        // dimensions to solve for
+//        if (obs.size() < (obs.front().point.size() + 1))
+//        {
+//            std::cout << "Not enough observations to make an accurate estimate of the position." << std::endl;
+//            return stop_code;
+//        }
+//
+//        // use the current object position as the initial guess
+//        std::vector<float> Po(location);
+//
+//        // get the matrix sizes R^(m x n):
+//        // - m is the number of observation measurements
+//        // - n is the number of dimensions that a position has (x,y,z,t,...) 
+//        uint32_t num_observations = obs.size();
+//        uint32_t num_dimensions = obs.front().point.size();
+//
+//        dlib::matrix<float> A(num_observations, num_dimensions);
+//        dlib::matrix<float> b(num_observations, 1);
+//        dlib::matrix<float> x_hat;
+//
+//        // this is an iterative least squares approach
+//        // looking to solve Ax = b => x = A^(-1)b
+//        while(stop_code == 0)
+//        //while ((error > delta) && (iteration < max_iteration))
+//        {
+//            // build A matrix
+//            //for (idx = 0; idx < num_observations; idx++)
+//            idx = 0;
+//            for(observation o : obs)
+//            {
+//                for (jdx = 0; jdx < num_dimensions; ++jdx)
+//                {
+//                    // compute the partial derivatives and place into A matrix
+//                    A(idx, jdx) = -(o.point[jdx] - Po[jdx]) / (o.range);
+//                }
+//
+//                // calculate delta P
+//                b(idx++, 0) = o.range - get_range(o, Po);
+//            }
+//
+//            // x_hat = (((At*A)^-1)*At)*b
+//            x_hat = (dlib::pinv(dlib::trans(A) * A) * dlib::trans(A)) * b;
+//
+//            // update the location estimate
+//            for (idx = 0; idx < num_dimensions; ++idx)
+//            {
+//                Po[idx] += x_hat(idx, 0);
+//            }
+//
+//            error = std::sqrt(dlib::dot(x_hat, x_hat));
+//            ++iteration;
+//
+//            if (error <= delta)
+//                stop_code = 1;      // this means that the error between the updates is small
+//
+//            if (iteration >= max_iteration)
+//                stop_code = 2;      // this means that the maximum number of interations was reached
+//
+//        }   // end of while loop
+//
+//        // put the updated position back into object2
+//        set_location(Po);
+//
+//        return stop_code;
+//
+//    }   // end of get_position
+//
+//private:
+//    uint32_t max_observations = 20;
+//    double min_range = 1.0;
+//};
+
+
+// ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
     std::string sdate, stime;
@@ -769,94 +862,115 @@ int main(int argc, char** argv)
 
     try
     {
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+
+#else
+        std::cout << "argv[0]: " << std::string(argv[0]) << std::endl;
+        std::string exe_path = get_linux_path();
+        std::cout << "Path: " << exe_path << std::endl;
+#endif
+
         int bp = 0;
+
+
+        uint32_t intensity = (uint32_t)rnd.get_integer_in_range(2, 11);
 
 
         //open_simplex_noise sn;
 
         //sn.init(time(NULL));
-        sn.init(0);
+        //sn.init(0);
 
-        dlib::matrix<uint8_t> test1(320, 320);
+        //dlib::matrix<uint8_t> test1(320, 320);
 
-        //dlib::matrix<dlib::bgr_pixel> test1(320, 320);
+        ////dlib::matrix<dlib::bgr_pixel> test1(320, 320);
 
-        octave_image = cv::Mat::zeros(cv::Size(320, 320), CV_8UC3);
+        //octave_image = cv::Mat::zeros(cv::Size(320, 320), CV_8UC3);
 
-        cv::namedWindow(window_name, cv::WINDOW_NORMAL); // Create Window
+        //cv::namedWindow(window_name, cv::WINDOW_NORMAL); // Create Window
 
-        cv::createTrackbar("Scale", window_name, &scale_slider, scale_slider_max, on_trackbar);
-        cv::createTrackbar("Octave", window_name, &octave_slider, octave_slider_max, on_trackbar);
-        cv::createTrackbar("Persistence", window_name, &per_slider, per_slider_max, on_trackbar);
+        //cv::createTrackbar("Scale", window_name, &scale_slider, scale_slider_max, on_trackbar);
+        //cv::createTrackbar("Octave", window_name, &octave_slider, octave_slider_max, on_trackbar);
+        //cv::createTrackbar("Persistence", window_name, &per_slider, per_slider_max, on_trackbar);
 
-        on_trackbar(scale_slider, 0);
-        cv::waitKey(0);
+        //on_trackbar(scale_slider, 0);
+        //cv::waitKey(0);
+
+        // actual anchor position 2,5
+        //std::vector<float> ranges;
+        //std::vector<position> vehicle;
+
+        target_locator anchor(0x1234);
+        //position anchor;
+        uint32_t stop_code;
+        bool add_obs;
+
+        //observation o1(5.3851648, { 0,0 });
+        add_obs = anchor.add_observation(observation(5.3851648, { 0,0 }));
+        //vehicle.push_back(position({ 0,0 }));
+        //ranges.push_back(5.3851648);
+        //ranges.push_back(5.1);
+
+        add_obs = anchor.add_observation(observation(4.472135955, { 4,1 }));
+        //vehicle.push_back(position({ 4,1 }));
+        //ranges.push_back(4.472135955);
+        //ranges.push_back(4.6);
+
+        add_obs = anchor.add_observation(observation(6.7082039325, { 8,2 }));
+        //vehicle.push_back(position({ 8,2 }));
+        //ranges.push_back(6.7082039325);
+        //ranges.push_back(6.65);
 
 
+        anchor.set_location({ 5,5 });
+        //anchor.set_position({ 5,5 });
 
-
-        //std::vector<dlib::bgr_pixel> color = { dlib::bgr_pixel(41,44,35), dlib::bgr_pixel(57,91,61), dlib::bgr_pixel(80,114,113), dlib::bgr_pixel(64,126,132) };
-        //std::vector<uint8_t> color = { 126, 114, 91, 44 };
-        double scale = 3.0;
-
-        for (r = 0; r < test1.nr(); ++r)
-        {
-            for (c = 0; c < test1.nc(); ++c)
-            {
-                double v = sn.evaluate((double)r*(1/ scale), (double)c*(1/ scale));
-                uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * color.size());
-                //test1(r, c) = color[index];
-                test1(r, c) = index;
-            }
-        }
-
-        dlib::matrix<uint8_t> test2(320, 320);// = dlib::zeros_matrix<dlib::bgr_pixel>(320, 320);
-
-        sn.init(time(NULL)+50);
-        for (r = 0; r < test2.nr(); ++r)
-        {
-            for (c = 0; c < test2.nc(); ++c)
-            {
-                double v = sn.evaluate((double)r * (1 / scale), (double)c * (1 / scale));
-                uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * color.size());
-                test2(r, c) = index;
-            }
-        }
-
-        dlib::matrix<uint8_t> test3(320, 320);
-
-        //for (r = 0; r < test3.nr(); ++r)
-        //{
-        //    for (c = 0; c < test3.nc(); ++c)
-        //    {
-        //        double v = sn.octave((double)r*(1 / 50.0), (double)c*(1 / 50.0), 4, 10);
-        //        uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * color.size());
-        //        test3(r, c) = index;
-        //    }
-        //}
-
-        //dlib::matrix<uint8_t> test4 = dlib::matrix_cast<uint8_t>(0.5* dlib::matrix_cast<float>(test2) + 0.5* dlib::matrix_cast<float>(rotate_90(test1,1)));
-        dlib::matrix<dlib::bgr_pixel> test4(320, 320);
-
-        //for (r = 0; r < test4.nr(); ++r)
-        //{
-        //    for (c = 0; c < test4.nc(); ++c)
-        //    {
-        //        uint8_t index = (uint8_t)((float)test2(r, c) * 0.5 + (float)test1(r, c) * 0.5);
-        //        //uint8_t index = (uint8_t)((1+test2a(r, c) + test1(r, c))%color.size());
-        //        test4(r, c) = color[index];
-        //    }
-        //}
+        stop_code = anchor.get_position();
 
         bp = 1;
 
-        #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
-            
-        #else
-            std::cout << "argv[0]: " << std::string(argv[0]) << std::endl;
-            std::string exe_path = get_linux_path();
-            std::cout << "Path: " << exe_path << std::endl;
-        #endif  
+        add_obs = anchor.add_observation(observation(6.0, { 5,0 }));
+        //vehicle.push_back(position({ 5,0 }));
+        ////ranges.push_back(5.83095189);
+        //ranges.push_back(6.0);
+
+        stop_code = anchor.get_position();
+
+        bp = 2;
+
+        observation new_obs(8.2, { 10,3 });
+
+        //float min_range = 1.1;
+        //double r;
+        //for (observation o : anchor.obs)
+        //{
+        //    r = anchor.get_range(o, new_obs.point);
+        //    if (r < min_range)
+        //        too_close &= false;
+        //}
+
+        //if (too_close)
+        //{
+            add_obs = anchor.add_observation(new_obs);
+            stop_code = anchor.get_position();
+        //}
+
+        observation new_obs2(4.2, { 0,0.9 });
+        //too_close = true;
+        //for (observation o : anchor.obs)
+        //{
+        //    r = anchor.get_range(o, new_obs2.point);
+        //    if (r < min_range)
+        //        too_close &= false;
+        //}
+
+        //if (too_close)
+        //{
+            add_obs = anchor.add_observation(new_obs2);
+            stop_code = anchor.get_position();
+        //}
+
+        bp = 0;
 
         //test_inputfile = "D:/Projects/object_detection_data/open_images/test-box-annotations-bbox.csv";
         //parse_csv_file(test_inputfile, test_file);
@@ -876,38 +990,6 @@ int main(int argc, char** argv)
 
         //int index = std::distance(list.begin(), lind);
         bp = 0;
-
-        int focus_step_count = 2000;
-        int max_focus_step = 2000;
-        int steps = 0;
-
-        std::vector<uint8_t> rx_data = {0, 0, 128, 0, 0, 175 };
-
-        for (idx = 0; idx < 20; ++idx)
-        {
-            char dir = (rx_data[2] & 0x80) >> 7;
-            steps = (rx_data[2] & 0x7F) << 24 | (rx_data[3] << 16) | (rx_data[4] << 8) | (rx_data[5]);
-
-            if (dir == 0)
-            {
-                if (steps + focus_step_count > max_focus_step)
-                {
-                    steps = max_focus_step - focus_step_count;
-                }
-
-                focus_step_count += steps;
-
-            }
-            else
-            {
-                if (focus_step_count - steps < 0)
-                {
-                    steps = focus_step_count;
-                }
-
-                focus_step_count -= steps;
-            }
-        }
 
 
         // ----------------------------------------------------------------------------------------

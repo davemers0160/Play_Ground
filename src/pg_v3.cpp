@@ -602,215 +602,141 @@ static void on_trackbar(int, void*)
     cv::imshow(window_name, octave_image);
 }
 
-//// ----------------------------------------------------------------------------------------
-//
-//typedef struct observation {
-//
-//    float range = 0;
-//    std::vector<float> point;
-//
-//    observation() = default;
-//
-//    observation(float r_, std::vector<float> p_)
-//    {
-//        range = r_;
-//        point = p_;
-//    }
-//
-//} observation;
+// ----------------------------------------------------------------------------------------
 
 
-//class target_locator
-//{
-//
-//public:
-//
-//    // the unique identifier for the target
-//    uint32_t id;
-//
-//    // location of the target <- most likely unknown
-//    std::vector<float> location;
-//
-//    // observations of the target from a known position
-//    std::list<observation> obs;
-//    
-//    // ----------------------------------------------------------------------------------------
-//    target_locator() = default;
-//
-//    target_locator(uint32_t id_) : id(id_) {}
-//
-//    target_locator(uint32_t id_, std::list<observation> obs_) : id(id_)
-//    {
-//        obs = obs_;
-//    }
-//
-//    // ----------------------------------------------------------------------------------------
-//    void set_max_observations(uint32_t m_) { max_observations = m_; }
-//
-//    // ----------------------------------------------------------------------------------------
-//    void set_location(std::vector<float> point_)
-//    {
-//        location.clear();
-//        location = point_;
-//    }
-//
-//    // ----------------------------------------------------------------------------------------
-//    bool add_observation(observation new_obs)
-//    {
-//        bool add_obs = true;
-//        double r;
-//        for (observation o : obs)
-//        {
-//            r = get_range(o, new_obs.point);
-//            if (r < min_range)
-//                add_obs &= false;
-//        }
-//
-//        if (add_obs)
-//        {
-//            obs.push_front(new_obs);
-//            if (obs.size() > max_observations)
-//            {
-//                obs.pop_back();
-//            }
-//        }
-//
-//        return add_obs;
-//
-//    }   // end of add_observation
-//
-//    // ----------------------------------------------------------------------------------------
-//    double get_range(observation o1, std::vector<float> p1)
-//    {
-//        uint32_t idx;
-//        double r = 0;
-//
-//        if (o1.point.size() != p1.size())
-//        {
-//            std::cout << "position dimensions do not match..." << std::endl;
-//            return r;
-//        }
-//
-//        for (idx = 0; idx < o1.point.size(); ++idx)
-//        {
-//            r += (o1.point[idx] - p1[idx]) * (o1.point[idx] - p1[idx]);
-//        }
-//
-//        return std::sqrt(r);
-//
-//    }   // end of get_range
-//
-//    //double get_range(std::vector<float> point2)
-//    //{
-//    //    uint32_t idx;
-//    //    double r = 0;
-//
-//    //    if (point.size() != point2.size())
-//    //    {
-//    //        std::cout << "position dimensions do not match..." << std::endl;
-//    //        return r;
-//    //    }
-//
-//    //    for (idx = 0; idx < point.size(); ++idx)
-//    //    {
-//    //        r += (double)(point[idx] - point2[idx]) * (double)(point[idx] - point2[idx]);
-//    //    }
-//
-//    //    return std::sqrt(r);
-//
-//    //}   // end of get_range
-//
-//    // ----------------------------------------------------------------------------------------
-//    uint32_t get_position()
-//    {
-//        uint32_t idx, jdx;
-//        uint32_t stop_code = 0;
-//
-//        float error = 1.0;
-//        float delta = 1.0e-4;
-//        uint32_t iteration = 0;
-//        uint32_t max_iteration = 30;
-//
-//        // run a check to make sure that the inputs are the same size
-//        if ((obs.size() == 0) || (obs.front().point.size() == 0))
-//        {
-//            std::cout << "ranges and vehicles sizes do not match." << std::endl;
-//            return stop_code;
-//        }
-//
-//        // check for the minimum number of observations, typically one more than the number of 
-//        // dimensions to solve for
-//        if (obs.size() < (obs.front().point.size() + 1))
-//        {
-//            std::cout << "Not enough observations to make an accurate estimate of the position." << std::endl;
-//            return stop_code;
-//        }
-//
-//        // use the current object position as the initial guess
-//        std::vector<float> Po(location);
-//
-//        // get the matrix sizes R^(m x n):
-//        // - m is the number of observation measurements
-//        // - n is the number of dimensions that a position has (x,y,z,t,...) 
-//        uint32_t num_observations = obs.size();
-//        uint32_t num_dimensions = obs.front().point.size();
-//
-//        dlib::matrix<float> A(num_observations, num_dimensions);
-//        dlib::matrix<float> b(num_observations, 1);
-//        dlib::matrix<float> x_hat;
-//
-//        // this is an iterative least squares approach
-//        // looking to solve Ax = b => x = A^(-1)b
-//        while(stop_code == 0)
-//        //while ((error > delta) && (iteration < max_iteration))
-//        {
-//            // build A matrix
-//            //for (idx = 0; idx < num_observations; idx++)
-//            idx = 0;
-//            for(observation o : obs)
-//            {
-//                for (jdx = 0; jdx < num_dimensions; ++jdx)
-//                {
-//                    // compute the partial derivatives and place into A matrix
-//                    A(idx, jdx) = -(o.point[jdx] - Po[jdx]) / (o.range);
-//                }
-//
-//                // calculate delta P
-//                b(idx++, 0) = o.range - get_range(o, Po);
-//            }
-//
-//            // x_hat = (((At*A)^-1)*At)*b
-//            x_hat = (dlib::pinv(dlib::trans(A) * A) * dlib::trans(A)) * b;
-//
-//            // update the location estimate
-//            for (idx = 0; idx < num_dimensions; ++idx)
-//            {
-//                Po[idx] += x_hat(idx, 0);
-//            }
-//
-//            error = std::sqrt(dlib::dot(x_hat, x_hat));
-//            ++iteration;
-//
-//            if (error <= delta)
-//                stop_code = 1;      // this means that the error between the updates is small
-//
-//            if (iteration >= max_iteration)
-//                stop_code = 2;      // this means that the maximum number of interations was reached
-//
-//        }   // end of while loop
-//
-//        // put the updated position back into object2
-//        set_location(Po);
-//
-//        return stop_code;
-//
-//    }   // end of get_position
-//
-//private:
-//    uint32_t max_observations = 20;
-//    double min_range = 1.0;
-//};
+void generate_random_image(
+    cv::Mat& img,
+    cv::RNG rng,
+    long nr, 
+    long nc, 
+    unsigned int N, 
+    double scale   
+)
+{
+    unsigned int idx;
 
+    // get the random background color
+    cv::Scalar bg_color = cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+
+    // create the image with the random background color
+    img = cv::Mat(nr, nc, CV_8UC3, bg_color);
+
+    // create N shapes
+    for (idx = 0; idx < N; ++idx)
+    {
+
+        // get the random color for the shape
+        cv::Scalar C = cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+
+        // make sure the color picked is not the background color
+        while (C == bg_color)
+        {
+            C = cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+        }
+
+        // generate the random point
+        long x = rng.uniform(0, nc);
+        long y = rng.uniform(0, nr);
+        long r1, r2, h, w, s;
+        double a;
+
+        cv::RotatedRect rect;
+        cv::Point2f vertices2f[4];
+        cv::Point vertices[4];
+        //cv::Point pt[2][3];
+        std::vector<cv::Point> pts(3);
+        std::vector<std::vector<cv::Point> > vpts(1);
+        vpts.push_back(pts);
+
+
+        long x_1; //= -window_width / 2;
+        long x_2; //= window_width * 3 / 2;
+        long y_1; //= -window_width / 2;
+        long y_2; //= window_width * 3 / 2;
+
+        // get the shape type
+        switch (rng.uniform(0, 3))
+        {
+        case 0:
+            
+            // pick a random radi for the ellipse
+            r1 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
+            r2 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
+            a = rng.uniform(0.0, 360.0);
+
+            cv::ellipse(img, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, C, -1, cv::LineTypes::LINE_8, 0);
+            break;
+
+        case 1:
+
+            h = std::floor(scale * rng.uniform(0, std::min(nr, nc)));
+            w = std::floor(scale * rng.uniform(0, std::min(nr, nc)));
+            a = rng.uniform(0.0, 360.0);
+
+            // Create the rotated rectangle
+            rect = cv::RotatedRect(cv::Point(x,y), cv::Size(w,h), a);
+
+            // We take the edges that OpenCV calculated for us
+            rect.points(vertices2f);
+
+            // Convert them so we can use them in a fillConvexPoly
+            for (int jdx = 0; jdx < 4; ++jdx) 
+            {
+                vertices[jdx] = vertices2f[jdx];
+            }
+
+            // Now we can fill the rotated rectangle with our specified color
+            cv::fillConvexPoly(img, vertices, 4, C);
+            break;
+
+        case 2:
+
+            s = rng.uniform(3, 9);
+            x_1 = -(0.5 * scale * nc);
+            x_2 = (1.5 * scale * nc);
+            y_1 = -(0.5 * scale * nr);
+            y_2 = (1.5 * scale * nc);
+
+            pts.clear();
+
+            for (int jdx = 0; jdx < s; ++jdx)
+            {
+                pts.push_back(cv::Point(rng.uniform(x_1, x_2) + x, rng.uniform(y_1, y_2) + y));
+            }
+
+            vpts[0] = pts;
+            cv::fillPoly(img, vpts, C, cv::LineTypes::LINE_8, 0);
+
+            break;
+
+        }
+
+    }
+
+}
+
+
+void generate_random_image(unsigned char*& img,
+    long long seed,
+    long nr,
+    long nc,
+    unsigned int N,
+    double scale
+)
+{
+    cv::RNG rng(seed);
+
+    cv::Mat cv_img;
+
+    generate_random_image(cv_img, rng, nr, nc, N, scale);
+
+    //    memcpy((void*)data_params, &network_output(0, 0), network_output.size() * sizeof(float));
+    img = new unsigned char[cv_img.total()*3];
+    memcpy((void*)img, cv_img.ptr<unsigned char>(0), cv_img.total()*3);
+
+    int bp = 0;
+}
 
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -872,125 +798,27 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
-
         uint32_t intensity = (uint32_t)rnd.get_integer_in_range(2, 11);
 
+        cv::Mat img;
 
-        //open_simplex_noise sn;
+        cv::RNG rng(123456);
 
-        //sn.init(time(NULL));
-        //sn.init(0);
+        long nr = 500;
+        long nc = 500;
+        unsigned int N = 800;
+        double scale = (double)50 / (double)nc;
 
-        //dlib::matrix<uint8_t> test1(320, 320);
+        generate_random_image(img, rng, nr, nc, N, scale);
 
-        ////dlib::matrix<dlib::bgr_pixel> test1(320, 320);
-
-        //octave_image = cv::Mat::zeros(cv::Size(320, 320), CV_8UC3);
-
-        //cv::namedWindow(window_name, cv::WINDOW_NORMAL); // Create Window
-
-        //cv::createTrackbar("Scale", window_name, &scale_slider, scale_slider_max, on_trackbar);
-        //cv::createTrackbar("Octave", window_name, &octave_slider, octave_slider_max, on_trackbar);
-        //cv::createTrackbar("Persistence", window_name, &per_slider, per_slider_max, on_trackbar);
-
-        //on_trackbar(scale_slider, 0);
-        //cv::waitKey(0);
-
-        // actual anchor position 2,5
-        //std::vector<float> ranges;
-        //std::vector<position> vehicle;
-
-        target_locator anchor(0x1234);
-        //position anchor;
-        uint32_t stop_code;
-        bool add_obs;
-
-        //observation o1(5.3851648, { 0,0 });
-        add_obs = anchor.add_observation(observation(5.3851648, { 0,0 }));
-        //vehicle.push_back(position({ 0,0 }));
-        //ranges.push_back(5.3851648);
-        //ranges.push_back(5.1);
-
-        add_obs = anchor.add_observation(observation(4.472135955, { 4,1 }));
-        //vehicle.push_back(position({ 4,1 }));
-        //ranges.push_back(4.472135955);
-        //ranges.push_back(4.6);
-
-        add_obs = anchor.add_observation(observation(6.7082039325, { 8,2 }));
-        //vehicle.push_back(position({ 8,2 }));
-        //ranges.push_back(6.7082039325);
-        //ranges.push_back(6.65);
+        bp = 0;
 
 
-        anchor.set_location({ 5,5 });
-        //anchor.set_position({ 5,5 });
+        unsigned char* test;
 
-        stop_code = anchor.get_position();
+        generate_random_image(test, 123456, nr, nc, N, scale);
 
         bp = 1;
-
-        add_obs = anchor.add_observation(observation(6.0, { 5,0 }));
-        //vehicle.push_back(position({ 5,0 }));
-        ////ranges.push_back(5.83095189);
-        //ranges.push_back(6.0);
-
-        stop_code = anchor.get_position();
-
-        bp = 2;
-
-        observation new_obs(8.2, { 10,3 });
-
-        //float min_range = 1.1;
-        //double r;
-        //for (observation o : anchor.obs)
-        //{
-        //    r = anchor.get_range(o, new_obs.point);
-        //    if (r < min_range)
-        //        too_close &= false;
-        //}
-
-        //if (too_close)
-        //{
-            add_obs = anchor.add_observation(new_obs);
-            stop_code = anchor.get_position();
-        //}
-
-        observation new_obs2(4.2, { 0,0.9 });
-        //too_close = true;
-        //for (observation o : anchor.obs)
-        //{
-        //    r = anchor.get_range(o, new_obs2.point);
-        //    if (r < min_range)
-        //        too_close &= false;
-        //}
-
-        //if (too_close)
-        //{
-            add_obs = anchor.add_observation(new_obs2);
-            stop_code = anchor.get_position();
-        //}
-
-        bp = 0;
-
-        //test_inputfile = "D:/Projects/object_detection_data/open_images/test-box-annotations-bbox.csv";
-        //parse_csv_file(test_inputfile, test_file);
-        //std::string test_data_directory = test_file[0][0];
-        //test_file.erase(test_file.begin());
-        //std::vector<std::array<dlib::matrix<uint8_t>, array_depth>> test_images;
-        //std::vector<std::vector<dlib::mmod_rect>> test_labels;
-        //std::vector<std::string> te_image_files;
-
-        //load_oid_data(test_file, test_data_directory, test_images, test_labels, te_image_files);
-
-
-        //std::vector<std::string> line = { "057677f8b281e963", "xclick", "/m/025dyy", "1", "0", "1",	"0.038348082", "0.9985251",	"0", "0", "0", "0",	"0" };
-        //std::vector<std::string> list = { "00371fbc0d38eab5", "009a31d9b7ed7f33", "01cfd6231b55de3c", "024f05451e4942bd", "057677f8b281e963", "0af4bb27bfdbf061" };
-
-        //auto lind = std::find(list.begin(), list.end(), line[0]);
-
-        //int index = std::distance(list.begin(), lind);
-        bp = 0;
-
 
         // ----------------------------------------------------------------------------------------
 
@@ -1064,65 +892,6 @@ int main(int argc, char** argv)
         //auto& t5b = t5a.get_layer_params();
         //auto t5c = t5b.host();
 
-        // ----------------------------------------------------------------------------------------
-
-        //vehicle vh1(dlib::point(11,10), 270);
-        //bool crash = false;
-
-        //vh1.check_for_points(map);
-        //crash = vh1.test_for_crash(map);
-
-        //vh1.get_ranges(map);
-        //vh1.move(2, 2);
-
-        //crash = vh1.test_for_crash(map);
-        //vh1.get_ranges(map);
-        //vh1.move(2, -2);
-
-        //crash = vh1.test_for_crash(map);
-        //vh1.get_ranges(map);
-        //vh1.move(2, 2);
-
-        //crash = vh1.test_for_crash(map);
-        //vh1.get_ranges(map);
-        //vh1.move(-2, 2);
-
-        //crash = vh1.test_for_crash(map);
-        //vh1.get_ranges(map);
-        //vh1.move(-2, -2);
-        //dlib::image_window win;
-        //while (crash == false)
-        //{
-        //    vh1.check_for_points(map);
-        //    vh1.get_ranges(map, map2);
-        //    win.clear_overlay();
-        //    win.set_image(map2);
-
-        //    dlib::matrix<uint32_t> m3 = dlib::trans(dlib::mat(vh1.detection_ranges));
-        //    
-        //    std::cout << dlib::csv << m3 << std::endl;
-
-        //    dlib::matrix<float> m2 = c_net(m3);
-
-        //    vh1.move(2*m2(0, 0), 2*m2(1, 0));
-
-        //    crash = vh1.test_for_crash(map);
-
-        //    dlib::sleep(750);
-        //
-        //}
-
-        //particle ptcl;
-        //double result = eval_net(ptcl);
-
-        //vh1.move(-1.0, 2.0);
-
-        //crash = vh1.test_for_crash(map);
-        //vh1.get_ranges(map,map2);
-
-        //vh1.move(12, 12);
-        //crash = vh1.test_for_crash(map);
-        //vh1.get_ranges(map,map2);
 
         
         // ----------------------------------------------------------------------------------------
@@ -1148,127 +917,6 @@ int main(int argc, char** argv)
 
         // schwefel(dlib::matrix<double> x)
 
-
-        /*
-        dlib::pso<particle> p(options);
-        //p.set_syncfile("test.dat");
-
-        //dlib::matrix<double, 1, 2> x1,x2, v1,v2;
-        dlib::matrix<double, 1, fc1_size> x1,v1;
-        dlib::matrix<double, 1, fc2_size> x2,v2;
-        dlib::matrix<double, 1, fc3_size> x3,v3;
-        dlib::matrix<double, 1, fc4_size> x4,v4;
-
-        for (idx = 0; idx < x1.nc(); ++idx)
-        {
-            x1(0, idx) = 1.0;
-            v1(0, idx) = 0.01;
-        }
-
-        for (idx = 0; idx < x2.nc(); ++idx)
-        {
-            x2(0, idx) = 100.0;
-            v2(0, idx) = 1.0;
-        }
-
-        for (idx = 0; idx < x3.nc(); ++idx)
-        {
-            x3(0, idx) = 100.0;
-            v3(0, idx) = 1.0;
-        }
-
-        for (idx = 0; idx < x4.nc(); ++idx)
-        {
-            x4(0, idx) = 100.0;
-            v4(0, idx) = 1.0;
-        }
-
-        std::pair<particle, particle> x_lim(particle(-x1,-x2,-x3,-x4), particle(x1,x2,x3,x4));
-        std::pair<particle, particle> v_lim(particle(-v1,-v2,-v3,-v4), particle(v1,v2,v3,v4));
-
-        p.init(x_lim, v_lim);
-        
-        start_time = chrono::system_clock::now();
-
-        //p.run(schwefel);
-        p.run(eval_net);
-        stop_time = chrono::system_clock::now();
-        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
-
-        std::cout << "PSO (" << elapsed_time.count() << ")" << std::endl;
-
-
-        std::string filename = "gbest.dat";
-        dlib::serialize(filename) << p.G;
-
-
-        std::cout << std::endl << "Ready to run G-Best particle..." << std::endl;
-        std::cin.ignore();
-        
-        bp = 3;
-        
-
-        particle g_best;
-
-        //dlib::deserialize("gbest_690.dat") >> g_best;
-        dlib::deserialize(filename) >> g_best;
-
-        eval_net(g_best);
-*/
-        //resnet_type net_101;
-
-        //std::cout << "net_101" << std::endl;
-        //std::cout << net_101 << std::endl;
-/*
-        anet_type2 net_34_2;
-
-        std::vector<std::string> labels;
-        anet_type net_34;
-        dlib::deserialize("../nets/resnet34_1000_imagenet_classifier.dnn") >> net_34 >> labels;
-
-        // print out the networks to get the layer numbers for future copying
-        std::cout << "net 34" << std::endl;
-        std::cout << net_34 << std::endl;
-      
-        std::cout << "net 34 v2" << std::endl;
-        std::cout << net_34_2 << std::endl;
-
-        bp = 2;
-
-        // This is how to copy a network:
-        // dlib::copy_net<start_from, end_from, start_to>(from_net, to_net);
-        dlib::copy_net<3, 143, 6>(net_34, net_34_2);
-
-        // This is a check of a few layers to show that the nets are the same
-        auto& tmp1 = dlib::layer<138>(net_34).layer_details().get_layer_params();
-        auto& tmp2 = dlib::layer<137>(net_34_2).layer_details().get_layer_params();
-
-        auto& tmp3 = dlib::layer<140>(net_34).layer_details().get_layer_params();
-        auto& tmp4 = dlib::layer<139>(net_34_2).layer_details().get_layer_params();
-
-        auto& tmp5 = dlib::layer<141>(net_34).layer_details().get_layer_params();
-        auto& tmp6 = dlib::layer<140>(net_34_2).layer_details().get_layer_params();
-
-        auto& tmp7 = dlib::layer<142>(net_34).layer_details();
-        auto& tmp8 = dlib::layer<141>(net_34_2).layer_details();
-
-        //auto& tmp9 = dlib::layer<143>(net_34).layer_details().get_layer_params();
-        //auto& tmp10 = dlib::layer<142>(net_34_2).layer_details().get_layer_params();
-        
-        bp = 3;
-
-        // set the learning rate multipliers: 0 means freeze the layers
-        double r1 = 0.0, r2 = 0.0;
-
-        // This does the setting
-        // dlib::set_learning_rate<start_layer, end_layer>(net_name, r1, r2);
-        dlib::set_learning_rate<6, 145>(net_34_2, r1, r2);
-
-        // print out the net just to show that the multipliers have changed
-        std::cout << "net 34 v2" << std::endl;
-        std::cout << net_34_2 << std::endl;
-*/
-        //while (1);
         bp = 4;
 
 

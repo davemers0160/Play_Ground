@@ -603,8 +603,27 @@ static void on_trackbar(int, void*)
 }
 
 // ----------------------------------------------------------------------------------------
+template <typename T>
+double nan_mean(cv::Mat& img)
+{
+    uint64_t count = 0;
+    double mn = 0;
 
+    cv::MatIterator_<T> it;
 
+    for (it = img.begin<T>(); it != img.end<T>(); ++it)
+    {
+        if (!std::isnan(*it))
+        {
+            mn += (double)*it;
+            ++count;
+        }
+    }
+
+    return (mn / (double)count);
+}   // end of nan_mean
+
+// ----------------------------------------------------------------------------------------
 void generate_random_image(
     cv::Mat& img,
     cv::RNG rng,
@@ -738,6 +757,7 @@ void generate_random_image(unsigned char*& img,
     int bp = 0;
 }
 
+
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -819,6 +839,89 @@ int main(int argc, char** argv)
         generate_random_image(test, 123456, nr, nc, N, scale);
 
         bp = 1;
+
+
+        // try to get the mean of an image of floats
+
+        cv::Mat tf = cv::Mat(10, 10, CV_32FC1);
+
+        for (idx = 0; idx < 10; ++idx)
+        {
+            for (jdx = 0; jdx < 10; ++jdx)
+            {
+                tf.at<float>(idx, jdx) = rng.uniform(0.0f, 20.0f);
+            }
+        }
+
+
+        cv::Scalar mn = cv::mean(tf);
+
+        std::cout << "mean: " << mn[0] << std::endl;
+        double mn2 = nan_mean<float>(tf);
+
+        tf.at<float>(5, 5) = nan("");
+
+        mn2 = nan_mean<float>(tf);
+
+
+        cv::patchNaNs(tf);
+        cv::Scalar mn3 = cv::mean(tf);
+
+        bp = 0;
+
+        nr = 40;
+        nc = 40;
+        cv::Mat test_img = cv::Mat(nr, nc, CV_8UC3, cv::Scalar(0, 0, 0));
+
+        dlib::rectangle rt(10, 10, 20, 20);
+
+        std::vector<cv::Scalar> class_color;
+
+        for (uint64_t idx = 0; idx < 3; ++idx)
+        {
+            //class_color.push_back(dlib::rgb_pixel(rnd.get_random_8bit_number(), rnd.get_random_8bit_number(), rnd.get_random_8bit_number()));
+            class_color.push_back(cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256)));
+        }
+
+
+        overlay_bounding_box(test_img, dlib2cv_rect(rt), "test", class_color[2]);
+
+        std::array<dlib::matrix<uint8_t>, array_depth> d_test;
+
+
+        for (uint64_t idx = 0; idx < array_depth; ++idx)
+        {
+            d_test[idx].set_size(nr, nc);
+        }
+
+        uint64_t index = 0;
+        long r = 0;
+        long c = 0;
+
+
+        unsigned char *img_ptr = test_img.ptr<unsigned char>(0);
+
+        for (uint64_t idx = 0; idx < nr*nc*3; idx+=3)
+        {
+
+            d_test[0](r, c) = *(img_ptr + idx + 2);  //*test_img.ptr<unsigned char>(idx);
+            d_test[1](r, c) = *(img_ptr + idx + 1);  //*test_img.ptr<unsigned char>(idx+1);
+            d_test[2](r, c) = *(img_ptr + idx);  //*test_img.ptr<unsigned char>(idx+2);
+
+            ++c;
+
+            if (c >= nc)
+            {
+                c = 0;
+                ++r;
+            }
+
+        }
+
+
+
+
+        bp = 2;
 
         // ----------------------------------------------------------------------------------------
 

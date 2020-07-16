@@ -51,6 +51,11 @@
 // custom includes
 //#include "mmaplib.h"
 #include "pg.h"
+
+
+#include "../../robot/obj_det/include/obj_det_net_rgb_v10.h"
+
+
 //#include "mmap.h"
 #include "get_current_time.h"
 #include "get_platform.h"
@@ -65,6 +70,7 @@
 #include "modulo.h"
 #include "overlay_bounding_box.h"
 #include "simplex_noise.h"
+#include "ocv_threshold_functions.h"
 
 #include "pso.h"
 //#include "pso_particle.h"
@@ -473,7 +479,7 @@ template <typename SUBNET> using level1 = ares<512, ares<512, ares_down<512, SUB
 template <typename SUBNET> using level2 = ares<256, ares<256, ares<256, ares<256, ares<256, ares_down<256, SUBNET>>>>>>;
 template <typename SUBNET> using level3 = ares<128, ares<128, ares<128, ares_down<128, SUBNET>>>>;
 template <typename SUBNET> using level4 = ares<64, ares<64, ares<64, SUBNET>>>;
-
+/*
 // This is the original network definition for the pretrained network dnn file
 using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_everything<
     level1<
@@ -483,7 +489,7 @@ using anet_type = dlib::loss_multiclass_log< dlib::fc<1000, dlib::avg_pool_every
     dlib::max_pool<3, 3, 2, 2, dlib::relu<dlib::affine<dlib::con<64, 7, 7, 2, 2,
     dlib::input_rgb_image_sized<227>
     >>>>>>>>>>>;
-
+*/
 // ----------------------------------------------------------------------------------------
 
 using car_net_type = dlib::loss_mean_squared_multioutput<dlib::htan<dlib::fc<2,
@@ -833,23 +839,13 @@ int main(int argc, char** argv)
 
         bp = 0;
 
-
-        unsigned char* test;
-
-        generate_random_image(test, 123456, nr, nc, N, scale);
-
-        bp = 1;
-
-
-        // try to get the mean of an image of floats
-
         cv::Mat tf = cv::Mat(10, 10, CV_32FC1);
 
         for (idx = 0; idx < 10; ++idx)
         {
             for (jdx = 0; jdx < 10; ++jdx)
             {
-                tf.at<float>(idx, jdx) = rng.uniform(0.0f, 20.0f);
+                tf.at<float>(idx, jdx) = rng.uniform(0.0f, 50.0f);
             }
         }
 
@@ -867,56 +863,82 @@ int main(int argc, char** argv)
         cv::patchNaNs(tf);
         cv::Scalar mn3 = cv::mean(tf);
 
-        bp = 0;
 
-        nr = 40;
-        nc = 40;
-        cv::Mat test_img = cv::Mat(nr, nc, CV_8UC3, cv::Scalar(0, 0, 0));
+        cv::Mat tf4;
+        float min_val = 0.0;
+        float max_val = 25.0;
 
-        dlib::rectangle rt(10, 10, 20, 20);
+        ranged_threshold<float>(tf, tf4, 0.0, 25.0);
+
+
+        unsigned char* test;
+
+        //generate_random_image(test, 123456, nr, nc, N, scale);
+
+        bp = 1;
+
+        std::string net_file = "../../robot/obj_det/nets/dc3_rgb_v10_40_40_100_HPC_final_net.dat";
+
+        std::string test_file = "D:/Projects/object_detection_data/dc/test/full/test2-1.png";
+
+        dlib::rectangle crop_rect(270, 0, 270+720-1, 720-1);
 
         std::vector<cv::Scalar> class_color;
+        class_color.push_back(cv::Scalar(0, 255, 0));
+        class_color.push_back(cv::Scalar(0, 0, 255));
 
-        for (uint64_t idx = 0; idx < 3; ++idx)
+
+        anet_type test_net;
+        dlib::deserialize(net_file) >> test_net;
+
+        // get the details about the loss layer -> the number and names of the classes
+        dlib::mmod_options options = dlib::layer<0>(test_net).loss_details().get_options();
+
+        std::set<std::string> tmp_names;
+        std::cout << std::endl << "------------------------------------------------------------------" << std::endl;
+        for (uint64_t idx = 0; idx < options.detector_windows.size(); ++idx)
         {
-            //class_color.push_back(dlib::rgb_pixel(rnd.get_random_8bit_number(), rnd.get_random_8bit_number(), rnd.get_random_8bit_number()));
-            class_color.push_back(cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256)));
+            std::cout << "detector window (w x h): " << options.detector_windows[idx].label << " - " << options.detector_windows[idx].width
+                << " x " << options.detector_windows[idx].height << std::endl;
+            tmp_names.insert(options.detector_windows[idx].label);
+        }
+        std::cout << "------------------------------------------------------------------" << std::endl;
+
+        // pull out the class names
+        std::vector<std::string> class_names;
+        for (const auto& it : tmp_names)
+        {
+            class_names.push_back(it);
         }
 
 
-        overlay_bounding_box(test_img, dlib2cv_rect(rt), "test", class_color[2]);
+        cv::Mat cv_img = cv::imread(test_file, cv::IMREAD_COLOR);
+        cv::cvtColor(cv_img, cv_img, cv::COLOR_BGR2RGB);
+        
+        dlib::matrix<dlib::rgb_pixel> rgb_img, rgb_img2;
+        dlib::assign_image(rgb_img, dlib::mat(cv_img.ptr<unsigned char>(0), cv_img.rows, cv_img.cols));
+        //dlib::assign_image(rgb_img, dlib::subm(dlib::mat(cv_img.ptr<unsigned char>(0), cv_img.rows, cv_img.cols), crop_rect));
+        //dlib::assign_image(rgb_img, dlib::subm(dlib::mat(cv_img.ptr<unsigned char>(0), cv_img.rows, cv_img.cols), crop_rect));
 
-        std::array<dlib::matrix<uint8_t>, array_depth> d_test;
+        dlib::cv_image<dlib::rgb_pixel> tmp_img(cv_img);
+        dlib::assign_image(rgb_img2, dlib::cv_image<dlib::rgb_pixel>(cv_img));
 
+        dlib::matrix<dlib::rgb_pixel> rgb_img3 = dlib::subm(rgb_img2, crop_rect);
 
-        for (uint64_t idx = 0; idx < array_depth; ++idx)
+        std::vector<dlib::mmod_rect> d = test_net(rgb_img);
+
+        std::vector<dlib::mmod_rect> d2 = test_net(rgb_img3);
+
+        for (idx = 0; idx < d2.size(); ++idx)
         {
-            d_test[idx].set_size(nr, nc);
+            auto class_index = std::find(class_names.begin(), class_names.end(), d2[idx].label);
+            overlay_bounding_box(cv_img, dlib2cv_rect(d2[idx].rect), d2[idx].label, class_color[std::distance(class_names.begin(), class_index)]);
         }
 
-        uint64_t index = 0;
-        long r = 0;
-        long c = 0;
+        //dlib::image_window win;
 
 
-        unsigned char *img_ptr = test_img.ptr<unsigned char>(0);
 
-        for (uint64_t idx = 0; idx < nr*nc*3; idx+=3)
-        {
-
-            d_test[0](r, c) = *(img_ptr + idx + 2);  //*test_img.ptr<unsigned char>(idx);
-            d_test[1](r, c) = *(img_ptr + idx + 1);  //*test_img.ptr<unsigned char>(idx+1);
-            d_test[2](r, c) = *(img_ptr + idx);  //*test_img.ptr<unsigned char>(idx+2);
-
-            ++c;
-
-            if (c >= nc)
-            {
-                c = 0;
-                ++r;
-            }
-
-        }
 
 
 
@@ -1013,10 +1035,10 @@ int main(int argc, char** argv)
         // ----------------------------------------------------------------------------------------
         dlib::load_image(color_map, "../test_map_v2_2.png");
 
-        dlib::pso_options options(100, 5000, 2.4, 2.1, 1.0, 1, 1.0);
+        dlib::pso_options psooptions(100, 5000, 2.4, 2.1, 1.0, 1, 1.0);
 
         std::cout << "----------------------------------------------------------------------------------------" << std::endl;
-        std::cout << options << std::endl;
+        std::cout << psooptions << std::endl;
 
         // schwefel(dlib::matrix<double> x)
 

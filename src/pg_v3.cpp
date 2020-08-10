@@ -764,6 +764,118 @@ void generate_random_image(unsigned char*& img,
 }
 
 
+bool operator<(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
+{
+    if ((p1.h < p2.h) && (p1.s < p2.s) && (p1.i < p2.i))
+        return true;
+
+    return false;
+}
+
+bool operator>(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
+{
+    if ((p1.h > p2.h) && (p1.s > p2.s) && (p1.i > p2.i))
+        return true;
+
+    return false;
+}
+
+bool operator<=(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
+{
+    if ((p1.h <= p2.h) && (p1.s <= p2.s) && (p1.i <= p2.i))
+        return true;
+
+    return false;
+}
+
+bool operator>=(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
+{
+    if ((p1.h >= p2.h) && (p1.s >= p2.s) && (p1.i >= p2.i))
+        return true;
+
+    return false;
+}
+
+dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img, dlib::mmod_rect& det)
+{
+    uint64_t r, c;
+
+    dlib::hsi_pixel red_ll1(0, 0, 64);
+    dlib::hsi_pixel red_ul1(15, 255, 255);
+    dlib::hsi_pixel red_ll2(240, 0, 64);
+    dlib::hsi_pixel red_ul2(255, 255, 255);
+
+    dlib::hsi_pixel blue_ll(155, 0, 64);
+    dlib::hsi_pixel blue_ul(185, 255, 255);
+
+    dlib::hsi_pixel black_ll(0, 48, 0);
+    dlib::hsi_pixel black_ul(255, 128, 64);
+
+    dlib::hsi_pixel gray_ll(0, 0, 40);
+    dlib::hsi_pixel gray_ul(255, 255, 128);
+
+    const int w = 20, h = 20;
+
+    dlib::matrix<uint8_t> red_mask = dlib::zeros_matrix<uint8_t>(h, w);
+    dlib::matrix<uint8_t> blue_mask = dlib::zeros_matrix<uint8_t>(h, w);
+    dlib::matrix<uint8_t> black_mask = dlib::zeros_matrix<uint8_t>(h, w);
+    dlib::matrix<uint8_t> gray_mask = dlib::zeros_matrix<uint8_t>(h, w);
+
+    // crop out the detection
+    dlib::point ctr = dlib::center(det.rect);
+
+    dlib::matrix<dlib::rgb_pixel> obj_crop = dlib::subm(img, dlib::centered_rect(ctr, w, h));
+    dlib::matrix<dlib::hsi_pixel> hsi_crop;
+    dlib::assign_image(hsi_crop, obj_crop);
+
+    dlib::hsi_pixel p;
+
+    for (int r = 0; r < hsi_crop.nr(); ++r)
+    {
+        for (int c = 0; c < hsi_crop.nc(); ++c)
+        {
+            dlib::assign_pixel(p, hsi_crop(r, c));
+
+            // test for red backpack
+            if ((p >= red_ll1) && (p <= red_ul1))
+            {
+                red_mask(r, c) = 1;
+            }
+            else if ((p >= red_ll2) && (p <= red_ul2))
+            {
+                red_mask(r, c) = 1;
+            }
+            else if ((p >= blue_ll) && (p <= blue_ul))
+            {
+                blue_mask(r, c) = 1;
+            }
+            else if ((p >= black_ll) && (p <= black_ul))
+            {
+                black_mask(r, c) = 1;
+            }
+            else if ((p >= gray_ll) && (p <= gray_ul))
+            {
+                gray_mask(r, c) = 1;
+            }
+
+        }
+    }
+
+    //double red_sum = dlib::sum(red_mask);
+    //double blue_sum = dlib::sum(blue_mask);
+    //double black_sum = dlib::sum(black_mask);
+    //double gray_sum = dlib::sum(gray_mask);
+
+    dlib::matrix<uint32_t, 1, 4> res;
+    res = (uint32_t)dlib::sum(red_mask), (uint32_t)dlib::sum(blue_mask), (uint32_t)dlib::sum(black_mask), (uint32_t)dlib::sum(gray_mask);
+
+    return res;
+
+}
+
+
+
+
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -877,11 +989,26 @@ int main(int argc, char** argv)
 
         bp = 1;
 
-        std::string net_file = "../../robot/obj_det/nets/dc3_rgb_v10_40_40_100_HPC_final_net.dat";
+        std::string net_file = "../../robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
 
-        std::string test_file = "D:/Projects/object_detection_data/dc/test/full/test2-1.png";
+        // red backpack
+        std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
 
-        dlib::rectangle crop_rect(270, 0, 270+720-1, 720-1);
+        // blue backpack
+        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack9-7.png";
+
+        // black backpack
+        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack7-1.png";
+
+        // gray backpack
+        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
+        //std::string test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+
+        int crop_x = 270;
+        int crop_y = 0;
+        int crop_w = 720;
+        int crop_h = 720;
+        dlib::rectangle crop_rect(crop_x, crop_y, crop_x + crop_w - 1, crop_y + crop_h - 1);
 
         std::vector<cv::Scalar> class_color;
         class_color.push_back(cv::Scalar(0, 255, 0));
@@ -913,35 +1040,45 @@ int main(int argc, char** argv)
 
 
         cv::Mat cv_img = cv::imread(test_file, cv::IMREAD_COLOR);
+        //cv::Mat cv_img = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
+        
         cv::cvtColor(cv_img, cv_img, cv::COLOR_BGR2RGB);
         
-        dlib::matrix<dlib::rgb_pixel> rgb_img, rgb_img2;
-        dlib::assign_image(rgb_img, dlib::mat(cv_img.ptr<unsigned char>(0), cv_img.rows, cv_img.cols));
-        //dlib::assign_image(rgb_img, dlib::subm(dlib::mat(cv_img.ptr<unsigned char>(0), cv_img.rows, cv_img.cols), crop_rect));
-        //dlib::assign_image(rgb_img, dlib::subm(dlib::mat(cv_img.ptr<unsigned char>(0), cv_img.rows, cv_img.cols), crop_rect));
+        dlib::matrix<dlib::rgb_pixel> rgb_img;
 
-        dlib::cv_image<dlib::rgb_pixel> tmp_img(cv_img);
-        dlib::assign_image(rgb_img2, dlib::cv_image<dlib::rgb_pixel>(cv_img));
+        dlib::assign_image(rgb_img, dlib::cv_image<dlib::rgb_pixel>(cv_img));
 
-        dlib::matrix<dlib::rgb_pixel> rgb_img3 = dlib::subm(rgb_img2, crop_rect);
+        rgb_img = dlib::subm(rgb_img, crop_rect);
 
         std::vector<dlib::mmod_rect> d = test_net(rgb_img);
 
-        std::vector<dlib::mmod_rect> d2 = test_net(rgb_img3);
+        //d.push_back(dlib::mmod_rect(dlib::rectangle(30, 30, 60, 60), 1.0, "backpack"));
 
-        for (idx = 0; idx < d2.size(); ++idx)
+        for (idx = 0; idx < d.size(); ++idx)
         {
-            auto class_index = std::find(class_names.begin(), class_names.end(), d2[idx].label);
-            overlay_bounding_box(cv_img, dlib2cv_rect(d2[idx].rect), d2[idx].label, class_color[std::distance(class_names.begin(), class_index)]);
+            auto class_index = std::find(class_names.begin(), class_names.end(), d[idx].label);
+
+            if (d[idx].label == "backpack")
+            {
+                dlib::matrix<uint32_t, 1, 4> cm = get_color_match(rgb_img, d[idx]);
+
+
+                long index = dlib::index_of_max(cm);
+
+                if (index == 3)
+                {
+                    std::cout << "gray backpack" << std::endl;
+                }
+
+                bp = 5;
+            }
+
+            d[idx].rect = dlib::translate_rect(d[idx].rect, crop_x, crop_y);
+            overlay_bounding_box(cv_img, dlib2cv_rect(d[idx].rect), d[idx].label, class_color[std::distance(class_names.begin(), class_index)]);
+
         }
 
         //dlib::image_window win;
-
-
-
-
-
-
 
         bp = 2;
 

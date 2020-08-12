@@ -40,6 +40,7 @@
 #include <dlib/global_optimization.h>
 #include <dlib/numeric_constants.h>
 #include <dlib/geometry.h>
+#include <dlib/enable_if.h>
 
 // OpenCV includes
 #include <opencv2/core.hpp>           
@@ -788,9 +789,27 @@ bool operator<=(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
     return false;
 }
 
+bool operator<=(const dlib::rgb_pixel& p1, const dlib::rgb_pixel& p2)
+{
+
+    if ((p1.red <= p2.red) && (p1.green <= p2.green) && (p1.blue <= p2.blue))
+        return true;
+
+    return false;
+}
+
 bool operator>=(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
 {
+
     if ((p1.h >= p2.h) && (p1.s >= p2.s) && (p1.i >= p2.i))
+        return true;
+
+    return false;
+}
+
+bool operator>=(const dlib::rgb_pixel& p1, const dlib::rgb_pixel& p2)
+{
+    if ((p1.red >= p2.red) && (p1.green >= p2.green) && (p1.blue >= p2.blue))
         return true;
 
     return false;
@@ -808,33 +827,40 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
     dlib::hsi_pixel blue_ll(155, 0, 64);
     dlib::hsi_pixel blue_ul(185, 255, 255);
 
-    dlib::hsi_pixel black_ll(0, 48, 0);
-    dlib::hsi_pixel black_ul(255, 128, 64);
+    //dlib::hsi_pixel black_ll(0, 48, 0);
+    //dlib::hsi_pixel black_ul(255, 128, 64);
+    dlib::rgb_pixel black_ll(0, 0, 0);
+    dlib::rgb_pixel black_ul(64, 64, 64);
 
-    dlib::hsi_pixel gray_ll(0, 0, 40);
-    dlib::hsi_pixel gray_ul(255, 255, 128);
+
+    //dlib::hsi_pixel gray_ll(0, 0, 40);
+    //dlib::hsi_pixel gray_ul(255, 255, 128);
+    dlib::rgb_pixel gray_ll(65, 65, 65);
+    dlib::rgb_pixel gray_ul(128, 128, 128);
 
     const int w = 20, h = 20;
 
-    dlib::matrix<uint8_t> red_mask = dlib::zeros_matrix<uint8_t>(h, w);
-    dlib::matrix<uint8_t> blue_mask = dlib::zeros_matrix<uint8_t>(h, w);
-    dlib::matrix<uint8_t> black_mask = dlib::zeros_matrix<uint8_t>(h, w);
-    dlib::matrix<uint8_t> gray_mask = dlib::zeros_matrix<uint8_t>(h, w);
+    dlib::matrix<uint16_t> red_mask = dlib::zeros_matrix<uint16_t>(h, w);
+    dlib::matrix<uint16_t> blue_mask = dlib::zeros_matrix<uint16_t>(h, w);
+    dlib::matrix<uint16_t> black_mask = dlib::zeros_matrix<uint16_t>(h, w);
+    dlib::matrix<uint16_t> gray_mask = dlib::zeros_matrix<uint16_t>(h, w);
 
     // crop out the detection
     dlib::point ctr = dlib::center(det.rect);
 
-    dlib::matrix<dlib::rgb_pixel> obj_crop = dlib::subm(img, dlib::centered_rect(ctr, w, h));
+    dlib::matrix<dlib::rgb_pixel> rgb_crop = dlib::subm(img, dlib::centered_rect(ctr, w, h));
     dlib::matrix<dlib::hsi_pixel> hsi_crop;
-    dlib::assign_image(hsi_crop, obj_crop);
+    dlib::assign_image(hsi_crop, rgb_crop);
 
     dlib::hsi_pixel p;
+    dlib::rgb_pixel q;
 
     for (int r = 0; r < hsi_crop.nr(); ++r)
     {
         for (int c = 0; c < hsi_crop.nc(); ++c)
         {
             dlib::assign_pixel(p, hsi_crop(r, c));
+            dlib::assign_pixel(q, rgb_crop(r, c));
 
             // test for red backpack
             if ((p >= red_ll1) && (p <= red_ul1))
@@ -849,22 +875,17 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
             {
                 blue_mask(r, c) = 1;
             }
-            else if ((p >= black_ll) && (p <= black_ul))
+            else if ((q >= black_ll) && (q <= black_ul))
             {
                 black_mask(r, c) = 1;
             }
-            else if ((p >= gray_ll) && (p <= gray_ul))
+            else if ((q >= gray_ll) && (q <= gray_ul))
             {
                 gray_mask(r, c) = 1;
             }
 
         }
     }
-
-    //double red_sum = dlib::sum(red_mask);
-    //double blue_sum = dlib::sum(blue_mask);
-    //double black_sum = dlib::sum(black_mask);
-    //double gray_sum = dlib::sum(gray_mask);
 
     dlib::matrix<uint32_t, 1, 4> res;
     res = (uint32_t)dlib::sum(red_mask), (uint32_t)dlib::sum(blue_mask), (uint32_t)dlib::sum(black_mask), (uint32_t)dlib::sum(gray_mask);
@@ -992,7 +1013,7 @@ int main(int argc, char** argv)
         std::string net_file = "../../robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
 
         // red backpack
-        std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
+        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
 
         // blue backpack
         //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack9-7.png";
@@ -1001,7 +1022,7 @@ int main(int argc, char** argv)
         //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack7-1.png";
 
         // gray backpack
-        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
+        std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
         //std::string test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
 
         int crop_x = 270;

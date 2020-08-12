@@ -37,8 +37,8 @@ callback = CustomJS(args=cb_dict, code="""
     /// calculate Rect attributes
     var width = geometry['x1'] - geometry['x0'];
     var height = geometry['y1'] - geometry['y0'];
-    var x = geometry['x0'] + width/2;
-    var y = geometry['y0'] + height/2;
+    var x = geometry['x0'];
+    var y = geometry['y0'];
 
     console.log(x);
     console.log(y);
@@ -48,8 +48,8 @@ callback = CustomJS(args=cb_dict, code="""
     /// update data source with new Rect attributes
     //data['x'].push(x);
     //data['y'].push(y);
-    //data['width'].push(width);
-    //data['height'].push(height);
+    //data['w'].push(width);
+    //data['h'].push(height);
 
     //p1_src.data = data;
     //p1_src.change.emit();
@@ -90,17 +90,25 @@ p1.grid.visible = False
 get_input()
 
 # -----------------------------------------------------------------------------
-def selection_change(attrname, old, new):
+def selection_change(evt):
+    geometry = evt.geometry
 
-    selected = p1_src.selected.indices
+    x1 = min(geometry['x0'], geometry['x1'])
+    y1 = min(geometry['y0'], geometry['y1'])
+
+    x2 = max(geometry['x0'], geometry['x1'])
+    y2 = max(geometry['y0'], geometry['y1'])
+
     print("test1")
-    print(selected)
-
+    print(x1)
+    print(x2)
+    print(y1)
+    print(y2)
 
 #p1_src.selected.js_on_change('indices', callback)
-p1.js_on_event(SelectionGeometry, callback)
+#p1.js_on_event(SelectionGeometry, callback)
 
-
+p1.on_event(SelectionGeometry, selection_change)
 
 # Layout
 # -----------------------------------------------------------------------------

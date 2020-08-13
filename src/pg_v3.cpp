@@ -88,6 +88,8 @@
 #include "copy_dlib_net.h"
 #include "dlib_set_learning_rates.h"
 
+#include "dlib_pixel_operations.h"
+
 // Network includes
 //#include "dfd_net_v14.h"
 //#include "dfd_net_v14_pso_01.h"
@@ -765,56 +767,6 @@ void generate_random_image(unsigned char*& img,
 }
 
 
-bool operator<(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
-{
-    if ((p1.h < p2.h) && (p1.s < p2.s) && (p1.i < p2.i))
-        return true;
-
-    return false;
-}
-
-bool operator>(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
-{
-    if ((p1.h > p2.h) && (p1.s > p2.s) && (p1.i > p2.i))
-        return true;
-
-    return false;
-}
-
-bool operator<=(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
-{
-    if ((p1.h <= p2.h) && (p1.s <= p2.s) && (p1.i <= p2.i))
-        return true;
-
-    return false;
-}
-
-bool operator<=(const dlib::rgb_pixel& p1, const dlib::rgb_pixel& p2)
-{
-
-    if ((p1.red <= p2.red) && (p1.green <= p2.green) && (p1.blue <= p2.blue))
-        return true;
-
-    return false;
-}
-
-bool operator>=(const dlib::hsi_pixel& p1, const dlib::hsi_pixel& p2)
-{
-
-    if ((p1.h >= p2.h) && (p1.s >= p2.s) && (p1.i >= p2.i))
-        return true;
-
-    return false;
-}
-
-bool operator>=(const dlib::rgb_pixel& p1, const dlib::rgb_pixel& p2)
-{
-    if ((p1.red >= p2.red) && (p1.green >= p2.green) && (p1.blue >= p2.blue))
-        return true;
-
-    return false;
-}
-
 dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img, dlib::mmod_rect& det)
 {
     uint64_t r, c;
@@ -827,16 +779,16 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
     dlib::hsi_pixel blue_ll(155, 0, 64);
     dlib::hsi_pixel blue_ul(185, 255, 255);
 
-    //dlib::hsi_pixel black_ll(0, 48, 0);
-    //dlib::hsi_pixel black_ul(255, 128, 64);
-    dlib::rgb_pixel black_ll(0, 0, 0);
-    dlib::rgb_pixel black_ul(64, 64, 64);
+    dlib::hsi_pixel black_ll(0, 0, 0);
+    dlib::hsi_pixel black_ul(255, 64, 48);
+    //dlib::rgb_pixel black_ll(0, 0, 0);
+    //dlib::rgb_pixel black_ul(64, 64, 64);
 
 
-    //dlib::hsi_pixel gray_ll(0, 0, 40);
-    //dlib::hsi_pixel gray_ul(255, 255, 128);
-    dlib::rgb_pixel gray_ll(65, 65, 65);
-    dlib::rgb_pixel gray_ul(128, 128, 128);
+    dlib::hsi_pixel gray_ll(0, 0, 48);
+    dlib::hsi_pixel gray_ul(255, 255, 128);
+    //dlib::rgb_pixel gray_ll(65, 65, 65);
+    //dlib::rgb_pixel gray_ul(128, 128, 128);
 
     const int w = 20, h = 20;
 
@@ -855,9 +807,9 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
     dlib::hsi_pixel p;
     dlib::rgb_pixel q;
 
-    for (int r = 0; r < hsi_crop.nr(); ++r)
+    for (r = 0; r < hsi_crop.nr(); ++r)
     {
-        for (int c = 0; c < hsi_crop.nc(); ++c)
+        for (c = 0; c < hsi_crop.nc(); ++c)
         {
             dlib::assign_pixel(p, hsi_crop(r, c));
             dlib::assign_pixel(q, rgb_crop(r, c));
@@ -875,11 +827,11 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
             {
                 blue_mask(r, c) = 1;
             }
-            else if ((q >= black_ll) && (q <= black_ul))
+            else if ((p >= black_ll) && (p <= black_ul))
             {
                 black_mask(r, c) = 1;
             }
-            else if ((q >= gray_ll) && (q <= gray_ul))
+            else if ((p >= gray_ll) && (p <= gray_ul))
             {
                 gray_mask(r, c) = 1;
             }
@@ -1020,10 +972,11 @@ int main(int argc, char** argv)
 
         // black backpack
         //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack7-1.png";
+        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack2-1.png";
 
         // gray backpack
-        std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
-        //std::string test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
+        std::string test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
 
         int crop_x = 270;
         int crop_y = 0;
@@ -1074,6 +1027,7 @@ int main(int argc, char** argv)
         std::vector<dlib::mmod_rect> d = test_net(rgb_img);
 
         //d.push_back(dlib::mmod_rect(dlib::rectangle(30, 30, 60, 60), 1.0, "backpack"));
+        dlib::matrix<uint32_t, 1, 4> cm;
 
         for (idx = 0; idx < d.size(); ++idx)
         {
@@ -1081,7 +1035,7 @@ int main(int argc, char** argv)
 
             if (d[idx].label == "backpack")
             {
-                dlib::matrix<uint32_t, 1, 4> cm = get_color_match(rgb_img, d[idx]);
+                cm = get_color_match(rgb_img, d[idx]);
 
 
                 long index = dlib::index_of_max(cm);

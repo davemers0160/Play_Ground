@@ -913,7 +913,7 @@ int main(int argc, char** argv)
 
         cv::Mat img;
 
-        cv::RNG rng(123456);
+        cv::RNG rng(1234567);
 
         long nr = 500;
         long nc = 500;
@@ -963,20 +963,21 @@ int main(int argc, char** argv)
         bp = 1;
 
         std::string net_file = "../../robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
+        std::string test_file;
 
         // red backpack
-        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
+        //test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
 
         // blue backpack
-        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack9-7.png";
+        //test_file = "D:/Projects/object_detection_data/dc/train/full/backpack9-7.png";
 
         // black backpack
-        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack7-1.png";
-        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack2-1.png";
+        // test_file = "D:/Projects/object_detection_data/dc/train/full/backpack7-1.png";
+        // test_file = "D:/Projects/object_detection_data/dc/train/full/backpack2-1.png";
 
         // gray backpack
-        //std::string test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
-        std::string test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+        // test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
+        test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
 
         int crop_x = 270;
         int crop_y = 0;
@@ -1059,6 +1060,62 @@ int main(int argc, char** argv)
 
         // ----------------------------------------------------------------------------------------
 
+        test_file = "D:/Projects/playground/images/checkerboard_10x10.png";
+
+        cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
+        //cv::Mat cv_img = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
+        //cv::cvtColor(cb_img, cb_img, cv::COLOR_BGR2RGB);
+        img1.convertTo(img1, CV_32FC3, 1.0/255.0);
+
+        nr = img1.rows;
+        nc = img1.cols;
+
+        // generate the random point
+        long x = rng.uniform(0, nc);
+        long y = rng.uniform(0, nr);
+
+        // get the random color for the shape
+        cv::Scalar C = (1.0/255.0)*cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+
+        // pick a random radi for the ellipse
+        scale = 0.6;
+        long r1 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
+        long r2 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
+        double a = rng.uniform(0.0, 360.0);
+
+        cv::Mat BM_1 = cv::Mat(img1.size(), CV_32FC3, cv::Scalar::all(0.0));
+
+        // initialize parameters for filter2D
+        int const kernel_size = 5;
+        double const delta = 0;
+        int const ddepth = -1;
+        cv::Point anchor = cv::Point(-1, -1);
+        bool normalize = true;
+
+        //cv::boxFilter(img1, img1, ddepth, cv::Size(3, 3), anchor, normalize, cv::BORDER_DEFAULT);
+        cv::GaussianBlur(img1, img1, cv::Size(0, 0), 1.0, 1.0, cv::BORDER_REPLICATE);
+
+        //------------
+        cv::Mat layer_img1 = img1.clone();
+        cv::ellipse(layer_img1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, C, -1, cv::LineTypes::LINE_8, 0);
+        cv::ellipse(BM_1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, cv::Scalar(1.0, 1.0, 1.0), -1, cv::LineTypes::LINE_8, 0);
+
+        //cv::boxFilter(layer_img1, layer_img1, ddepth, cv::Size(25, 25), anchor, normalize, cv::BORDER_DEFAULT);
+        //cv::boxFilter(BM_1, BM_1, ddepth, cv::Size(25, 25), anchor, normalize, cv::BORDER_DEFAULT);
+        cv::GaussianBlur(layer_img1, layer_img1, cv::Size(85, 85), 11.0, 11.0, cv::BORDER_REPLICATE);
+        cv::GaussianBlur(BM_1, BM_1, cv::Size(85, 85), 11.0, 11.0, cv::BORDER_REPLICATE);
+
+        //cv::Mat l3 = cv::Scalar(1.0,1.0,1.0) - BM_1;
+
+        cv::Mat L1 = img1.mul(cv::Scalar(1.0, 1.0, 1.0) - BM_1);
+
+        cv::Mat L2 = layer_img1.mul(BM_1);
+
+        cv::Mat cb2 = L1 + L2;
+
+        bp = 10;
+
+        // ----------------------------------------------------------------------------------------
         //dlib::matrix<dlib::rgb_pixel> color_map;
         //dlib::matrix<uint8_t> map, map2;
 

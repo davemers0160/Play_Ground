@@ -771,18 +771,18 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
 {
     uint64_t r, c;
 
-    dlib::hsi_pixel red_ll1(0, 0, 64);
-    dlib::hsi_pixel red_ul1(15, 255, 255);
-    dlib::hsi_pixel red_ll2(240, 0, 64);
-    dlib::hsi_pixel red_ul2(255, 255, 255);
+    dlib::hsi_pixel red_ll1(0, 0, 30);
+    dlib::hsi_pixel red_ul1(15, 255, 192);
+    dlib::hsi_pixel red_ll2(240, 0, 30);
+    dlib::hsi_pixel red_ul2(255, 255, 192);
 
-    dlib::hsi_pixel blue_ll(155, 0, 64);
-    dlib::hsi_pixel blue_ul(185, 255, 255);
+    dlib::hsi_pixel blue_ll(150, 0, 30);
+    dlib::hsi_pixel blue_ul(190, 255, 192);
 
-    dlib::hsi_pixel black_ll(0, 0, 0);
-    dlib::hsi_pixel black_ul(255, 64, 48);
-    //dlib::rgb_pixel black_ll(0, 0, 0);
-    //dlib::rgb_pixel black_ul(64, 64, 64);
+    //dlib::hsi_pixel black_ll(0, 0, 0);
+    //dlib::hsi_pixel black_ul(255, 64, 48);
+    dlib::rgb_pixel black_ll(0, 0, 0);
+    dlib::rgb_pixel black_ul(48, 48, 48);
 
 
     dlib::hsi_pixel gray_ll(0, 0, 48);
@@ -827,7 +827,7 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
             {
                 blue_mask(r, c) = 1;
             }
-            else if ((p >= black_ll) && (p <= black_ul))
+            else if ((q >= black_ll) && (q <= black_ul))
             {
                 black_mask(r, c) = 1;
             }
@@ -839,8 +839,10 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
         }
     }
 
+    uint32_t sum_cm = (uint32_t)dlib::sum(red_mask) + (uint32_t)dlib::sum(blue_mask) + (uint32_t)dlib::sum(black_mask);
+
     dlib::matrix<uint32_t, 1, 4> res;
-    res = (uint32_t)dlib::sum(red_mask), (uint32_t)dlib::sum(blue_mask), (uint32_t)dlib::sum(black_mask), (uint32_t)dlib::sum(gray_mask);
+    res = sum_cm, red_mask.size()-sum_cm, 0, 0;
 
     return res;
 
@@ -977,11 +979,15 @@ int main(int argc, char** argv)
 
         // gray backpack
         // test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
-        test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+        //test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
 
-        int crop_x = 270;
+        // nothing, but triggers a bp
+        //test_file = "D:/Projects/object_detection_data/dc/part5/image_0050.png";
+        test_file = "D:/Projects/object_detection_data/dc/part5/image_0049.png";
+
+        int crop_x = 0;
         int crop_y = 0;
-        int crop_w = 720;
+        int crop_w = 1280;
         int crop_h = 720;
         dlib::rectangle crop_rect(crop_x, crop_y, crop_x + crop_w - 1, crop_y + crop_h - 1);
 
@@ -1041,7 +1047,7 @@ int main(int argc, char** argv)
 
                 long index = dlib::index_of_max(cm);
 
-                if (index == 3)
+                if (index == 1)
                 {
                     std::cout << "gray backpack" << std::endl;
                 }

@@ -54,7 +54,7 @@
 #include "pg.h"
 
 
-#include "../../robot/obj_det/include/obj_det_net_rgb_v10.h"
+#include "../../dlib_object_detection/common/include/obj_det_net_rgb_v10.h"
 
 
 //#include "mmap.h"
@@ -73,7 +73,7 @@
 #include "simplex_noise.h"
 #include "ocv_threshold_functions.h"
 
-#include "pso.h"
+//#include "pso.h"
 //#include "pso_particle.h"
 //#include "ycrcb_pixel.h"
 //#include "dfd_array_cropper.h"
@@ -730,7 +730,7 @@ void generate_random_image(
 
             for (int jdx = 0; jdx < s; ++jdx)
             {
-                pts.push_back(cv::Point(rng.uniform(x_1, x_2) + x, rng.uniform(y_1, y_2) + y));
+                pts.push_back(cv::Point((long)(rng.uniform((int)x_1, (int)x_2) + x), (long)(rng.uniform((int)y_1, (int)y_2) + y)));
             }
 
             vpts[0] = pts;
@@ -905,7 +905,7 @@ int main(int argc, char** argv)
 
 #else
         std::cout << "argv[0]: " << std::string(argv[0]) << std::endl;
-        std::string exe_path = get_linux_path();
+        std::string exe_path = get_ubuntu_path();
         std::cout << "Path: " << exe_path << std::endl;
 #endif
 
@@ -963,10 +963,14 @@ int main(int argc, char** argv)
         //generate_random_image(test, 123456, nr, nc, N, scale);
 
         bp = 1;
-
-        std::string net_file = "../../robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
-        std::string test_file;
-
+        
+        std::string test_file;        
+        std::string net_file;
+        
+        
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+        net_file = "../../robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
+        
         // red backpack
         //test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
 
@@ -979,13 +983,19 @@ int main(int argc, char** argv)
 
         // gray backpack
         // test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
-        //test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+        test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+                
+#else
+        net_file = "../../../dc_ws/src/robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
+        
+        test_file = "../../../dc_ws/image_0054.png";
+        
+#endif
 
-        // nothing, but triggers a bp
-        //test_file = "D:/Projects/object_detection_data/dc/part5/image_0050.png";
-        test_file = "D:/Projects/object_detection_data/dc/part5/image_0049.png";
 
-        int crop_x = 0;
+
+
+        int crop_x = 270;
         int crop_y = 0;
         int crop_w = 1280;
         int crop_h = 720;
@@ -1036,12 +1046,15 @@ int main(int argc, char** argv)
         //d.push_back(dlib::mmod_rect(dlib::rectangle(30, 30, 60, 60), 1.0, "backpack"));
         dlib::matrix<uint32_t, 1, 4> cm;
 
+        std::cout << "num detects: " << d.size() << std:: endl;
+        
         for (idx = 0; idx < d.size(); ++idx)
         {
             auto class_index = std::find(class_names.begin(), class_names.end(), d[idx].label);
 
             if (d[idx].label == "backpack")
             {
+
                 cm = get_color_match(rgb_img, d[idx]);
 
 
@@ -1049,7 +1062,7 @@ int main(int argc, char** argv)
 
                 if (index == 1)
                 {
-                    std::cout << "gray backpack" << std::endl;
+                    std::cout << "not a backpack" << std::endl;
                 }
 
                 bp = 5;
@@ -1057,7 +1070,9 @@ int main(int argc, char** argv)
 
             d[idx].rect = dlib::translate_rect(d[idx].rect, crop_x, crop_y);
             overlay_bounding_box(cv_img, dlib2cv_rect(d[idx].rect), d[idx].label, class_color[std::distance(class_names.begin(), class_index)]);
-
+            cv::imshow("test", cv_img);
+            
+            cv::waitKey(0);
         }
 
         //dlib::image_window win;
@@ -1068,8 +1083,8 @@ int main(int argc, char** argv)
 
         test_file = "D:/Projects/playground/images/checkerboard_10x10.png";
 
-        cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
-        //cv::Mat cv_img = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
+        //cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
+        cv::Mat img1 = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
         //cv::cvtColor(cb_img, cb_img, cv::COLOR_BGR2RGB);
         img1.convertTo(img1, CV_32FC3, 1.0/255.0);
 
@@ -1154,11 +1169,11 @@ int main(int argc, char** argv)
 
         std::cout << trainer << std::endl;
 
-        auto &t1a = dlib::layer<2>(c_net).layer_details().get_weights();
+        auto t1a = dlib::layer<2>(c_net).layer_details().get_weights();
         auto &t1a1 = dlib::layer<2>(c_net);
 
         dlib::layer<2>(c_net).layer_details().setup(t1a1.subnet());
-        auto &t1b = dlib::layer<2>(c_net).layer_details().get_weights();
+        auto t1b = dlib::layer<2>(c_net).layer_details().get_weights();
 
         for (idx = 0; idx < 10; ++idx)
         {
@@ -1208,12 +1223,12 @@ int main(int argc, char** argv)
         //std::cout << "find_min_global (" << elapsed_time.count() << "): " << result.x << ", " << result.y << std::endl;
 
         // ----------------------------------------------------------------------------------------
-        dlib::load_image(color_map, "../test_map_v2_2.png");
+        //dlib::load_image(color_map, "../test_map_v2_2.png");
 
-        dlib::pso_options psooptions(100, 5000, 2.4, 2.1, 1.0, 1, 1.0);
+        //dlib::pso_options psooptions(100, 5000, 2.4, 2.1, 1.0, 1, 1.0);
 
-        std::cout << "----------------------------------------------------------------------------------------" << std::endl;
-        std::cout << psooptions << std::endl;
+        //std::cout << "----------------------------------------------------------------------------------------" << std::endl;
+        //std::cout << psooptions << std::endl;
 
         // schwefel(dlib::matrix<double> x)
 

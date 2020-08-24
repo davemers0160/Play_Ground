@@ -849,6 +849,69 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
 }
 
 
+/*
+This function will take a base image and overlay a set of shapes and then blur them according to the sigma value
+
+@param src input image that will be modified and returned.  This image should be CV_32FC3 type
+@param rng random number generator object
+@param sigma value that determines the blur kernel properties
+@param scale optional parameter to determine the size of the object
+*/
+void blur_layer(cv::Mat& src,
+    cv::RNG& rng,
+    double sigma,
+    double scale = 0.3)
+{
+
+    // get the image dimensions for other uses
+    int nr = src.rows;
+    int nc = src.cols;
+
+    // clone the source image
+    cv::Mat src_clone = src.clone();
+
+    // create the inital blank mask
+    cv::Mat BM_1 = cv::Mat(src.size(), CV_32FC3, cv::Scalar::all(0.0));
+
+    // generate a random color 
+    cv::Scalar C = (1.0 / 255.0) * cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
+
+    // generate a random point within the image using the cv::RNG uniform funtion (use nr,nc)
+    int x = rng.uniform(0, nc);
+    int y = rng.uniform(0, nr);
+
+    // generate the random radius values for an ellipse using one of the RNG functions
+    int r1 = std::floor(scale * rng.uniform(0, std::min(nr, nc)));
+    int r2 = std::floor(scale * rng.uniform(0, std::min(nr, nc)));
+
+    // generate a random angle between 0 and 360 degrees for the ellipse using one of the RNG functions
+    double a = rng.uniform(0.0, 360.0);
+
+    // use the cv::ellipse function and the random points to generate a random ellipse on top of the src_clone image
+    cv::ellipse(src_clone, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, C, -1, cv::LineTypes::LINE_8, 0);
+
+    // use the same points to generate the same ellipse on the mask with color = CV::Scalar(1.0, 1.0, 1.0)
+    cv::ellipse(BM_1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, cv::Scalar(1.0, 1.0, 1.0), -1, cv::LineTypes::LINE_8, 0);
+
+    // blur the src_clone image with the overlay and blur the mask image using the sigma value to determine the blur kernel size
+    cv::GaussianBlur(src_clone, src_clone, cv::Size(0, 0), sigma, sigma, cv::BORDER_REPLICATE);
+    cv::GaussianBlur(BM_1, BM_1, cv::Size(0, 0), sigma, sigma, cv::BORDER_REPLICATE);
+
+    // multiply the src image times (cv::Scalar(1.0, 1.0, 1.0) - BM_1)
+    cv::Mat L1_1;
+    cv::multiply(src, cv::Scalar(1.0, 1.0, 1.0) - BM_1, L1_1);
+
+    // multiply the src_clone image times BM_1
+    cv::Mat L1_2;
+    cv::multiply(src_clone, BM_1, L1_2);
+
+    // set src equal to L1_1 + L1_2
+    src = L1_1 + L1_2;
+
+}   // end of blur_layer 
+
+
+
 
 
 // ----------------------------------------------------------------------------------------
@@ -917,10 +980,10 @@ int main(int argc, char** argv)
 
         cv::RNG rng(1234567);
 
-        long nr = 500;
-        long nc = 500;
-        unsigned int N = 800;
-        double scale = (double)50 / (double)nc;
+        long nr = 600;
+        long nc = 800;
+        unsigned int N = 1000;
+        double scale = (double)60 / (double)nc;
 
         generate_random_image(img, rng, nr, nc, N, scale);
 
@@ -992,10 +1055,7 @@ int main(int argc, char** argv)
         
 #endif
 
-
-
-
-        int crop_x = 270;
+        int crop_x = 0;
         int crop_y = 0;
         int crop_w = 1280;
         int crop_h = 720;
@@ -1083,59 +1143,65 @@ int main(int argc, char** argv)
 
         test_file = "D:/Projects/playground/images/checkerboard_10x10.png";
 
-        //cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
-        cv::Mat img1 = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
+        cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
+        //cv::Mat img1 = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
         //cv::cvtColor(cb_img, cb_img, cv::COLOR_BGR2RGB);
         img1.convertTo(img1, CV_32FC3, 1.0/255.0);
 
-        nr = img1.rows;
-        nc = img1.cols;
-
-        // generate the random point
-        long x = rng.uniform(0, nc);
-        long y = rng.uniform(0, nr);
-
-        // get the random color for the shape
-        cv::Scalar C = (1.0/255.0)*cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
-
-        // pick a random radi for the ellipse
-        scale = 0.6;
-        long r1 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
-        long r2 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
-        double a = rng.uniform(0.0, 360.0);
-
-        cv::Mat BM_1 = cv::Mat(img1.size(), CV_32FC3, cv::Scalar::all(0.0));
-
         // initialize parameters for filter2D
-        int const kernel_size = 5;
         double const delta = 0;
         int const ddepth = -1;
         cv::Point anchor = cv::Point(-1, -1);
         bool normalize = true;
 
-        //cv::boxFilter(img1, img1, ddepth, cv::Size(3, 3), anchor, normalize, cv::BORDER_DEFAULT);
         cv::GaussianBlur(img1, img1, cv::Size(0, 0), 1.0, 1.0, cv::BORDER_REPLICATE);
+        cv::Mat img1_1 = img1.clone();
 
-        //------------
-        cv::Mat layer_img1 = img1.clone();
-        cv::ellipse(layer_img1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, C, -1, cv::LineTypes::LINE_8, 0);
-        cv::ellipse(BM_1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, cv::Scalar(1.0, 1.0, 1.0), -1, cv::LineTypes::LINE_8, 0);
 
-        //cv::boxFilter(layer_img1, layer_img1, ddepth, cv::Size(25, 25), anchor, normalize, cv::BORDER_DEFAULT);
-        //cv::boxFilter(BM_1, BM_1, ddepth, cv::Size(25, 25), anchor, normalize, cv::BORDER_DEFAULT);
-        cv::GaussianBlur(layer_img1, layer_img1, cv::Size(85, 85), 11.0, 11.0, cv::BORDER_REPLICATE);
-        cv::GaussianBlur(BM_1, BM_1, cv::Size(85, 85), 11.0, 11.0, cv::BORDER_REPLICATE);
+        double sigma = 2.0;
+        scale = 0.5;
 
-        //cv::Mat l3 = cv::Scalar(1.0,1.0,1.0) - BM_1;
+        for (idx = 0; idx < 6; ++idx) 
+        {
 
-        cv::Mat L1 = img1.mul(cv::Scalar(1.0, 1.0, 1.0) - BM_1);
-
-        cv::Mat L2 = layer_img1.mul(BM_1);
-
-        cv::Mat cb2 = L1 + L2;
+            blur_layer(img1, rng, sigma*(idx+1), scale);
+            bp = 1;
+        }
 
         bp = 10;
 
+        img.convertTo(img, CV_32FC3, 1.0 / 255.0);
+
+        cv::Mat mask1 = cv::Mat(img.size(), CV_32FC3, cv::Scalar::all(0.0));
+        nr = img.rows;
+        nc = img.cols;
+
+        for (idx = 0; idx < 100; ++idx)
+        {
+            // generate a random point within the image using the cv::RNG uniform funtion (use nr,nc)
+            int x = rng.uniform(0, nc);
+            int y = rng.uniform(0, nr);
+
+            // generate the random radius values for an ellipse using one of the RNG functions
+            int r1 = std::floor(rng.uniform(10, 40));
+            int r2 = std::floor(rng.uniform(10, 40));
+
+            // generate a random angle between 0 and 360 degrees for the ellipse using one of the RNG functions
+            double a = rng.uniform(0.0, 360.0);
+
+            cv::ellipse(mask1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, cv::Scalar(1.0, 1.0, 1.0), -1, cv::LineTypes::LINE_8, 0);
+
+        }
+
+
+        cv::Mat img2;
+        cv::multiply(img, mask1, img2);
+
+        img1_1 = img1_1.mul(cv::Scalar(1.0, 1.0, 1.0) - mask1) + img2.mul(mask1);
+
+        //cv::multiply(img1_1, img2, img2);
+
+        bp = 2;
         // ----------------------------------------------------------------------------------------
         //dlib::matrix<dlib::rgb_pixel> color_map;
         //dlib::matrix<uint8_t> map, map2;

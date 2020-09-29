@@ -27,6 +27,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <list>
+#include <thread>
 
 // dlib includes
 #include "dlib/rand.h"
@@ -53,7 +54,7 @@
 //#include "mmaplib.h"
 #include "pg.h"
 
-
+#include "../../playground/include/cv_random_image_gen.h"
 #include "../../dlib_object_detection/common/include/obj_det_net_rgb_v10.h"
 
 
@@ -632,6 +633,7 @@ double nan_mean(cv::Mat& img)
     return (mn / (double)count);
 }   // end of nan_mean
 
+/*
 // ----------------------------------------------------------------------------------------
 void generate_random_image(
     cv::Mat& img,
@@ -763,9 +765,8 @@ void generate_random_image(unsigned char*& img,
     img = new unsigned char[cv_img.total()*3];
     memcpy((void*)img, cv_img.ptr<unsigned char>(0), cv_img.total()*3);
 
-    int bp = 0;
 }
-
+*/
 
 dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img, dlib::mmod_rect& det)
 {
@@ -784,6 +785,8 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
     dlib::rgb_pixel black_ll(0, 0, 0);
     dlib::rgb_pixel black_ul(48, 48, 48);
 
+    dlib::hsi_pixel green_ll(65, 0, 30);
+    dlib::hsi_pixel green_ul(105, 255, 192);
 
     dlib::hsi_pixel gray_ll(0, 0, 48);
     dlib::hsi_pixel gray_ul(255, 255, 128);
@@ -796,6 +799,7 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
     dlib::matrix<uint16_t> blue_mask = dlib::zeros_matrix<uint16_t>(h, w);
     dlib::matrix<uint16_t> black_mask = dlib::zeros_matrix<uint16_t>(h, w);
     dlib::matrix<uint16_t> gray_mask = dlib::zeros_matrix<uint16_t>(h, w);
+    dlib::matrix<uint16_t> green_mask = dlib::zeros_matrix<uint16_t>(h, w);
 
     // crop out the detection
     dlib::point ctr = dlib::center(det.rect);
@@ -826,6 +830,10 @@ dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img,
             else if ((p >= blue_ll) && (p <= blue_ul))
             {
                 blue_mask(r, c) = 1;
+            }
+            else if ((p >= green_ll) && (p <= green_ul))
+            {
+                green_mask(r, c) = 1;
             }
             else if ((q >= black_ll) && (q <= black_ul))
             {
@@ -911,6 +919,150 @@ void blur_layer(cv::Mat& src,
 }   // end of blur_layer 
 
 
+// ----------------------------------------------------------------------------------------
+template <typename in_image_type,typename out_image_type, typename hist_type>
+void histogram_specification(in_image_type& in_img_, out_image_type& out_img_, hist_type &spec_hist)
+{
+    uint64_t idx, jdx;
+
+    dlib::const_image_view<in_image_type> in_img(in_img_);
+    dlib::image_view<out_image_type> out_img(out_img_);
+    typedef typename dlib::image_traits<in_image_type>::pixel_type in_pixel_type;
+    typedef typename dlib::image_traits<out_image_type>::pixel_type out_pixel_type;
+
+    out_img.set_size(in_img.nr(), in_img.nc());
+
+    unsigned long p;
+
+    dlib::matrix<unsigned long, 1, 0> histogram;
+    dlib::get_histogram(in_img_, histogram);
+    in_img = in_img_;
+
+    double scale = dlib::pixel_traits<out_pixel_type>::max();
+    if (in_img.size() > histogram(0))
+        scale /= in_img.size() - histogram(0);
+    else
+        scale = 0;
+
+    // make the black pixels remain black in the output image
+    histogram(0) = 0;
+
+    // compute the transform function
+    for (idx = 1; idx < histogram.size(); ++idx)
+        histogram(idx) += histogram(idx - 1);
+    // scale so that it is in the range [0,pixel_traits<out_pixel_type>::max()]
+    for (idx = 0; idx < histogram.size(); ++idx)
+        histogram(idx) = static_cast<unsigned long>(histogram(idx) * scale);
+
+
+    dlib::matrix<unsigned char> map(1, histogram.size());
+    double min_value;
+    uint32_t index;
+    for (idx = 0; idx < histogram.size(); ++idx)
+    {
+        min_value = 1000;
+        index = histogram.size() - 1;
+        for (jdx = 0; jdx < spec_hist.size(); ++jdx)
+        {
+            if (std::abs((double)histogram(idx) - (double)spec_hist(jdx)) < min_value)
+            {
+                min_value = std::abs((double)histogram(idx) - (double)spec_hist(jdx));
+                index = jdx;
+            }
+        }
+        map(idx) = index;
+    }
+
+    // now do the transform
+    for (long row = 0; row < in_img.nr(); ++row)
+    {
+        for (long col = 0; col < in_img.nc(); ++col)
+        {
+            p = map(get_pixel_intensity(in_img[row][col]));
+            assign_pixel(out_img[row][col], in_img[row][col]);
+            assign_pixel_intensity(out_img[row][col], p);
+        }
+    }
+
+
+    int bp = 0;
+}
+
+void distortion(cv::Mat& src, cv::Mat& dst, double c_x, double c_y, double k_x1, double k_y1)
+{
+    long x, y;
+
+    cv::Mat mapx = cv::Mat(src.size(), CV_32FC1, cv::Scalar::all(0.0));
+    cv::Mat mapy = cv::Mat(src.size(), CV_32FC1, cv::Scalar::all(0.0));
+
+    cv::Mat dst2 = cv::Mat(src.size(), CV_8UC3, cv::Scalar::all(0));
+
+    int nc = src.cols;
+    int nr = src.rows;
+    uint64_t r = 0;
+    uint64_t rr = 0;
+    int64_t x_d, y_d;
+
+    float xn, yn, xd_f, yd_f, x3, y3;
+
+    for (y = 0; y < nr; ++y)
+    {
+        for (x = 0; x < nc; ++x)
+        {
+            xn = (float)(2 * x - nc) / (double)nc;
+            yn = (float)(2 * y - nr) / (double)nr;
+
+            r = ((x - c_x) * (x - c_x) + (y - c_y) * (y - c_y));
+            rr = r * r;
+
+            xd_f = xn * (1.0 + k_x1 * r);
+            yd_f = yn * (1.0 + k_y1 * r);
+            //xd_f = xn / (1.0 - k_x1 * (x3 * x3 + y3 * y3));
+            //yd_f = yn / (1.0 - k_y1 * (x3 * x3 + y3 * y3));
+
+            //xd_f = xn * (1 + k_x1 * r);// +k_x1 * 0.00001 * rr);
+            //yd_f = yn * (1 + k_y1 * r);// +k_y1 * 0.00001 * rr);
+
+            x_d = (int64_t)((xd_f + 1.0) * nc / 2.0);
+            y_d = (int64_t)((yd_f + 1.0) * nr / 2.0);
+
+            if(x_d >= 0 && x_d < nc && y_d >= 0 && y_d <  nr)
+                dst2.at<cv::Vec3b>(y, x) = src.at<cv::Vec3b>(y_d, x_d);
+
+            mapx.at<float>(y,x) = c_x + (x - c_x) * (1 + k_x1 * r);
+            mapy.at<float>(y,x) = c_y + (y - c_y) * (1 + k_y1 * r);
+
+        }
+    }
+
+
+    cv::remap(src, dst, mapx, mapy, cv::INTER_CUBIC);
+
+    int bp = 0;
+}
+
+
+
+volatile bool entry = false;
+volatile bool run = true;
+std::string console_input;
+
+void get_input(void)
+{
+    while (1)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        if (run == true)
+        {
+            std::getline(std::cin, console_input);
+            entry = true;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
 
 
 
@@ -974,6 +1126,32 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
+        std::thread gi(get_input);
+
+        while (run)
+        {
+            if (entry)
+            {
+                if (console_input == "test")
+                {
+                    std::cout << "you pressed test" << std::endl;
+                }
+                else if (console_input == "stop")
+                {
+                    std::cout << "stopping" << std::endl;
+                    run = false;
+                }
+
+                entry = false;
+            }
+
+
+        }
+
+        gi.join();
+
+        std::cout << "done with test" << std::endl;
+
         uint32_t intensity = (uint32_t)rnd.get_integer_in_range(2, 11);
 
         cv::Mat img;
@@ -982,7 +1160,7 @@ int main(int argc, char** argv)
 
         long nr = 600;
         long nc = 800;
-        unsigned int N = 1000;
+        unsigned int N = 1200;
         double scale = (double)60 / (double)nc;
 
         generate_random_image(img, rng, nr, nc, N, scale);
@@ -1032,7 +1210,7 @@ int main(int argc, char** argv)
         
         
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
-        net_file = "../../robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
+        net_file = "../../robot/common/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
         
         // red backpack
         //test_file = "D:/Projects/object_detection_data/dc/train/full/backpack8-1.png";
@@ -1046,14 +1224,19 @@ int main(int argc, char** argv)
 
         // gray backpack
         // test_file = "D:/Projects/object_detection_data/dc/train/full/backpack1.png";
-        test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
-                
+        //test_file = "D:/Projects/object_detection_data/dc/part4/image_0015.png";
+        test_file = "D:/Projects/object_detection_data/dc/part5/image_0054.png";
+
 #else
         net_file = "../../../dc_ws/src/robot/obj_det/nets/dc3_rgb_v10e_035_035_100_90_HPC_final_net.dat";
         
         test_file = "../../../dc_ws/image_0054.png";
         
 #endif
+
+        //std::vector<float> gr_hist = { 0.00006, 0.00055, 0.00148, 0.00308, 0.00537, 0.00821, 0.01151, 0.01577, 0.01977, 0.02346, 0.02687, 0.03004, 0.03292, 0.03543, 0.03764, 0.03960, 0.04139, 0.04307, 0.04475, 0.04648, 0.04832, 0.05025, 0.05230, 0.05438, 0.05654, 0.05875, 0.06100, 0.06330, 0.06573, 0.06833, 0.07117, 0.07415, 0.07726, 0.08050, 0.08387, 0.08744, 0.09117, 0.09516, 0.09931, 0.10367, 0.10818, 0.11289, 0.11766, 0.12262, 0.12773, 0.13293, 0.13822, 0.14367, 0.14935, 0.15515, 0.16113, 0.16713, 0.17333, 0.17965, 0.18616, 0.19288, 0.19988, 0.20703, 0.21437, 0.22185, 0.22953, 0.23735, 0.24524, 0.25329, 0.26153, 0.26988, 0.27838, 0.28709, 0.29591, 0.30476, 0.31370, 0.32269, 0.33168, 0.34073, 0.34972, 0.35870, 0.36766, 0.37662, 0.38555, 0.39449, 0.40334, 0.41210, 0.42084, 0.42942, 0.43795, 0.44622, 0.45435, 0.46236, 0.47018, 0.47786, 0.48535, 0.49269, 0.49979, 0.50674, 0.51341, 0.51986, 0.52617, 0.53225, 0.53817, 0.54392, 0.54956, 0.55506, 0.56048, 0.56579, 0.57101, 0.57611, 0.58111, 0.58600, 0.59082, 0.59554, 0.60016, 0.60475, 0.60925, 0.61371, 0.61806, 0.62235, 0.62657, 0.63070, 0.63480, 0.63887, 0.64293, 0.64699, 0.65099, 0.65501, 0.65897, 0.66300, 0.66694, 0.67090, 0.67480, 0.67863, 0.68244, 0.68620, 0.68989, 0.69354, 0.69711, 0.70068, 0.70412, 0.70756, 0.71098, 0.71421, 0.71745, 0.72058, 0.72363, 0.72675, 0.72969, 0.73268, 0.73559, 0.73850, 0.74148, 0.74449, 0.74756, 0.75056, 0.75346, 0.75633, 0.75908, 0.76179, 0.76442, 0.76702, 0.76962, 0.77215, 0.77462, 0.77713, 0.77961, 0.78212, 0.78458, 0.78708, 0.78963, 0.79216, 0.79479, 0.79752, 0.80036, 0.80324, 0.80609, 0.80904, 0.81200, 0.81499, 0.81800, 0.82096, 0.82395, 0.82681, 0.82958, 0.83227, 0.83479, 0.83714, 0.83934, 0.84135, 0.84326, 0.84499, 0.84666, 0.84820, 0.84967, 0.85108, 0.85243, 0.85379, 0.85518, 0.85653, 0.85788, 0.85921, 0.86051, 0.86176, 0.86292, 0.86401, 0.86506, 0.86608, 0.86706, 0.86803, 0.86898, 0.86987, 0.87074, 0.87158, 0.87243, 0.87330, 0.87416, 0.87502, 0.87585, 0.87662, 0.87735, 0.87806, 0.87876, 0.87947, 0.88019, 0.88094, 0.88170, 0.88248, 0.88332, 0.88421, 0.88519, 0.88623, 0.88730, 0.88842, 0.88955, 0.89068, 0.89185, 0.89300, 0.89407, 0.89511, 0.89608, 0.89701, 0.89789, 0.89870, 0.89951, 0.90032, 0.90114, 0.90197, 0.90285, 0.90389, 0.90508, 0.90633, 0.90776, 0.90942, 0.91150, 0.91410, 0.91681, 0.92039, 0.92648, 1.00000 };
+        dlib::matrix<uint8_t> gr_hist = { 0, 0, 0, 0, 1, 2, 2, 4, 5, 5, 6, 7, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 16, 16, 17, 18, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 32, 33, 35, 36, 38, 39, 41, 42, 44, 45, 47, 49, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 73, 75, 77, 79, 82, 84, 86, 89, 91, 93, 96, 98, 100, 102, 105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127, 129, 130, 132, 134, 135, 137, 138, 140, 141, 142, 144, 145, 146, 148, 149, 150, 151, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 166, 167, 168, 169, 170, 171, 172, 173, 174, 174, 175, 176, 177, 178, 179, 180, 181, 182, 182, 183, 184, 185, 186, 186, 187, 188, 189, 189, 190, 191, 192, 192, 193, 194, 194, 195, 196, 196, 197, 198, 198, 199, 200, 200, 201, 202, 202, 203, 204, 204, 205, 206, 207, 207, 208, 209, 210, 210, 211, 212, 212, 213, 214, 214, 215, 215, 215, 216, 216, 217, 217, 217, 218, 218, 218, 219, 219, 219, 220, 220, 220, 220, 221, 221, 221, 221, 222, 222, 222, 222, 222, 223, 223, 223, 223, 223, 224, 224, 224, 224, 224, 225, 225, 225, 225, 225, 226, 226, 226, 227, 227, 227, 227, 228, 228, 228, 228, 229, 229, 229, 229, 230, 230, 230, 230, 231, 231, 231, 232, 233, 233, 234, 236, 254 };
+
 
         int crop_x = 0;
         int crop_y = 0;
@@ -1095,12 +1278,15 @@ int main(int argc, char** argv)
         
         cv::cvtColor(cv_img, cv_img, cv::COLOR_BGR2RGB);
         
-        dlib::matrix<dlib::rgb_pixel> rgb_img;
+        dlib::matrix<dlib::rgb_pixel> rgb_img, rgb_img2;
 
         dlib::assign_image(rgb_img, dlib::cv_image<dlib::rgb_pixel>(cv_img));
 
         rgb_img = dlib::subm(rgb_img, crop_rect);
 
+        histogram_specification(rgb_img, rgb_img2, gr_hist);
+
+/*
         std::vector<dlib::mmod_rect> d = test_net(rgb_img);
 
         //d.push_back(dlib::mmod_rect(dlib::rectangle(30, 30, 60, 60), 1.0, "backpack"));
@@ -1138,12 +1324,16 @@ int main(int argc, char** argv)
         //dlib::image_window win;
 
         bp = 2;
-
+*/
         // ----------------------------------------------------------------------------------------
 
         test_file = "D:/Projects/playground/images/checkerboard_10x10.png";
 
         cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
+        cv::Mat img1_dist;
+
+        distortion(img1, img1_dist, 400, 300, 0.0000000001, 0.0000000001);
+
         //cv::Mat img1 = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
         //cv::cvtColor(cb_img, cb_img, cv::COLOR_BGR2RGB);
         img1.convertTo(img1, CV_32FC3, 1.0/255.0);

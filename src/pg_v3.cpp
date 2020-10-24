@@ -73,6 +73,7 @@
 #include "overlay_bounding_box.h"
 #include "simplex_noise.h"
 #include "ocv_threshold_functions.h"
+#include "so_cam_commands.h"
 
 //#include "pso.h"
 //#include "pso_particle.h"
@@ -1126,31 +1127,31 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
-        std::thread gi(get_input);
+        //std::thread gi(get_input);
 
-        while (run)
-        {
-            if (entry)
-            {
-                if (console_input == "test")
-                {
-                    std::cout << "you pressed test" << std::endl;
-                }
-                else if (console_input == "stop")
-                {
-                    std::cout << "stopping" << std::endl;
-                    run = false;
-                }
+        //while (run)
+        //{
+        //    if (entry)
+        //    {
+        //        if (console_input == "test")
+        //        {
+        //            std::cout << "you pressed test" << std::endl;
+        //        }
+        //        else if (console_input == "stop")
+        //        {
+        //            std::cout << "stopping" << std::endl;
+        //            run = false;
+        //        }
 
-                entry = false;
-            }
+        //        entry = false;
+        //    }
 
 
-        }
+        //}
 
-        gi.join();
+        //gi.join();
 
-        std::cout << "done with test" << std::endl;
+        //std::cout << "done with test" << std::endl;
 
         uint32_t intensity = (uint32_t)rnd.get_integer_in_range(2, 11);
 
@@ -1158,50 +1159,43 @@ int main(int argc, char** argv)
 
         cv::RNG rng(1234567);
 
-        long nr = 600;
-        long nc = 800;
-        unsigned int N = 1200;
-        double scale = (double)60 / (double)nc;
+        //long nr = 600;
+        //long nc = 800;
+        //unsigned int N = 1200;
+        //double scale = (double)60 / (double)nc;
 
-        generate_random_image(img, rng, nr, nc, N, scale);
+        //generate_random_image(img, rng, nr, nc, N, scale);
 
-        bp = 0;
+        //bp = 0;
 
-        cv::Mat tf = cv::Mat(10, 10, CV_32FC1);
+        //cv::Mat tf = cv::Mat(10, 10, CV_32FC1);
 
-        for (idx = 0; idx < 10; ++idx)
-        {
-            for (jdx = 0; jdx < 10; ++jdx)
-            {
-                tf.at<float>(idx, jdx) = rng.uniform(0.0f, 50.0f);
-            }
-        }
-
-
-        cv::Scalar mn = cv::mean(tf);
-
-        std::cout << "mean: " << mn[0] << std::endl;
-        double mn2 = nan_mean<float>(tf);
-
-        tf.at<float>(5, 5) = nan("");
-
-        mn2 = nan_mean<float>(tf);
+        //for (idx = 0; idx < 10; ++idx)
+        //{
+        //    for (jdx = 0; jdx < 10; ++jdx)
+        //    {
+        //        tf.at<float>(idx, jdx) = rng.uniform(0.0f, 50.0f);
+        //    }
+        //}
 
 
-        cv::patchNaNs(tf);
-        cv::Scalar mn3 = cv::mean(tf);
+        so_camera vinden;
+
+        std::cout << vinden << std::endl;
+
+        std::cout << vinden.lens << std::endl;
+
+        std::cout << vinden.sensor << std::endl;
 
 
-        cv::Mat tf4;
-        float min_val = 0.0;
-        float max_val = 25.0;
-
-        ranged_threshold<float>(tf, tf4, 0.0, 25.0);
+        auto t = vinden.lens.set_zoom_index(255).to_array();
 
 
-        unsigned char* test;
 
-        //generate_random_image(test, 123456, nr, nc, N, scale);
+
+
+
+
 
         bp = 1;
         
@@ -1286,110 +1280,9 @@ int main(int argc, char** argv)
 
         histogram_specification(rgb_img, rgb_img2, gr_hist);
 
-/*
-        std::vector<dlib::mmod_rect> d = test_net(rgb_img);
 
-        //d.push_back(dlib::mmod_rect(dlib::rectangle(30, 30, 60, 60), 1.0, "backpack"));
-        dlib::matrix<uint32_t, 1, 4> cm;
-
-        std::cout << "num detects: " << d.size() << std:: endl;
-        
-        for (idx = 0; idx < d.size(); ++idx)
-        {
-            auto class_index = std::find(class_names.begin(), class_names.end(), d[idx].label);
-
-            if (d[idx].label == "backpack")
-            {
-
-                cm = get_color_match(rgb_img, d[idx]);
-
-
-                long index = dlib::index_of_max(cm);
-
-                if (index == 1)
-                {
-                    std::cout << "not a backpack" << std::endl;
-                }
-
-                bp = 5;
-            }
-
-            d[idx].rect = dlib::translate_rect(d[idx].rect, crop_x, crop_y);
-            overlay_bounding_box(cv_img, dlib2cv_rect(d[idx].rect), d[idx].label, class_color[std::distance(class_names.begin(), class_index)]);
-            cv::imshow("test", cv_img);
-            
-            cv::waitKey(0);
-        }
-
-        //dlib::image_window win;
-
-        bp = 2;
-*/
         // ----------------------------------------------------------------------------------------
 
-        test_file = "D:/Projects/playground/images/checkerboard_10x10.png";
-
-        cv::Mat img1 = cv::imread(test_file, cv::IMREAD_COLOR);
-        cv::Mat img1_dist;
-
-        distortion(img1, img1_dist, 400, 300, 0.0000000001, 0.0000000001);
-
-        //cv::Mat img1 = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
-        //cv::cvtColor(cb_img, cb_img, cv::COLOR_BGR2RGB);
-        img1.convertTo(img1, CV_32FC3, 1.0/255.0);
-
-        // initialize parameters for filter2D
-        double const delta = 0;
-        int const ddepth = -1;
-        cv::Point anchor = cv::Point(-1, -1);
-        bool normalize = true;
-
-        cv::GaussianBlur(img1, img1, cv::Size(0, 0), 1.0, 1.0, cv::BORDER_REPLICATE);
-        cv::Mat img1_1 = img1.clone();
-
-
-        double sigma = 2.0;
-        scale = 0.5;
-
-        for (idx = 0; idx < 6; ++idx) 
-        {
-
-            blur_layer(img1, rng, sigma*(idx+1), scale);
-            bp = 1;
-        }
-
-        bp = 10;
-
-        img.convertTo(img, CV_32FC3, 1.0 / 255.0);
-
-        cv::Mat mask1 = cv::Mat(img.size(), CV_32FC3, cv::Scalar::all(0.0));
-        nr = img.rows;
-        nc = img.cols;
-
-        for (idx = 0; idx < 100; ++idx)
-        {
-            // generate a random point within the image using the cv::RNG uniform funtion (use nr,nc)
-            int x = rng.uniform(0, nc);
-            int y = rng.uniform(0, nr);
-
-            // generate the random radius values for an ellipse using one of the RNG functions
-            int r1 = std::floor(rng.uniform(10, 40));
-            int r2 = std::floor(rng.uniform(10, 40));
-
-            // generate a random angle between 0 and 360 degrees for the ellipse using one of the RNG functions
-            double a = rng.uniform(0.0, 360.0);
-
-            cv::ellipse(mask1, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, cv::Scalar(1.0, 1.0, 1.0), -1, cv::LineTypes::LINE_8, 0);
-
-        }
-
-
-        cv::Mat img2;
-        cv::multiply(img, mask1, img2);
-
-        img1_1 = img1_1.mul(cv::Scalar(1.0, 1.0, 1.0) - mask1) + img2.mul(mask1);
-
-        //cv::multiply(img1_1, img2, img2);
 
         bp = 2;
         // ----------------------------------------------------------------------------------------

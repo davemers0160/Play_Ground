@@ -1,5 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 
+#include "edtinc.h"
+//#include "libedt.h"
+
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
 #include <windows.h>
 //#include "win_network_fcns.h"
@@ -9,8 +12,6 @@
 //#pragma comment(lib, "IPHLPAPI.lib")    // Link with Iphlpapi.lib
 
 #endif
-
-
 
 // C/C++ includes
 #include <cmath>
@@ -101,6 +102,7 @@
 //#include "resnet101_v1.h"
 
 //#include "cyclic_analysis.h"
+
 
 #define M_PI 3.14159265358979323846
 #define M_2PI 6.283185307179586476925286766559
@@ -1193,7 +1195,7 @@ int main(int argc, char** argv)
 
 
 
-
+        //PdvDev* pdv_p0 = pdv_open_channel(EDT_INTERFACE, 0, 0);
 
 
 

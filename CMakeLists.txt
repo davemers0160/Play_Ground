@@ -95,7 +95,10 @@ file(GLOB SOURCES "src/*.c*"
     "${DLIB_CONTRIB}/src/*.cpp"
     )
 
-set(project_includes "include" "${COMMON_ROOT}/include" "${DLIB_CONTRIB}/include" "${DFD_COMMON_ROOT}/include")
+set(project_includes "include" 
+    "${COMMON_ROOT}/include" 
+    "${DLIB_CONTRIB}/include" 
+    "${DFD_COMMON_ROOT}/include")
 
 message(" ")
 message("--------------------------------------------------------")
@@ -110,9 +113,15 @@ message(" ")
 find_package(OpenCV REQUIRED)
 if (OpenCV_FOUND)
 	set(project_includes ${project_includes} ${OpenCV_INCLUDE_DIRS})
-
 else()
 	message("OpenCV not found, so we won't build the project.")
+endif()
+
+message(" ")
+include(${COMMON_ROOT}/cmake_utils/find_edtpdv.cmake)
+if(EDTPDV_FOUND)
+    set(project_includes ${project_includes} ${EDTPDV_INCLUDE_DIRS})
+    set(project_libs ${project_libs} ${EDTPDV_LIBS})
 endif()
 
 #add_definitions(-DMATPLOTLIBCPP_PYTHON_HEADER=Python.h)

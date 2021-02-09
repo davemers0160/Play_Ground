@@ -74,7 +74,7 @@
 #include "overlay_bounding_box.h"
 #include "simplex_noise.h"
 #include "ocv_threshold_functions.h"
-#include "so_cam_commands.h"
+//#include "so_cam_commands.h"
 
 //#include "pso.h"
 //#include "pso_particle.h"
@@ -570,14 +570,14 @@ double schwefel(particle p)
 
 cv::Mat octave_image;
 
-const int scale_slider_max = 50;
+const int scale_slider_max = 100;
 int scale_slider = 8;
 
-const int octave_slider_max = 30;
-int octave_slider = 5;
+const int octave_slider_max = 200;
+int octave_slider = 7;
 
 const int per_slider_max = 100;
-int per_slider = 6;
+int per_slider = 79;
 
 std::vector<cv::Vec3b> color = { cv::Vec3b(41,44,35), cv::Vec3b(57,91,61), cv::Vec3b(80,114,113), cv::Vec3b(64,126,132) };
 
@@ -588,16 +588,23 @@ static void on_trackbar(int, void*)
 {
     double v;
     uint32_t r, c;
+    double scale, p;
 
-    double scale = 1.0/(double)(scale_slider+1);
+    //scale = 1.0 / (double)(scale_slider + 1);
+//    scale = ((0.01 - 0.005) / 20.0) * scale_slider + 0.001;
+    scale = 0.00595 * scale_slider + 0.005;
 
-    double p = (double)(per_slider + 1) / 100.0;
+    p = (double)(per_slider + 1) / 100.0;
+
+    int o = max(1, octave_slider);
+
+    std::cout << o << "," << p << "," << scale << std::endl;
 
     for (r = 0; r < octave_image.rows; ++r)
     {
         for (c = 0; c < octave_image.cols; ++c)
         {
-            v = sn.octave((double)r * scale, (double)c * scale, octave_slider+1, p*1.0);
+            v = sn.octave((double)r * scale, (double)c * scale, o, p*1.0);
             uint8_t index = (uint8_t)(((v + 1.0) / 2.0) * 20);
             if(index<8)
                 octave_image.at<cv::Vec3b>(r, c) = color[0];
@@ -1154,6 +1161,80 @@ int main(int argc, char** argv)
         //gi.join();
 
         //std::cout << "done with test" << std::endl;
+        std::cout << std::string(argv[0]) << std::endl;
+
+        test_inputfile = "../../rf_zsl/data/lfm_test_10M_100m_0000.bin";
+
+        std::ifstream input_file;
+
+        std::vector<int16_t> buffer;
+
+        input_file.open(test_inputfile, std::ios::binary);
+        if (!input_file.is_open())
+            return 0;
+
+        input_file.seekg(0, std::ios::end);
+        size_t filesize = input_file.tellg();
+        input_file.seekg(0, std::ios::beg);
+
+
+        auto t4 = filesize / sizeof(int16_t) + (filesize % sizeof(int16_t) ? 1U : 0U);
+
+        buffer.resize(filesize / sizeof(int16_t) + (filesize % sizeof(int16_t) ? 1U : 0U));
+
+        input_file.read((char*)buffer.data(), filesize);
+
+        bp = 2;
+
+        uint32_t octaves = 7;
+        double sn_scale = 0.020;
+        double persistence = 50 / 100.0;
+        std::vector<uint8_t> wood = { 41,44,35, 57,91,61, 80,114,113, 64,126,132 };
+
+        // use these variables for the datatype > 0
+        typedef void (*init_)(long seed);
+        //typedef unsigned int (*evaluate_)(double x, double y, double scale, unsigned int num);
+        //typedef unsigned int (*octave_evaluate_)(double x, double y, double scale, unsigned int octaves, double persistence);
+        typedef void (*create_color_map_)(unsigned int h, unsigned int w, double scale, unsigned int octaves, double persistence, unsigned char* color, unsigned char* map);
+        HINSTANCE simplex_noise_lib = NULL;
+        init_ init;
+        //evaluate_ evaluate;
+        //octave_evaluate_ octave_evaluate;
+        create_color_map_ create_color_map;
+
+        std::string lib_filename = "D:/Projects/simplex_noise/build/Release/sn_lib.dll";
+
+        simplex_noise_lib = LoadLibrary(lib_filename.c_str());
+
+        if (simplex_noise_lib == NULL)
+        {
+            throw std::runtime_error("error loading library");
+        }
+
+        init = (init_)GetProcAddress(simplex_noise_lib, "init");
+        create_color_map = (create_color_map_)GetProcAddress(simplex_noise_lib, "create_color_map");
+
+        sn.init((long)time(NULL));
+
+        octave_image = cv::Mat(480, 480, CV_8UC3);
+        //create_color_map(img_h, img_w, sn_scale, octaves, persistence, wood.data(), random_img.data);
+
+        cv::namedWindow(window_name, cv::WINDOW_NORMAL); // Create Window
+        cv::resizeWindow(window_name, 1000, 800);
+
+        std::string persistence_tb = "Persistence";
+        std::string scale_tb = "Scale";
+        std::string octave_tb = "Octave";
+
+        cv::createTrackbar(persistence_tb, window_name, &per_slider, per_slider_max, on_trackbar);
+        cv::createTrackbar(scale_tb, window_name, &scale_slider, scale_slider_max, on_trackbar);
+        cv::createTrackbar(octave_tb, window_name, &octave_slider, octave_slider_max, on_trackbar);
+        
+        on_trackbar(0, 0);
+        cv::waitKey(0);
+
+
+        bp = 5;
 
         uint32_t intensity = (uint32_t)rnd.get_integer_in_range(2, 11);
 
@@ -1179,23 +1260,6 @@ int main(int argc, char** argv)
         //        tf.at<float>(idx, jdx) = rng.uniform(0.0f, 50.0f);
         //    }
         //}
-
-
-        so_camera vinden;
-
-        std::cout << vinden << std::endl;
-
-        std::cout << vinden.lens << std::endl;
-
-        std::cout << vinden.sensor << std::endl;
-
-
-        auto t = vinden.lens.set_zoom_index(255).to_array();
-
-
-
-
-        //PdvDev* pdv_p0 = pdv_open_channel(EDT_INTERFACE, 0, 0);
 
 
 

@@ -71,7 +71,7 @@
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
 #include "modulo.h"
-#include "overlay_bounding_box.h"
+#include "dlib_overlay_bbox.h"
 #include "simplex_noise.h"
 #include "ocv_threshold_functions.h"
 //#include "so_cam_commands.h"

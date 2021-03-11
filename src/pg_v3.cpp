@@ -1,6 +1,6 @@
 #define _CRT_SECURE_NO_WARNINGS
 
-#include "edtinc.h"
+//#include "edtinc.h"
 //#include "libedt.h"
 
 #if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
@@ -1261,11 +1261,29 @@ int main(int argc, char** argv)
         //    }
         //}
 
+        // ----------------------------------------------------------------------------------------
+        // test of target locator
 
+<<<<<<< Updated upstream
+=======
+        target_locator tl(1);
+
+        observation o1(2.8 * 30, { 10 });
+        observation o2(0.9 * 30, { 130 });
+
+        tl.add_observation(o1);
+        tl.add_observation(o2);
+
+        tl.location.push_back(80.5);
+
+        int32_t st = tl.get_position();
+
+>>>>>>> Stashed changes
 
         bp = 1;
         
-        std::string test_file;        
+        // ----------------------------------------------------------------------------------------
+        std::string test_file;
         std::string net_file;
         
         

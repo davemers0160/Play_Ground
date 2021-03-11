@@ -28,7 +28,12 @@ set(exe_name "pg")
 # This looks for an environment variable called PLATFORM.  This can be used to point
 # cmake to various locations based on the individual machines that the code is complied on
 set(PLATFORM "$ENV{PLATFORM}" CACHE INTERNAL "Copied from environment variable")
+if("${PLATFORM}" STREQUAL "")
+    set(PLATFORM "NOT_SET")
+    message("The PLATFORM Environment variable is not set on this system.  Setting it to:")
+endif()
 message("Platform: " ${PLATFORM})
+
 
 #if(WIN32)
 #	include(D:/dlib/dlib/cmake)
@@ -58,10 +63,17 @@ if(WIN32)
         set(DFD_COMMON_ROOT "D:/Projects/dfd_common")
         include(D:/dlib-19.21/dlib/cmake)    
     else()
+<<<<<<< Updated upstream
         set(COMMON_ROOT "D:/Common")
         set(DLIB_CONTRIB "D:/Projects/dlib-contrib")
         set(DFD_COMMON_ROOT "D:/Projects/dfd_common")
         include(D:/dlib-19.21/dlib/cmake)
+=======
+        set(COMMON_ROOT "E:/Projects/Common")
+        set(DLIB_CONTRIB "E:/Projects/dlib-contrib")
+        set(DFD_COMMON_ROOT "E:/Projects/dfd_common")
+        include(E:/dlib-19.21/dlib/cmake)
+>>>>>>> Stashed changes
     endif()
     
 else()

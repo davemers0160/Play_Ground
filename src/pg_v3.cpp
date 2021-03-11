@@ -1264,8 +1264,6 @@ int main(int argc, char** argv)
         // ----------------------------------------------------------------------------------------
         // test of target locator
 
-<<<<<<< Updated upstream
-=======
         target_locator tl(1);
 
         observation o1(2.8 * 30, { 10 });
@@ -1277,8 +1275,6 @@ int main(int argc, char** argv)
         tl.location.push_back(80.5);
 
         int32_t st = tl.get_position();
-
->>>>>>> Stashed changes
 
         bp = 1;
         

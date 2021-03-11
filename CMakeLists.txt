@@ -63,17 +63,10 @@ if(WIN32)
         set(DFD_COMMON_ROOT "D:/Projects/dfd_common")
         include(D:/dlib-19.21/dlib/cmake)    
     else()
-<<<<<<< Updated upstream
-        set(COMMON_ROOT "D:/Common")
-        set(DLIB_CONTRIB "D:/Projects/dlib-contrib")
-        set(DFD_COMMON_ROOT "D:/Projects/dfd_common")
-        include(D:/dlib-19.21/dlib/cmake)
-=======
         set(COMMON_ROOT "E:/Projects/Common")
         set(DLIB_CONTRIB "E:/Projects/dlib-contrib")
         set(DFD_COMMON_ROOT "E:/Projects/dfd_common")
         include(E:/dlib-19.21/dlib/cmake)
->>>>>>> Stashed changes
     endif()
     
 else()

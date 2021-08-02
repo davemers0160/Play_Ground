@@ -1111,7 +1111,28 @@ void mouse_click(int event, int x, int y, int flags, void* param)
 
 }   // end of mouse_click
 
+// ----------------------------------------------------------------------------------------
+static void meshgrid(const cv::Range& xgv, 
+    const cv::Range& ygv,
+    cv::Mat& X, 
+    cv::Mat& Y)
+{
+    //const cv::Mat& xgv, const cv::Mat& ygv,
+    //cv::Mat1i& X, cv::Mat1i& Y)
 
+    std::vector<int> t_x, t_y;
+    for (int i = xgv.start; i <= xgv.end; ++i)
+        t_x.push_back(i);
+
+    for (int i = ygv.start; i <= ygv.end; ++i)
+        t_y.push_back(i);
+
+    cv::Mat x(t_x);
+    cv::Mat y(t_y);
+
+    cv::repeat(x.reshape(1, 1), ygv.total(), 1, X);
+    cv::repeat(y.reshape(1, 1).t(), 1, xgv.total(), Y);
+}
 
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -1196,7 +1217,9 @@ int main(int argc, char** argv)
         //}
 
         //gi.join();
-
+        cv::Mat X, Y;
+        meshgrid(cv::Range(0, 5), cv::Range(3, 6), X, Y);
+        
         //std::cout << "done with test" << std::endl;
         std::cout << std::string(argv[0]) << std::endl;
 

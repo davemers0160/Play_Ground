@@ -58,7 +58,7 @@ if(WIN32)
         set(DFD_COMMON_ROOT "C:/Projects/dfd_common")
         include(C:/dlib-19.21/dlib/cmake)
     elseif(${PLATFORM} STREQUAL "BEAST")
-        set(COMMON_ROOT "E:/Common")
+        set(COMMON_ROOT "E:/Projects/Common")
         set(DLIB_CONTRIB "E:/Projects/dlib-contrib")
         set(DFD_COMMON_ROOT "E:/Projects/dfd_common")
         include(E:/dlib-19.21/dlib/cmake)    
@@ -105,29 +105,22 @@ set(project_includes "include"
     "${DLIB_CONTRIB}/include" 
     "${DFD_COMMON_ROOT}/include")
 
-message(" ")
-message("--------------------------------------------------------")
-message("Source Files: ")
-foreach(S ${SOURCES})
-    message("  " ${S})
-endforeach()
-message("--------------------------------------------------------")
-message(" ")
-
 # find OpenCV
 find_package(OpenCV REQUIRED)
 if (OpenCV_FOUND)
 	set(project_includes ${project_includes} ${OpenCV_INCLUDE_DIRS})
+    set(project_libs ${project_libs} ${OpenCV_LIBS})
 else()
 	message("OpenCV not found, so we won't build the project.")
 endif()
 
-message(" ")
-include(${COMMON_ROOT}/cmake_utils/find_edtpdv.cmake)
-if(EDTPDV_FOUND)
-    set(project_includes ${project_includes} ${EDTPDV_INCLUDE_DIRS})
-    set(project_libs ${project_libs} ${EDTPDV_LIBS})
-endif()
+
+# message(" ")
+# include(${COMMON_ROOT}/cmake_utils/find_edtpdv.cmake)
+# if(EDTPDV_FOUND)
+    # set(project_includes ${project_includes} ${EDTPDV_INCLUDE_DIRS})
+    # set(project_libs ${project_libs} ${EDTPDV_LIBS})
+# endif()
 
 #add_definitions(-DMATPLOTLIBCPP_PYTHON_HEADER=Python.h)
 #set(project_includes ${project_includes} D:/Python_3.6.5/include)
@@ -135,18 +128,37 @@ endif()
 
 message(" ")
 message("--------------------------------------------------------")
+message("Source Files: ")
+foreach(S ${SOURCES})
+    message("  " ${S})
+endforeach()
+message("--------------------------------------------------------")
+
+message(" ")
+
+message("--------------------------------------------------------")
 message("Project Includes: ")
 foreach(S ${project_includes})
     message("  " ${S})
 endforeach()
 message("--------------------------------------------------------")
+
+message(" ")
+
+message("--------------------------------------------------------------------------------")
+message("Project Libraries: ")
+foreach(S ${project_libs})
+    message("  " ${S})
+endforeach()
+message("--------------------------------------------------------------------------------")
+
 message(" ")
 
 # link_directories(D:/Python_3.6.5/libs)
 
 include_directories(${project_includes})
 add_executable(${exe_name} ${SOURCES})
-target_link_libraries(${exe_name} dlib::dlib ${OpenCV_LIBS})
+target_link_libraries(${exe_name} dlib::dlib ${project_libs})
 
 if(WIN32)
     message("MSVC Version: " ${MSVC_VERSION})

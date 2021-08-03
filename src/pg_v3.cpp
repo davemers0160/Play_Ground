@@ -55,8 +55,8 @@
 //#include "mmaplib.h"
 #include "pg.h"
 
-#include "../../playground/include/cv_random_image_gen.h"
-#include "../../dlib_object_detection/common/include/obj_det_net_rgb_v10.h"
+//#include "../../playground/include/cv_random_image_gen.h"
+//#include "../../dlib_object_detection/common/include/obj_det_net_rgb_v10.h"
 
 
 //#include "mmap.h"
@@ -67,7 +67,7 @@
 #include "read_binary_image.h" 
 //#include "make_dir.h"
 #include "file_ops.h"
-#include "ssim.h"
+//#include "ssim.h"
 #include "dlib_matrix_threshold.h"
 #include "gorgon_capture.h"
 #include "modulo.h"
@@ -1130,8 +1130,8 @@ static void meshgrid(const cv::Range& xgv,
     cv::Mat x(t_x);
     cv::Mat y(t_y);
 
-    cv::repeat(x.reshape(1, 1), ygv.total(), 1, X);
-    cv::repeat(y.reshape(1, 1).t(), 1, xgv.total(), Y);
+    cv::repeat(x.reshape(1, 1), y.total(), 1, X);
+    cv::repeat(y.reshape(1, 1).t(), 1, x.total(), Y);
 }
 
 // ----------------------------------------------------------------------------------------
@@ -1412,7 +1412,7 @@ int main(int argc, char** argv)
         class_color.push_back(cv::Scalar(0, 255, 0));
         class_color.push_back(cv::Scalar(0, 0, 255));
 
-
+/*
         anet_type test_net;
         dlib::deserialize(net_file) >> test_net;
 
@@ -1436,7 +1436,7 @@ int main(int argc, char** argv)
             class_names.push_back(it);
         }
 
-
+*/
         cv::Mat cv_img = cv::imread(test_file, cv::IMREAD_COLOR);
         //cv::Mat cv_img = cv::Mat(720, 1280, CV_8UC3, cv::Scalar(255, 255, 255));
         

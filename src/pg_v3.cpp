@@ -998,6 +998,39 @@ void histogram_specification(in_image_type& in_img_, out_image_type& out_img_, h
     int bp = 0;
 }
 
+// ----------------------------------------------------------------------------
+void generate_checkerboard(uint32_t block_w, uint32_t block_h, uint32_t img_w, uint32_t img_h, cv::Mat& checker_board)
+{
+    uint32_t idx = 0, jdx = 0;
+
+    cv::Mat white = cv::Mat(block_w, block_h, CV_8UC3, cv::Scalar::all(255));
+
+    checker_board = cv::Mat(img_h + block_h, img_w + block_w, CV_8UC3, cv::Scalar::all(0));
+
+    bool color_row = false;
+    bool color_column = false;
+
+    for (idx = 0; idx < img_h; idx += block_h)
+    {
+        color_row = !color_row;
+        color_column = color_row;
+
+        for (jdx = 0; jdx < img_w; jdx += block_w)
+        {
+            if (!color_column)
+                white.copyTo(checker_board(cv::Rect(jdx, idx, block_w, block_h)));
+
+            color_column = !color_column;
+        }
+
+    }
+
+    // need to add cropping of image
+    cv::Rect rio(0, 0, img_w, img_h);
+    checker_board = checker_board(rio);
+}
+
+
 void distortion(cv::Mat& src, cv::Mat& dst, double c_x, double c_y, double k_x1, double k_y1)
 {
     long x, y;
@@ -1217,6 +1250,10 @@ int main(int argc, char** argv)
         //}
 
         //gi.join();
+
+        cv::Mat cb;
+        generate_checkerboard(35, 35, 300, 150, cb);
+
         cv::Mat X, Y;
         meshgrid(cv::Range(0, 5), cv::Range(3, 6), X, Y);
         

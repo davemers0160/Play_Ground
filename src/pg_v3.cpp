@@ -59,7 +59,7 @@
 //#include "../../dlib_object_detection/common/include/obj_det_net_rgb_v10.h"
 
 
-//#include "mmap.h"
+#include "mmap.h"
 #include "get_current_time.h"
 #include "get_platform.h"
 #include "num2string.h"
@@ -1257,6 +1257,33 @@ int main(int argc, char** argv)
         cv::Mat X, Y;
         meshgrid(cv::Range(0, 5), cv::Range(3, 6), X, Y);
         
+        std::string mmap_name = "test";
+
+        mem_map mm(mmap_name, 256);
+
+        uint64_t position = 0;
+        double data = 21.112121212;
+        uint64_t t = 10000;
+        mm.write(position, data);
+        mm.write(position, t);
+        std::vector<float> v = { 0.21, 54656.25 };
+        mm.write_range(position, v);
+
+
+        mem_map mm2(mmap_name, 256);
+
+        uint64_t position2 = 0;
+        double data2;
+        uint64_t t2;
+        mm2.read(position2, data2);
+        mm2.read(position2, t2);
+        std::vector<float> v2;
+        mm.read_range(position2, 2, v2);
+
+
+        mm.close();
+        mm2.close();
+
         //std::cout << "done with test" << std::endl;
         std::cout << std::string(argv[0]) << std::endl;
 

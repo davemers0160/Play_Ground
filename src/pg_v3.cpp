@@ -76,6 +76,9 @@
 #include "ocv_threshold_functions.h"
 //#include "so_cam_commands.h"
 
+#include <cv_create_gaussian_kernel.h>
+
+
 //#include "pso.h"
 //#include "pso_particle.h"
 //#include "ycrcb_pixel.h"
@@ -1167,6 +1170,55 @@ static void meshgrid(const cv::Range& xgv,
     cv::repeat(y.reshape(1, 1).t(), 1, x.total(), Y);
 }
 
+int test_pair(void* t)
+{
+    int bp2 = 0;
+
+    //typedef u8_pair *std::pair<uint8_t, uint8_t>;
+
+
+    auto t2 = (std::pair<uint8_t, uint8_t>*)t;
+
+    std::vector<std::pair<uint8_t, uint8_t>> tp;
+
+    tp.insert(tp.end(), &t2[0], &t2[3]);
+
+    bp2 = 2;
+    return bp2;
+}
+
+
+
+template <typename T>
+struct fixed_width_mat
+{
+    fixed_width_mat(T m_, int w_) : m(m_), w(w_) {}
+    T m;
+    int w;
+};
+
+template<typename T>
+//void print_matrix_as_csv(T &m, uint32_t w)
+std::ostream& operator<< (std::ostream& out, const fixed_width_mat<T>& fmw)
+{
+
+    for (long r = 0; r < fmw.m.nr(); ++r)
+    {
+        for (long c = 0; c < fmw.m.nc(); ++c)
+        {
+            if (c + 1 == fmw.m.nc())
+                out << std::setw(fmw.w) << fmw.m(r, c) << std::endl;
+            else
+                out << std::setw(fmw.w) << fmw.m(r, c) << ", ";
+        }
+    }
+
+    return out;
+}   // end of print_matrix_as_csv
+
+
+
+
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -1227,6 +1279,31 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
+
+        cv::Mat img = cv::imread("D:/data/checker_board_512x512.png");
+
+        uint32_t kernel_size = 64;
+        double sigma = 5.0, weight = 0.6;
+        cv::Mat kernel, img1, img2, img3, img4;
+
+        create_gaussian_kernel(kernel_size, sigma, kernel);
+        img.convertTo(img, CV_32FC1);
+
+        cv::filter2D(img, img1, -1, kernel, cv::Point(-1, -1), 0.0, cv::BorderTypes::BORDER_REPLICATE);
+
+        sigma = 3.0;
+        create_gaussian_kernel(kernel_size, sigma, kernel);
+
+        cv::filter2D(img1, img2, -1, kernel, cv::Point(-1, -1), 0.0, cv::BorderTypes::BORDER_REPLICATE);
+
+        img3 = (weight / (2 * weight - 1)) * img1 - ((1 - weight) / (2 * weight - 1)) * img2;
+        img3.convertTo(img3, CV_8UC3);
+        
+        img4 = (1.0 + weight) * img1 - weight * img2;
+        img4.convertTo(img4, CV_8UC3);
+
+        bp = 1;
+
         //std::thread gi(get_input);
 
         //while (run)
@@ -1259,30 +1336,42 @@ int main(int argc, char** argv)
         
         std::string mmap_name = "test";
 
-        mem_map mm(mmap_name, 256);
+        std::vector<std::pair<uint8_t, uint8_t>> bg_br_table;
 
-        uint64_t position = 0;
-        double data = 21.112121212;
-        uint64_t t = 10000;
-        mm.write(position, data);
-        mm.write(position, t);
-        std::vector<float> v = { 0.21, 54656.25 };
-        mm.write_range(position, v);
+        bg_br_table.push_back(std::make_pair(0, 1));
+        bg_br_table.push_back(std::make_pair(2, 3));
+        bg_br_table.push_back(std::make_pair(4, 5));
 
+        auto br_ptr = bg_br_table.data();
 
-        mem_map mm2(mmap_name, 256);
-
-        uint64_t position2 = 0;
-        double data2;
-        uint64_t t2;
-        mm2.read(position2, data2);
-        mm2.read(position2, t2);
-        std::vector<float> v2;
-        mm.read_range(position2, 2, v2);
+        test_pair((void *)(br_ptr));
+        bp = 1;
 
 
-        mm.close();
-        mm2.close();
+        //mem_map mm(mmap_name, 256);
+
+        //uint64_t position = 0;
+        //double data = 21.112121212;
+        //uint64_t t = 10000;
+        //mm.write(position, data);
+        //mm.write(position, t);
+        //std::vector<float> v = { 0.21, 54656.25 };
+        //mm.write_range(position, v);
+
+
+        //mem_map mm2(mmap_name, 256);
+
+        //uint64_t position2 = 0;
+        //double data2;
+        //uint64_t t2;
+        //mm2.read(position2, data2);
+        //mm2.read(position2, t2);
+        //std::vector<float> v2;
+        //mm.read_range(position2, 2, v2);
+
+
+        //mm.close();
+        //mm2.close();
 
         //std::cout << "done with test" << std::endl;
         std::cout << std::string(argv[0]) << std::endl;
@@ -1361,8 +1450,6 @@ int main(int argc, char** argv)
         bp = 5;
 
         uint32_t intensity = (uint32_t)rnd.get_integer_in_range(2, 11);
-
-        cv::Mat img;
 
         cv::RNG rng(1234567);
 

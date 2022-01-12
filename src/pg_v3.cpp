@@ -1219,6 +1219,39 @@ std::ostream& operator<< (std::ostream& out, const fixed_width_mat<T>& fmw)
 
 
 
+
+// ----------------------------------------------------------------------------------------
+constexpr size_t CARRIER = 2400;
+constexpr size_t BAUD = 4160;
+constexpr size_t OVERSAMPLE = 3;
+
+template <typename F, typename T>
+constexpr T map_value(F value, F f1, F t1, T f2, T t2) 
+{
+    return f2 + ((t2 - f2) * (value - f1)) / (t1 - f1);
+}
+
+std::vector<uint8_t> write_value(uint8_t value) 
+{
+    static double sn = 0;
+    std::vector<uint8_t> buffer;
+
+    for (size_t i = 0; i < OVERSAMPLE; i++) 
+    {
+        double samp = sin(CARRIER * 2.0 * M_PI * (sn / (BAUD * OVERSAMPLE)));
+        samp *= map_value((int)value, 0, 255, 0.0, 0.7);
+
+        uint8_t buf = map_value(samp, -1.0, 1.0, 0, 255);
+        buffer.push_back(buf);
+
+        //fwrite(buf, 1, 1, stdout);
+
+        sn++;
+    }
+
+    return buffer;
+}
+
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -1278,6 +1311,31 @@ int main(int argc, char** argv)
 #endif
 
         int bp = 0;
+
+        std::vector<uint8_t> SYNCA = { 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+
+        std::vector<uint8_t> full_synca;
+
+        for (idx = 0; idx < SYNCA.size(); ++idx)
+        {
+            std::vector<uint8_t> buffer = write_value(255*SYNCA[idx]);
+            full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+        }
+
+        for (idx = 0; idx < 47; ++idx)
+        {
+            std::vector<uint8_t> buffer = write_value(0);
+            full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+        }
+
+        for (idx = 0; idx < 256; ++idx)
+        {
+            std::vector<uint8_t> buffer = write_value((uint8_t)idx);
+            full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+        }
+
+        bp = 2;
 
 
         cv::Mat img = cv::imread("D:/data/checker_board_512x512.png");

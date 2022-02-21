@@ -1312,31 +1312,59 @@ int main(int argc, char** argv)
 
         int bp = 0;
 
-        std::vector<uint8_t> SYNCA = { 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        //std::vector<uint8_t> SYNCA = { 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 
-        std::vector<uint8_t> full_synca;
+        //std::vector<uint8_t> full_synca;
 
-        for (idx = 0; idx < SYNCA.size(); ++idx)
+        //for (idx = 0; idx < SYNCA.size(); ++idx)
+        //{
+        //    std::vector<uint8_t> buffer = write_value(255*SYNCA[idx]);
+        //    full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+        //}
+
+        //for (idx = 0; idx < 47; ++idx)
+        //{
+        //    std::vector<uint8_t> buffer = write_value(0);
+        //    full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+        //}
+
+        //for (idx = 0; idx < 256; ++idx)
+        //{
+        //    std::vector<uint8_t> buffer = write_value((uint8_t)idx);
+        //    full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+        //}
+
+        double a = 0.0;
+
+        start_time = chrono::system_clock::now();
+        for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
         {
-            std::vector<uint8_t> buffer = write_value(255*SYNCA[idx]);
-            full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+            for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
+            {
+                a = std::exp(-0.6 * std::log(9.8));
+            }
         }
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << std::fixed << std::setprecision(16) << "exp: " << a << " = " << elapsed_time.count() << std::endl;
 
-        for (idx = 0; idx < 47; ++idx)
-        {
-            std::vector<uint8_t> buffer = write_value(0);
-            full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
-        }
 
-        for (idx = 0; idx < 256; ++idx)
+        start_time = chrono::system_clock::now();
+        for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
         {
-            std::vector<uint8_t> buffer = write_value((uint8_t)idx);
-            full_synca.insert(full_synca.end(), buffer.begin(), buffer.end());
+            for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
+            {
+                a = std::pow(9.8, -0.6);
+            }
         }
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << std::fixed << std::setprecision(16) << "pow: " << a << " = " << elapsed_time.count() << std::endl;
 
         bp = 2;
 
+        std::cin.ignore();
 
         cv::Mat img = cv::imread("D:/data/checker_board_512x512.png");
 

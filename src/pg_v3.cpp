@@ -76,6 +76,7 @@
 #include "simplex_noise.h"
 #include "ocv_threshold_functions.h"
 //#include "so_cam_commands.h"
+#include "console_input.h"
 
 #include <cv_create_gaussian_kernel.h>
 
@@ -1094,7 +1095,7 @@ void distortion(cv::Mat& src, cv::Mat& dst, double c_x, double c_y, double k_x1,
 
 volatile bool entry = false;
 volatile bool run = true;
-std::string console_input;
+std::string console_input1;
 
 void get_input(void)
 {
@@ -1103,7 +1104,7 @@ void get_input(void)
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
         if (run == true)
         {
-            std::getline(std::cin, console_input);
+            std::getline(std::cin, console_input1);
             entry = true;
         }
         else
@@ -1318,16 +1319,44 @@ int main(int argc, char** argv)
         //std::vector<uint8_t> SYNCA = { 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
         int64_t N = 64;
+        int32_t bar_width = 100;
 
-        std::vector<float> hs = DSP::blackman_nuttall_window(N);
-        for (idx = 0; idx < hs.size(); ++idx)
-            std::cout << num2str(hs[idx], "%1.10f") << std::endl;
+        uint32_t k;
 
-        std::cout << std::endl;
+        int32_t position = 0;
 
-        std::vector<float> ff = DSP::create_fir_filter(N, 0.5, DSP::hann_window);
-        for (idx = 0; idx < ff.size(); ++idx)
-            std::cout << num2str(ff[idx], "%1.10f") << std::endl;
+        console_input ci;
+
+        ci.arrow_key();
+
+        while (ci.get_running())
+        {
+
+            if (ci.get_valid_input() == true)
+            {
+                k = (uint32_t)ci.get_input();
+                //std::cout << "valid input: " << k << std::endl;
+
+                if (k == 75)
+                {
+                    position = std::max(0, --position);
+                }
+                else if (k == 77)
+                {
+                    position = std::min(bar_width-1, ++position);
+                }
+
+                std::cout << "[" << std::string(0+position, '=') << "|" << std::string(bar_width - position - 1, '=') << "] " << 88.1 + 0.2*position << "  \r";
+                std::cout.flush();
+
+
+                
+                ci.reset_valid_input();
+            }
+
+
+
+        }
 
         bp = 3;
 

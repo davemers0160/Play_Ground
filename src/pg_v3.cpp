@@ -30,6 +30,7 @@
 #include <type_traits>
 #include <list>
 #include <thread>
+#include <complex>
 
 // dlib includes
 #include "dlib/rand.h"
@@ -1221,8 +1222,51 @@ std::ostream& operator<< (std::ostream& out, const fixed_width_mat<T>& fmw)
 }   // end of print_matrix_as_csv
 
 
+// ----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
+
+namespace dlib
+{
+    template <typename T>
+    inline matrix<T> hann_window(int64_t N)
+    {
+        matrix<T> w = zeros_matrix<T>(N + 1, 1);
+
+        for (int64_t idx = 0; idx <= N; ++idx)
+        {
+            w(idx, 0) = 0.5f * (1.0f - std::cos(2.0f * M_PI * idx / (double)N));
+        }
+
+        return w;
+    }   // end of hann_window
 
 
+    template <typename T, typename funct>
+    matrix<T> create_fir_filter(int64_t N, float fc, funct window_function)
+    {
+        matrix<T> g = zeros_matrix<T>(N + 1, 1);
+
+        matrix<T> w = window_function(N);
+
+        for (int64_t idx = 0; idx <= N; ++idx)
+        {
+            if (std::abs((double)(idx - (N >> 1))) < 1e-6)
+                g(idx, 0) = w(idx, 0) * fc;
+            else
+                g(idx, 0) = w(idx, 0) * (std::sin(M_PI * fc * (idx - (N >> 1))) / (M_PI * (idx - (N >> 1))));
+        }
+
+        return g;
+
+    }   // end of create_fir_filter
+
+
+
+
+}
+
+// ----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------
 constexpr size_t CARRIER = 2400;
@@ -1325,38 +1369,59 @@ int main(int argc, char** argv)
 
         int32_t position = 0;
 
-        console_input ci;
 
-        ci.arrow_key();
-
-        while (ci.get_running())
-        {
-
-            if (ci.get_valid_input() == true)
-            {
-                k = (uint32_t)ci.get_input();
-                //std::cout << "valid input: " << k << std::endl;
-
-                if (k == 75)
-                {
-                    position = std::max(0, --position);
-                }
-                else if (k == 77)
-                {
-                    position = std::min(bar_width-1, ++position);
-                }
-
-                std::cout << "[" << std::string(0+position, '=') << "|" << std::string(bar_width - position - 1, '=') << "] " << 88.1 + 0.2*position << "  \r";
-                std::cout.flush();
+        dlib::matrix<float> hw = dlib::hann_window<float>(N);
 
 
-                
-                ci.reset_valid_input();
-            }
+        dlib::matrix<float> fir = dlib::create_fir_filter<float>(N, 0.5, dlib::hann_window<float>);
+
+
+        dlib::matrix<std::complex<float>> test2 = dlib::matrix_cast<std::complex<float>>(fir);
+
+
+        //dlib::matrix<std::complex<float>> test3 = dlib::conv_same(fir, fir);
+        dlib::matrix<float> test3 = dlib::conv_same(fir, fir);
+
+        dlib::matrix<std::complex<float>> test3c = dlib::conv_same(test2, test2);
+
+
+        std::cout << hw << std::endl;
+
+
+        std::cout << dlib::trans(fir) << std::endl;
+
+        //console_input ci;
+
+        //ci.arrow_key();
+
+        //while (ci.get_running())
+        //{
+
+        //    if (ci.get_valid_input() == true)
+        //    {
+        //        k = (uint32_t)ci.get_input();
+        //        //std::cout << "valid input: " << k << std::endl;
+
+        //        if (k == 75)
+        //        {
+        //            position = std::max(0, --position);
+        //        }
+        //        else if (k == 77)
+        //        {
+        //            position = std::min(bar_width-1, ++position);
+        //        }
+
+        //        std::cout << "[" << std::string(0+position, '=') << "|" << std::string(bar_width - position - 1, '=') << "] " << 88.1 + 0.2*position << "  \r";
+        //        std::cout.flush();
+
+
+        //        
+        //        ci.reset_valid_input();
+        //    }
 
 
 
-        }
+        //}
 
         bp = 3;
 

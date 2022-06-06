@@ -1227,10 +1227,10 @@ std::ostream& operator<< (std::ostream& out, const fixed_width_mat<T>& fmw)
 
 namespace dlib
 {
-    template <typename T>
-    inline matrix<T> hann_window(int64_t N)
+    //template <typename T>
+    inline matrix<double> hann_window(int64_t N)
     {
-        matrix<T> w = zeros_matrix<T>(N + 1, 1);
+        matrix<double> w = zeros_matrix<double>(N + 1, 1);
 
         for (int64_t idx = 0; idx <= N; ++idx)
         {
@@ -1244,10 +1244,10 @@ namespace dlib
     template <typename T, typename funct>
     matrix<T> create_fir_filter(int64_t N, float fc, funct window_function)
     {
-        float v;
-        matrix<T> g = zeros_matrix<T>(N + 1, 1);
+        double v;
+        matrix<double> g = zeros_matrix<double>(N + 1, 1);
 
-        matrix<T> w = window_function(N);
+        matrix<double> w = window_function(N);
         
         for (int64_t idx = 0; idx <= N; ++idx)
         {
@@ -1261,7 +1261,7 @@ namespace dlib
         }
         
 
-        return g;
+        return matrix_cast<T>(g);
 
     }   // end of create_fir_filter
 
@@ -1275,11 +1275,51 @@ namespace dlib
     }
 
     template <typename M1,  typename funct>
-    dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> src, int64_t N, float fc, funct window_function)
+    dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> &src, int64_t N, float fc, funct window_function)
     {
         dlib::matrix<M1> fir = create_fir_filter<M1>(N, fc, window_function);
 
         return dlib::conv_same(src, fir);
+    }
+
+    template <typename M1>
+    dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> &src, dlib::matrix<M1> &filter)
+    {
+        return dlib::conv_same(src, fir);
+    }
+
+
+    template <typename T>
+    dlib::matrix<std::complex<T>> apply_frequency_shift(dlib::matrix<std::complex<T>>& src, double f_offset, double fs)
+    {
+        uint64_t idx;
+        std::complex<T> v;
+
+        dlib::matrix<std::complex<T>> dst = zeros_matrix(src);
+
+        for (idx = 0; idx < src.size(); ++idx)
+        {
+            v = (std::complex<T>)(std::exp(-2.0 * 1i * M_PI * (f_offset / (double)fs) * (double)idx));
+            dst(idx, 0) = src(idx, 0) * v;
+        }
+
+        return dst;
+    }
+
+
+    template <typename T>
+    dlib::matrix<std::complex<T>> generate_frequency_shift(uint64_t N, double f_offset, double fs)
+    {
+        uint64_t idx;
+
+        dlib::matrix<std::complex<T>> dst = zeros_matrix(N, 1);
+
+        for (idx = 0; idx < N; ++idx)
+        {
+            dst(idx, 0) = (std::complex<T>)(std::exp(-2.0 * 1i * M_PI * (f_offset / (double)fs) * (double)idx));
+        }
+
+        return dst;
     }
 
 }
@@ -1389,34 +1429,47 @@ int main(int argc, char** argv)
         int32_t position = 0;
 
 
-        dlib::matrix<float> hw = dlib::hann_window<float>(N);
+        dlib::matrix<double> hw = dlib::hann_window(N);
 
 
-        dlib::matrix<float> fir = dlib::create_fir_filter<float>(200, 0.75, dlib::hann_window<float>);
+        dlib::matrix<float> fir = dlib::create_fir_filter<float>(32, 0.75, dlib::hann_window);
+        dlib::matrix<std::complex<float>> fir_c = dlib::create_fir_filter<std::complex<float>>(32, 0.75, dlib::hann_window);
 
 
-        dlib::matrix<std::complex<float>> test2 = dlib::matrix_cast<std::complex<float>>(fir);
+        //dlib::matrix<std::complex<float>> test2 = dlib::matrix_cast<std::complex<float>>(fir);
 
 
         //dlib::matrix<std::complex<float>> test3 = dlib::conv_same(fir, fir);
-        dlib::matrix<float> test3 = dlib::conv_same(fir, fir);
+        //dlib::matrix<float> test3 = dlib::conv_same(fir, fir);
 
-        dlib::matrix<std::complex<float>> test3c = dlib::conv_same(test2, test2);
+        //dlib::matrix<std::complex<float>> test3c = dlib::conv_same(test2, test2);
 
-        bool same_type = dlib::type_test(test2, test3);
-
-
-        std::cout << hw << std::endl;
+        //bool same_type = dlib::type_test(test2, test3);
 
 
-        std::cout << dlib::trans(fir) << std::endl;
+        //std::cout << hw << std::endl;
 
+
+        std::cout << dlib::trans(fir_c) << std::endl;
+
+
+
+        dlib::matrix<std::complex<float>> test3c = apply_fir_filter(fir_c, 8, 0.5, dlib::hann_window);
+        std::cout << dlib::trans(test3c) << std::endl;
+
+
+        dlib::matrix<std::complex<float>> test4c = apply_frequency_shift(test3c, 1000, 10000);
 
         //auto res = dlib::apply_fir_filter(test3c, N, 0.5, dlib::hann_window<float>);
 
-        dlib::matrix<std::complex<float>> test4 = dlib::hann_window<std::complex<float>>(N);
+        //dlib::matrix<std::complex<float>> test4 = dlib::hann_window(N);
         
-        dlib::matrix<float> fir_c = dlib::create_fir_filter<std::complex<float>>(200, 0.75, dlib::hann_window<float>);
+        //dlib::matrix<float> fir_c = dlib::create_fir_filter<std::complex<float>>(200, 0.75, dlib::hann_window<std::complex<float>>);
+
+
+        //dlib::matrix<std::complex<float>> z_c = dlib::zeros_matrix<std::complex<float>>(N + 1, 1);
+
+        bp = 4;
 
         //console_input ci;
 

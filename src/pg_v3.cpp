@@ -1244,24 +1244,43 @@ namespace dlib
     template <typename T, typename funct>
     matrix<T> create_fir_filter(int64_t N, float fc, funct window_function)
     {
+        float v;
         matrix<T> g = zeros_matrix<T>(N + 1, 1);
 
         matrix<T> w = window_function(N);
-
+        
         for (int64_t idx = 0; idx <= N; ++idx)
         {
             if (std::abs((double)(idx - (N >> 1))) < 1e-6)
                 g(idx, 0) = w(idx, 0) * fc;
             else
-                g(idx, 0) = w(idx, 0) * (std::sin(M_PI * fc * (idx - (N >> 1))) / (M_PI * (idx - (N >> 1))));
+            {
+                v = std::sin(M_PI * fc * (idx - (N >> 1))) / (M_PI * (idx - (N >> 1)));
+                g(idx, 0) = w(idx, 0) * v;
+            }
         }
+        
 
         return g;
 
     }   // end of create_fir_filter
 
+    template <typename M1, typename M2>
+    bool type_test(M1 m1, M2 m2)
+    {
+        bool same_type = dlib::is_same_type<typename M1::type, typename M2::type>::value;
 
+        return same_type;
 
+    }
+
+    template <typename M1,  typename funct>
+    dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> src, int64_t N, float fc, funct window_function)
+    {
+        dlib::matrix<M1> fir = create_fir_filter<M1>(N, fc, window_function);
+
+        return dlib::conv_same(src, fir);
+    }
 
 }
 
@@ -1373,7 +1392,7 @@ int main(int argc, char** argv)
         dlib::matrix<float> hw = dlib::hann_window<float>(N);
 
 
-        dlib::matrix<float> fir = dlib::create_fir_filter<float>(N, 0.5, dlib::hann_window<float>);
+        dlib::matrix<float> fir = dlib::create_fir_filter<float>(200, 0.75, dlib::hann_window<float>);
 
 
         dlib::matrix<std::complex<float>> test2 = dlib::matrix_cast<std::complex<float>>(fir);
@@ -1384,11 +1403,20 @@ int main(int argc, char** argv)
 
         dlib::matrix<std::complex<float>> test3c = dlib::conv_same(test2, test2);
 
+        bool same_type = dlib::type_test(test2, test3);
+
 
         std::cout << hw << std::endl;
 
 
         std::cout << dlib::trans(fir) << std::endl;
+
+
+        //auto res = dlib::apply_fir_filter(test3c, N, 0.5, dlib::hann_window<float>);
+
+        dlib::matrix<std::complex<float>> test4 = dlib::hann_window<std::complex<float>>(N);
+        
+        dlib::matrix<float> fir_c = dlib::create_fir_filter<std::complex<float>>(200, 0.75, dlib::hann_window<float>);
 
         //console_input ci;
 

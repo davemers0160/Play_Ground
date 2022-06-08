@@ -1266,7 +1266,7 @@ namespace dlib
     }   // end of create_fir_filter
 
     template <typename M1, typename M2>
-    bool type_test(M1 m1, M2 m2)
+    inline bool type_test(M1 m1, M2 m2)
     {
         bool same_type = dlib::is_same_type<typename M1::type, typename M2::type>::value;
 
@@ -1275,7 +1275,7 @@ namespace dlib
     }
 
     template <typename M1,  typename funct>
-    dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> &src, int64_t N, float fc, funct window_function)
+    inline dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> &src, int64_t N, float fc, funct window_function)
     {
         dlib::matrix<M1> fir = create_fir_filter<M1>(N, fc, window_function);
 
@@ -1283,27 +1283,9 @@ namespace dlib
     }
 
     template <typename M1>
-    dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> &src, dlib::matrix<M1> &filter)
+    inline dlib::matrix<M1> apply_fir_filter(dlib::matrix<M1> &src, dlib::matrix<M1> &filter)
     {
         return dlib::conv_same(src, fir);
-    }
-
-
-    template <typename T>
-    dlib::matrix<std::complex<T>> apply_frequency_shift(dlib::matrix<std::complex<T>>& src, double f_offset, double fs)
-    {
-        uint64_t idx;
-        std::complex<T> v;
-
-        dlib::matrix<std::complex<T>> dst = zeros_matrix(src);
-
-        for (idx = 0; idx < src.size(); ++idx)
-        {
-            v = (std::complex<T>)(std::exp(-2.0 * 1i * M_PI * (f_offset / (double)fs) * (double)idx));
-            dst(idx, 0) = src(idx, 0) * v;
-        }
-
-        return dst;
     }
 
 
@@ -1320,6 +1302,30 @@ namespace dlib
         }
 
         return dst;
+    }
+
+    template <typename T>
+    inline dlib::matrix<std::complex<T>> apply_frequency_shift(dlib::matrix<std::complex<T>>& src, double f_offset, double fs)
+    {
+        uint64_t idx;
+        std::complex<T> v;
+
+        dlib::matrix<std::complex<T>> dst = zeros_matrix(src);
+
+        for (idx = 0; idx < src.size(); ++idx)
+        {
+            v = (std::complex<T>)(std::exp(-2.0 * 1i * M_PI * (f_offset / (double)fs) * (double)idx));
+            dst(idx, 0) = src(idx, 0) * v;
+        }
+
+        return dst;
+    }
+
+
+    template <typename M1>
+    inline dlib::matrix<M1> apply_frequency_shift(dlib::matrix<M1>& src, dlib::matrix<M1>& rot)
+    {
+        return pointwise_multiply(src, rot);
     }
 
 }

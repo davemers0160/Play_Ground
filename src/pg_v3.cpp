@@ -1365,6 +1365,82 @@ std::vector<uint8_t> write_value(uint8_t value)
     return buffer;
 }
 
+typedef struct SignalDataPacket {
+    uint32_t m_StreamIdentifier;
+    uint64_t m_Timestamp_GetFractionalSeconds;
+
+} SignalDataPacket;
+
+template <typename T>
+std::vector<T> find_intersection(std::vector<T> V1, std::vector<T> V2)
+{
+    uint64_t idx = 0, jdx = 0;
+    std::vector<T> intersection;
+    size_t n1 = V1.size();
+    size_t n2 = V2.size();
+
+    while (idx < n1 && jdx < n2)
+    {
+        if (V1[idx] > V2[jdx])
+        {
+            ++jdx;
+        }
+        else if (V2[jdx] > V1[idx])
+        {
+            ++idx;
+        }
+        else
+        {
+            intersection.push_back(V1[idx]);
+            ++idx;
+            ++jdx;
+        }
+    }
+
+    return intersection;
+}   // end of find_intersection
+
+template <typename T>
+size_t find_index(std::vector<T> vec, T value)
+{
+    size_t index = 0;
+
+    while (vec[index] != value)
+    {
+        if (index == vec.size())
+            return -1;
+
+        ++index;
+    }
+
+    return index;
+}
+
+
+std::vector<uint64_t> find_match(std::vector<std::vector<uint64_t>> v)
+{
+    uint64_t idx;
+    uint64_t N = v.size();
+    std::vector<uint64_t> match(N);
+
+    std::vector<uint64_t> intersection = find_intersection(v[0], v[1]);
+
+    for (idx = 2; idx < N; ++idx)
+    {
+        intersection = find_intersection(intersection, v[idx]);
+    }
+
+    // find the index of the first entry
+    for (idx = 0; idx < N; ++idx)
+    {
+        match[idx] = find_index(v[idx], intersection[0]);
+        std::cout << match[idx] << std::endl;
+    }
+
+    return match;
+}
+
+
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -1476,6 +1552,82 @@ int main(int argc, char** argv)
         //dlib::matrix<std::complex<float>> z_c = dlib::zeros_matrix<std::complex<float>>(N + 1, 1);
 
         bp = 4;
+
+        cv::RNG rng2(1234567);
+
+        int32_t num_data = 80;
+        std::vector<SignalDataPacket> sdp_stream(num_data);
+
+        // fill in things
+        int32_t index = 0;
+        for (idx = 0; idx < 17; ++idx)
+        {
+            sdp_stream[index].m_StreamIdentifier = 1;
+            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx;
+        }
+
+        for (idx = 0; idx < 20; ++idx)
+        {
+            sdp_stream[index].m_StreamIdentifier = 2;
+            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx+4;
+        }
+
+        for (idx = 0; idx < 19; ++idx)
+        {
+            sdp_stream[index].m_StreamIdentifier = 3;
+            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx + 8;
+        }
+
+        for (idx = 0; idx < 18; ++idx)
+        {
+            sdp_stream[index].m_StreamIdentifier = 4;
+            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx + 14;
+        }
+
+        num_data = index - 1;
+
+        int32_t num_streams = 4;
+
+        std::vector<std::vector<uint64_t>> time_stamps(num_streams);
+        std::vector<uint32_t> ts_count(num_streams, 0);
+
+        std::vector<int32_t> match(num_streams, -1);
+
+        for (idx = 0; idx < num_data; ++idx)
+        {
+            time_stamps[(sdp_stream[idx].m_StreamIdentifier & 0x07) - 1].push_back(sdp_stream[idx].m_Timestamp_GetFractionalSeconds);
+            ++ts_count[(sdp_stream[idx].m_StreamIdentifier & 0x07) - 1];
+        }
+
+
+
+
+        std::vector<uint64_t> test_int = find_intersection(find_intersection(find_intersection(time_stamps[0], time_stamps[1]), time_stamps[2]), time_stamps[3]);
+
+        for (idx = 0; idx < test_int.size()-1; ++idx)
+        {
+            std::cout << test_int[idx] << ", ";
+        }
+        std::cout << test_int[idx] << std::endl;
+
+
+        // find the index of the first entry
+        size_t index1 = find_index(time_stamps[0], test_int[0]);
+        std::cout << index1 << std::endl;
+
+        index1 = find_index(time_stamps[1], test_int[0]);
+        std::cout << index1 << std::endl;
+
+        index1 = find_index(time_stamps[2], test_int[0]);
+        std::cout << index1 << std::endl;
+
+        index1 = find_index(time_stamps[3], test_int[0]);
+        std::cout << index1 << std::endl;
+
+        std::vector<uint64_t> match1 = find_match(time_stamps);
+        
+
+        bp = 5;
 
         //console_input ci;
 

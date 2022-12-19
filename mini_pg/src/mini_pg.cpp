@@ -41,7 +41,7 @@
 #include "file_parser.h"
 #include "file_ops.h"
 #include "modulo.h"
-#include "console_input.h"
+//#include "console_input.h"
 
 
 #define M_PI 3.14159265358979323846
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
         uint32_t h, w;
 
         int bp = 0;
-        std::string input_file = "D:/Projects/Play_Ground/dfd_input_laptop.yml";
+        std::string input_file = "../../dfd_input_laptop.yml";
 
         std::ifstream t(input_file);
         std::stringstream buffer;

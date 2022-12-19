@@ -49,6 +49,7 @@ if(WIN32)
     
     list(APPEND CMAKE_MODULE_PATH "${RYML_PATHS}")
     list(APPEND CMAKE_PREFIX_PATH "${RYML_PATHS}")
+    set(RYML_LIB "${RYML_PATH}/build/Release/ryml.lib")
     
 else()
     if(${PLATFORM} STREQUAL "MainGear")
@@ -58,7 +59,10 @@ else()
         set(COMMON_ROOT "$HOME/Common")
     else()
         set(COMMON_ROOT "~/Projects/Common")
-    endif()  
+        set(RYML_PATH "~/Projects/rapidyaml")        
+    endif()
+    
+    set(RYML_LIB "${RYML_PATH}/build/libryml.so")
     	
 endif()
 
@@ -89,7 +93,7 @@ set(project_includes "include"
 
 # include("${RYML_PATH}/samples/singleheader/amalgamate.cmake")
 # amalgamate_ryml(SINGLE_HEADER_DIR SINGLE_HEADER)
-set(RYML_LIB "${RYML_PATH}/build/Release/ryml.lib")
+
 
 message(" ")
 message("--------------------------------------------------------")

@@ -1,0 +1,40 @@
+# data file for loading information into dlib based dnn projects
+
+scenario: "v8d_61_32x32_"
+
+stop_criteria:
+    hours: 160
+    steps: 1000
+    
+    
+train_file: "D:/IUPUI/DFD/DfD_DNN/dfd_train_data_one2.txt"
+test_file: "D:/IUPUI/DFD/DfD_DNN/dfd_test_data_one2.txt"
+
+crop_num: 3
+
+crop_size: 
+    height: 32
+    width: 32
+
+# v8
+#filter_num: [256,128,128,128,256,256,256,512,512,512,1024,1024,512,512,512,256,256,256,128,128,128]
+
+# v14
+filter_num: [256,256,256,256,256,512,512,512,512,1024,1024,1024,512,512,512,256,256,256]
+
+background:
+    value: 22
+    probability: 0.31
+    blur_radius1: [18, 18, 19, 19, 20, 20, 21, 21, 22, 22] 
+    blur_radius2: [1, 1, 1, 2, 2, 3, 3, 4, 4, 5]
+
+turbulence_parameters:
+    aperature: 0.095
+    ranges:
+        min: 500
+        max: 600
+        step: 10
+    Cn2:
+        min: 1e-15
+        max: 1e-13
+

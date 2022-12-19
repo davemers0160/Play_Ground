@@ -111,6 +111,7 @@
 
 //#include "cyclic_analysis.h"
 
+#include <yaml-cpp/yaml.h>
 
 #define M_PI 3.14159265358979323846
 #define M_2PI 6.283185307179586476925286766559
@@ -1430,6 +1431,9 @@ std::vector<uint64_t> find_match(std::vector<std::vector<uint64_t>> v)
         intersection = find_intersection(intersection, v[idx]);
     }
 
+    if (intersection.size() == 0)
+        return match;
+
     // find the index of the first entry
     for (idx = 0; idx < N; ++idx)
     {
@@ -1448,6 +1452,7 @@ int main(int argc, char** argv)
 
     uint64_t idx=0, jdx=0;
     uint64_t r, c;
+    char key = 0;
 
     typedef std::chrono::duration<double> d_sec;
     auto start_time = chrono::system_clock::now();
@@ -1510,12 +1515,49 @@ int main(int argc, char** argv)
 
         int32_t position = 0;
 
+        //std::ifstream fin("D:/Projects/Play_Ground/dfd_input_laptop.yml");
+        //YAML::Parser parser(fin);
+        
+        //YAML::Node doc;
+        
+        //parser.GetNextDocument(doc);
 
-        dlib::matrix<double> hw = dlib::hann_window(N);
+
+        YAML::Node config = YAML::LoadFile("D:/Projects/Play_Ground/dfd_input_laptop.yml");
+
+        auto scenario = config["scenario"].as<std::string>();
+        auto test2 = config["stop_criteria"][0];
+
+        //auto test2a = test2["hours"];
+
+        double duration = config["stop_criteria"][0]["hours"].as<double>();// = test2[0].as<double>(); //test2["hours"].as<double>();
+        uint64_t steps = config["stop_criteria"][0]["steps"].as<uint64_t>();// = test2[1].as<uint64_t>();  //test2["steps"].as<uint64_t>();
+
+        std::string train_file2 = config["train_file"].as<std::string>();
+        std::string test_file2 = config["test_file"].as<std::string>();
+
+        //auto test3 = config["crop_size"];
+
+        uint32_t h = config["crop_size"][0]["height"].as<uint32_t>();
+        uint32_t w = config["crop_size"][0]["width"].as<uint32_t>();
 
 
-        dlib::matrix<float> fir = dlib::create_fir_filter<float>(32, 0.75, dlib::hann_window);
-        dlib::matrix<std::complex<float>> fir_c = dlib::create_fir_filter<std::complex<float>>(32, 0.75, dlib::hann_window);
+        std::vector<uint32_t> f;
+        auto test4 = config["filter_num"];
+
+        auto sz = test4.size();
+
+
+        for (uint32_t i = 0; i < sz; ++i)
+        {
+            f.push_back(test4[i].as<uint32_t>());
+        }
+        bp = 0;
+        //dlib::matrix<double> hw = dlib::hann_window(N);
+
+
+        //dlib::matrix<float> fir = dlib::create_fir_filter<float>(32, 0.75, dlib::hann_window);
+        //dlib::matrix<std::complex<float>> fir_c = dlib::create_fir_filter<std::complex<float>>(32, 0.75, dlib::hann_window);
 
 
         //dlib::matrix<std::complex<float>> test2 = dlib::matrix_cast<std::complex<float>>(fir);
@@ -1532,15 +1574,15 @@ int main(int argc, char** argv)
         //std::cout << hw << std::endl;
 
 
-        std::cout << dlib::trans(fir_c) << std::endl;
+        //std::cout << dlib::trans(fir_c) << std::endl;
 
 
 
-        dlib::matrix<std::complex<float>> test3c = apply_fir_filter(fir_c, 8, 0.5, dlib::hann_window);
-        std::cout << dlib::trans(test3c) << std::endl;
+        //dlib::matrix<std::complex<float>> test3c = apply_fir_filter(fir_c, 8, 0.5, dlib::hann_window);
+        //std::cout << dlib::trans(test3c) << std::endl;
 
 
-        dlib::matrix<std::complex<float>> test4c = apply_frequency_shift(test3c, 1000, 10000);
+        //dlib::matrix<std::complex<float>> test4c = apply_frequency_shift(test3c, 1000, 10000);
 
         //auto res = dlib::apply_fir_filter(test3c, N, 0.5, dlib::hann_window<float>);
 
@@ -1555,77 +1597,35 @@ int main(int argc, char** argv)
 
         cv::RNG rng2(1234567);
 
-        int32_t num_data = 80;
-        std::vector<SignalDataPacket> sdp_stream(num_data);
+/*
+        cv::VideoCapture cap(0, cv::CAP_ANY);  //Notebook camera input
 
-        // fill in things
-        int32_t index = 0;
-        for (idx = 0; idx < 17; ++idx)
+        cv::VideoWriter writer;
+
+        // Write this string to one line to be sure!!
+        std::string writer_input = "appsrc ! videoconvert ! videoscale ! video/x-raw,width=640,height=480 ! x264enc speed-preset=veryfast tune=zerolatency bitrate=800 ! rtspclientsink location=rtsp://localhost:8554/mystream ";
+        writer.open(writer_input, 0, 30, cv::Size(640, 480), true);
+
+        // Comment this line out
+        cv::Mat cam_img;
+
+        while(key != 'q')
         {
-            sdp_stream[index].m_StreamIdentifier = 1;
-            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx;
+            if (!cap.isOpened())
+            {
+                std::cout << "Video Capture Fail" << std::endl;
+                break;
+            }
+            cap.read(cam_img);
+
+            cv::resize(cam_img, cam_img, cv::Size(640, 480));
+            cv::imshow("raw", cam_img);
+            writer << cam_img;
+            key = cv::waitKey(25);
         }
 
-        for (idx = 0; idx < 20; ++idx)
-        {
-            sdp_stream[index].m_StreamIdentifier = 2;
-            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx+4;
-        }
-
-        for (idx = 0; idx < 19; ++idx)
-        {
-            sdp_stream[index].m_StreamIdentifier = 3;
-            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx + 8;
-        }
-
-        for (idx = 0; idx < 18; ++idx)
-        {
-            sdp_stream[index].m_StreamIdentifier = 4;
-            sdp_stream[index++].m_Timestamp_GetFractionalSeconds = idx + 14;
-        }
-
-        num_data = index - 1;
-
-        int32_t num_streams = 4;
-
-        std::vector<std::vector<uint64_t>> time_stamps(num_streams);
-        std::vector<uint32_t> ts_count(num_streams, 0);
-
-        std::vector<int32_t> match(num_streams, -1);
-
-        for (idx = 0; idx < num_data; ++idx)
-        {
-            time_stamps[(sdp_stream[idx].m_StreamIdentifier & 0x07) - 1].push_back(sdp_stream[idx].m_Timestamp_GetFractionalSeconds);
-            ++ts_count[(sdp_stream[idx].m_StreamIdentifier & 0x07) - 1];
-        }
-
-
-
-
-        std::vector<uint64_t> test_int = find_intersection(find_intersection(find_intersection(time_stamps[0], time_stamps[1]), time_stamps[2]), time_stamps[3]);
-
-        for (idx = 0; idx < test_int.size()-1; ++idx)
-        {
-            std::cout << test_int[idx] << ", ";
-        }
-        std::cout << test_int[idx] << std::endl;
-
-
-        // find the index of the first entry
-        size_t index1 = find_index(time_stamps[0], test_int[0]);
-        std::cout << index1 << std::endl;
-
-        index1 = find_index(time_stamps[1], test_int[0]);
-        std::cout << index1 << std::endl;
-
-        index1 = find_index(time_stamps[2], test_int[0]);
-        std::cout << index1 << std::endl;
-
-        index1 = find_index(time_stamps[3], test_int[0]);
-        std::cout << index1 << std::endl;
-
-        std::vector<uint64_t> match1 = find_match(time_stamps);
-        
+        writer.release();
+*/
 
         bp = 5;
 
@@ -1944,8 +1944,6 @@ int main(int argc, char** argv)
         cv::namedWindow("My_Win", cv::WINDOW_NORMAL);
 
         cv::setMouseCallback("My_Win", mouse_click, (void*)&mp);
-
-        char key = 0;
 
         // end selection process on SPACE (32) ESC (27) or ENTER (13)
         while (!(key == 32 || key == 27 || key == 13))

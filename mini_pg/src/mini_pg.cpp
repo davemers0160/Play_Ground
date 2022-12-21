@@ -107,45 +107,41 @@ int main(int argc, char** argv)
         std::cout << "Path: " << exe_path << std::endl;
 #endif
         std::string scenario;
-        std::string train_file, test_file;
+        std::string training_file, test_file;
         std::vector<uint32_t> f;
         double duration;
         uint32_t steps;
         uint32_t h, w;
 
+        double fg_prob = 0.35;      // the probability of selecting the foreground depthmap value (0.35)
+        double bg_prob = 0.31;      // the probablility of selecting the background depthmap value (0.31)
+        uint16_t fg_dm_value;      // = fg_dm.first;        // foreground depthmap value; it is assumed that this value is the smallest depthmap value in the set
+        uint16_t bg_dm_value;      // = bg_dm.first;        // background depthmap value; it is assumed that this value is the largest depthmap value in the set
+
+        std::vector<double> sigma_table;
+        std::vector<uint8_t> dm_values;
+        std::vector<uint8_t> br1_table;
+        std::vector<uint8_t> br2_table;
+        std::vector<std::pair<uint8_t, uint8_t>> bg_br_table;
+        std::vector<std::pair<uint8_t, uint8_t>> fg_br_table;
+
+        std::vector<uint8_t> bg_table_br1, bg_table_br2;
+        std::vector<uint8_t> fg_table_br1, fg_table_br2;
+
         int bp = 0;
-        std::string input_file = "../../dfd_input_laptop.yml";
+        std::string input_file = "D:/Projects/vs_gen/blur_params_v23a.yml";
 
         std::ifstream t(input_file);
         std::stringstream buffer;
         buffer << t.rdbuf();
         std::string contents = buffer.str();
+        t.close();
 
         std::cout << contents << std::endl;
 
         ryml::Tree config = ryml::parse_in_arena(ryml::to_csubstr(contents));
 
-        config["scenario"] >> scenario;
-
-        config["train_file"] >> train_file;
-        config["test_file"] >> test_file;
-
-        ryml::NodeRef stop_criteria = config["stop_criteria"];
-        stop_criteria["hours"] >> duration;
-        stop_criteria["steps"] >> steps;
-
-        ryml::NodeRef crop_sizes = config["crop_size"];
-        crop_sizes["height"] >> h;
-        crop_sizes["width"] >> w;
-
-        auto temp = config["filter_num"].is_seq();
-        config["filter_num"] >> f;
-
-        uint8_t bg_dm_value;
-        double bg_prob;
-        std::vector<std::pair<uint8_t, uint8_t>> bg_br_table;
-        std::vector<uint8_t> bg_table_br1, bg_table_br2;
-
+        // background: depthmap value, probablility, blur radius values
         ryml::NodeRef background = config["background"];
         background["value"] >> bg_dm_value;
         background["probability"] >> bg_prob;
@@ -154,12 +150,21 @@ int main(int argc, char** argv)
 
         vector_to_pair(bg_table_br1, bg_table_br2, bg_br_table);
 
-        ryml::NodeRef turbulence_parameters = config["turbulence_parameters"];
-        auto tp1 = turbulence_parameters["Cn2"];
+        try
+        {
+            // foreground: depthmap value, probablility, blur radius values
+            ryml::NodeRef foreground = config["foreground"];
+            foreground["value"] >> fg_dm_value;
+            foreground["probability"] >> fg_prob;
+            foreground["blur_radius1"] >> fg_table_br1;
+            foreground["blur_radius2"] >> fg_table_br2;
 
-        double cn2_min, cn2_max;
-        tp1["min"] >> cn2_min;
-        tp1["max"] >> cn2_max;
+            vector_to_pair(fg_table_br1, fg_table_br2, fg_br_table);
+        }
+        catch (std::exception& e)
+        {
+            std::cout << "error in parsing foreground: " << e.what() << std::endl;
+        }
 
         bp = 1;
 

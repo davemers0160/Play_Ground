@@ -32,7 +32,7 @@
 #include <list>
 #include <thread>
 #include <complex>
-
+#include <mutex>
 
 // custom includes
 #include "get_current_time.h"
@@ -77,25 +77,17 @@ int main(int argc, char** argv)
     std::string sdate, stime;
 
     uint64_t idx=0, jdx=0;
-    uint64_t r, c;
-    char key = 0;
 
     typedef std::chrono::duration<double> d_sec;
     auto start_time = chrono::system_clock::now();
     auto stop_time = chrono::system_clock::now();
     auto elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
-
-    std::string data_directory;
-    std::string train_inputfile, test_inputfile;
+    int bp = 0;
 
     get_platform(platform);
-    std::cout << "Platform: " << platform << std::endl;
+    std::cout << "Platform: " << platform << std::endl << std::endl;
 
-    if (platform.compare(0, 6, "Laptop") == 0)
-    {
-        std::cout << "Match!" << std::endl;
-    }
 
     try
     {
@@ -106,109 +98,53 @@ int main(int argc, char** argv)
         std::string exe_path = get_ubuntu_path();
         std::cout << "Path: " << exe_path << std::endl;
 #endif
-        std::string scenario;
-        std::string training_file, test_file;
-        std::vector<uint32_t> f;
-        double duration;
-        uint32_t steps;
-        uint32_t h, w;
 
-        double fg_prob = 0.35;      // the probability of selecting the foreground depthmap value (0.35)
-        double bg_prob = 0.31;      // the probablility of selecting the background depthmap value (0.31)
-        uint16_t fg_dm_value;      // = fg_dm.first;        // foreground depthmap value; it is assumed that this value is the smallest depthmap value in the set
-        uint16_t bg_dm_value;      // = bg_dm.first;        // background depthmap value; it is assumed that this value is the largest depthmap value in the set
+        //----------------------------------------------------------------------------------------
+        // variables
+        uint32_t num_threads; 
+        uint32_t num_loops;
+        uint32_t num_blocks;
+        
+        
+        num_loops = 100;
+        //num_blocks = std::ceil(num_loops / (double)num_threads);
 
-        std::vector<double> sigma_table;
-        std::vector<uint8_t> dm_values;
-        std::vector<uint8_t> br1_table;
-        std::vector<uint8_t> br2_table;
-        std::vector<std::pair<uint8_t, uint8_t>> bg_br_table;
-        std::vector<std::pair<uint8_t, uint8_t>> fg_br_table;
-
-        std::vector<uint8_t> bg_table_br1, bg_table_br2;
-        std::vector<uint8_t> fg_table_br1, fg_table_br2;
-
-        int bp = 0;
-        std::string input_file = "D:/Projects/vs_gen/blur_params_v23a.yml";
-
-        std::ifstream t(input_file);
-        std::stringstream buffer;
-        buffer << t.rdbuf();
-        std::string contents = buffer.str();
-        t.close();
-
-        std::cout << contents << std::endl;
-
-        ryml::Tree config = ryml::parse_in_arena(ryml::to_csubstr(contents));
-
-        // background: depthmap value, probablility, blur radius values
-        ryml::NodeRef background = config["background"];
-        background["value"] >> bg_dm_value;
-        background["probability"] >> bg_prob;
-        background["blur_radius1"] >> bg_table_br1;
-        background["blur_radius2"] >> bg_table_br2;
-
-        vector_to_pair(bg_table_br1, bg_table_br2, bg_br_table);
-
-        try
-        {
-            // foreground: depthmap value, probablility, blur radius values
-            ryml::NodeRef foreground = config["foreground"];
-            foreground["value"] >> fg_dm_value;
-            foreground["probability"] >> fg_prob;
-            foreground["blur_radius1"] >> fg_table_br1;
-            foreground["blur_radius2"] >> fg_table_br2;
-
-            vector_to_pair(fg_table_br1, fg_table_br2, fg_br_table);
-        }
-        catch (std::exception& e)
-        {
-            std::cout << "error in parsing foreground: " << e.what() << std::endl;
-        }
-
-        bp = 1;
-
-        //std::ifstream fin(input_file);
-        //if (!fin)
-        //    std::cout << "bad file" << std::endl;
-
-        //YAML::Node config = YAML::Load(fin);
-        //YAML::Node config2 = YAML::LoadFile(input_file);
-
-        //auto scenario = config["scenario"].as<std::string>();
-        //auto test2 = config["stop_criteria"][0];
-
-        //double duration = config["stop_criteria"][0]["hours"].as<double>();// = test2[0].as<double>(); //test2["hours"].as<double>();
-        //uint64_t steps = config["stop_criteria"][0]["steps"].as<uint64_t>();// = test2[1].as<uint64_t>();  //test2["steps"].as<uint64_t>();
-
-        //std::string train_file2 = config["train_file"].as<std::string>();
-        //std::string test_file2 = config["test_file"].as<std::string>();
-
-        ////auto test3 = config["crop_size"];
-
-        //uint32_t h = config["crop_size"][0]["height"].as<uint32_t>();
-        //uint32_t w = config["crop_size"][0]["width"].as<uint32_t>();
-
-
-        //
-        //auto test4 = config["filter_num"];
-
-        //auto sz = test4.size();
-
-
-        //for (uint32_t i = 0; i < sz; ++i)
+        start_time = chrono::system_clock::now();
+        num_threads = std::max(1U, std::thread::hardware_concurrency() - 1);
         //{
-        //    f.push_back(test4[i].as<uint32_t>());
+            std::vector<std::thread> threads(num_threads);
+            std::mutex critical;
+            for (int t = 0; t < num_threads; t++)
+            {
+                threads[t] = std::thread(std::bind([&](const int bi, const int ei, const int t)
+                {
+
+                    // loop over all items
+                    for (int idx = bi; idx < ei; ++idx)
+                    {
+                        //for (idx = 0; idx < num_loops; ++idx)
+                        {
+                            Sleep(500);
+                            std::lock_guard<std::mutex> lock(critical);
+                            std::cout << "Index: " << idx << std::endl;
+                        }
+                    }
+                }, t* num_loops / num_threads, (t + 1) == num_threads ? num_loops : (t + 1) * num_loops / num_threads, t));
+
+            }
+            std::for_each(threads.begin(), threads.end(), [](std::thread& x) {x.join(); });
+
         //}
-        //bp = 0;
+        stop_time = chrono::system_clock::now();
 
 
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
-        // ----------------------------------------------------------------------------------------
+        std::cout << "elapsed_time " << elapsed_time.count() << std::endl;
 
+        //----------------------------------------------------------------------------------------
 
         bp = 4;
-
 
     }
     catch (std::exception &e)
@@ -216,7 +152,7 @@ int main(int argc, char** argv)
         std::cout << e.what() << std::endl;
     }
 
-    std::cout << "Press Enter to close" << std::endl;
+    std::cout << std::endl << "Press Enter to close" << std::endl;
     std::cin.ignore();
 
 	return 0;

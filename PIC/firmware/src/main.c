@@ -73,8 +73,8 @@ int main ( void )
     uint32_t idx, jdx;
     uint32_t count = 8;
     
-    uint8_t x[] = {0, 1, 2, 3, 3, 2, 1, 0};
-    uint8_t y[] = {0, 1, 2, 3, 0, 1, 2, 3};
+    uint8_t x[] = {1, 3, 0, 2, 1, 3, 0, 2};
+    uint8_t y[] = {0, 0, 1, 1, 2, 2, 3, 3};
     
     
     /* Initialize all modules */
@@ -107,7 +107,7 @@ int main ( void )
                 ms_delay(10);
                 
                 *matrix[y[idx]][x[idx]] = 0xFFFF;
-                ms_delay(5);                
+                ms_delay(10);                
             }
         
         }

@@ -31,8 +31,8 @@
 const volatile unsigned char h = 4;
 const volatile unsigned char w = 4;
 
-                                    /*              J13,                H3,                F5,                K3 */
-volatile uint32_t *matrix[4][4] = { { (uint32_t*)&PORTJ, (uint32_t*)&PORTH, (uint32_t*)&PORTF, (uint32_t*)&PORTK }, \
+                                    /*              J13,                B3,                F5,                K3 */
+volatile uint32_t *matrix[4][4] = { { (uint32_t*)&PORTJ, (uint32_t*)&PORTB, (uint32_t*)&PORTF, (uint32_t*)&PORTK }, \
                                     /*               J5,                J7,                D1,                H7 */
                                     { (uint32_t*)&PORTJ, (uint32_t*)&PORTJ, (uint32_t*)&PORTD, (uint32_t*)&PORTH }, \
                                     /*              H11,                H9,                K4,                K5 */

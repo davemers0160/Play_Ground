@@ -14,8 +14,8 @@ void init_PIC(void)
     OSCCON = 0b11110000;            // 4x PLL enabled, set internal oscillator to 8(32)MHz, clock determined by FOSC
     OPTION_REG = 0b10000000;		// Turns internal pull up resistors off
     
-    INTCON = 0b11000000;            // Global Interrupt Enable, Peripheral Interrupt Enable
-    PIE1bits.RCIE = 1;
+    INTCON = 0b00000000;            // Global Interrupt Enable, Peripheral Interrupt Enable
+    //PIE1bits.RCIE = 1;
     
     CM1CON0 = 0b00000111;           // Disables internal comparators
     //VRCON = 0b00000000;           // Disables internal Vref
@@ -33,8 +33,8 @@ void init_UART(void)
     APFCONbits.RXDTSEL = 0;
     APFCONbits.TXCKSEL = 0;
     
-    TXSTA = 0b10100100;
-    RCSTA = 0b10110000;
+    TXSTA = 0b00100100;
+    RCSTA = 0b00110000;
     BAUDCON = 0b00001000;
     SPBRG = 68;             // 115,200 - 0.64% error
 

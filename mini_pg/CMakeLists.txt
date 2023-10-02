@@ -80,19 +80,19 @@ set(project_includes "include"
     "${RYML_PATH}/include"
     )
 
-# find_package(ryml CONFIG REQUIRED)
-# if(ryml_FOUND)
-	# set(project_includes ${project_includes} ${RYML_INCLUDE_DIR})
-	##set(project_libs ${project_libs} ${RYML_LIB_DIR})
-# else()
-    # message(" ")
-    # message("Couldn't find ryml...")
-# endif()
 
-#add_subdirectory(${RYML_PATH} ryml)
-
-# include("${RYML_PATH}/samples/singleheader/amalgamate.cmake")
-# amalgamate_ryml(SINGLE_HEADER_DIR SINGLE_HEADER)
+# look for opencv
+message(STATUS "--------------------------------------------------------------------------------")
+message(STATUS "Looking for OpenCV installation...")
+find_package(OpenCV REQUIRED)
+if (OpenCV_FOUND)
+	set(project_includes ${project_includes} ${OpenCV_INCLUDE_DIRS})
+	set(project_libs ${project_libs} ${OpenCV_LIBS})
+	message(STATUS "Found OpenCV: " ${OpenCV_DIR})
+else()
+	message("OpenCV not found...")
+endif()
+message(STATUS "--------------------------------------------------------------------------------")
 
 
 message(" ")
@@ -131,7 +131,7 @@ add_executable(${exe_name} ${SOURCES})
 
 #target_link_libraries(${exe_name} ${project_libs} ryml::ryml)
 #target_link_libraries(ryml-quickstart PRIVATE ryml)
-target_link_libraries(${exe_name} ${project_libs} PRIVATE ${RYML_LIB})
+target_link_libraries(${exe_name} ${project_libs})
 
 #target_compile_features(${exe_name} PUBLIC cxx_std_11)
 #target_compile_definitions(${exe_name} PUBLIC -DRYML_SINGLE_HEADER)

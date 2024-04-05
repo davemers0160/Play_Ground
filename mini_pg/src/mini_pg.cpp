@@ -127,18 +127,11 @@ inline std::vector<std::complex<int16_t>> generate_oqpsk(std::vector<uint8_t> da
     I.insert(I.end(), samples_per_bit, 0);
 
     // merge the Iand Q channels
-
-    iq_data = I + 1i * Q;
+    for(idx=0; idx< I.size(); ++idx)
+        iq_data.push_back(std::complex<int16_t>(I[idx], Q[idx]));
 
     return iq_data;
 }
-
-
-
-
-
-
-
 
 
 //----------------------------------------------------------------------------

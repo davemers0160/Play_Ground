@@ -66,6 +66,80 @@ std::string console_input1;
 const cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
 const cv::Mat SE5_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
 
+inline std::vector<std::complex<int16_t>> generate_oqpsk(std::vector<uint8_t> data, double amplitude, uint32_t sample_rate, float half_bit_length)
+{
+    uint64_t idx;
+    uint8_t num;
+
+    std::vector<std::complex<int16_t>> iq_data;
+
+    uint32_t samples_per_bit = floor(sample_rate * half_bit_length);
+
+    // check for odd numberand append a 0 at the end if it is odd
+    if (data.size() % 2 == 1)
+        data.push_back(0);
+
+    uint64_t num_bit_pairs = data.size() >> 1;
+
+    //% this will expand the bit to fill the right number of samples
+    //s = ones(floor(2 * samples_per_bit), 1);
+
+    // pre calculate the base 45 degree value
+    int16_t v = (int16_t)(amplitude * (sqrt(2) / 2.0));
+    int16_t v_i, v_q;
+
+    // start with Iand Q offset by half a bit length
+    std::vector<int16_t> I;
+    std::vector<int16_t> Q(samples_per_bit, 0);
+
+    for (idx = 0; idx < num_bit_pairs; idx += 2)
+    {
+        num = 2*data[idx] + data[idx+1];
+
+        // map the bit pair value to IQ values
+        switch (num)
+        {
+        case 0:
+            v_i = -v;
+            v_q = -v;
+            break;
+        case 1:
+            v_i = -v;
+            v_q = v;
+            break;
+        case 2:
+            v_i = v;
+            v_q = -v;
+            break;
+        case 3:
+            v_i = v;
+            v_q = v;
+            break;
+        }
+
+        // append the new data
+        I.insert(I.end(), samples_per_bit, v_i);
+        Q.insert(Q.end(), samples_per_bit, v_q);
+
+    }
+
+    // add half a bit length of zeros to the I channel
+    I.insert(I.end(), samples_per_bit, 0);
+
+    // merge the Iand Q channels
+
+    iq_data = I + 1i * Q;
+
+    return iq_data;
+}
+
+
+
+
+
+
+
+
 
 //----------------------------------------------------------------------------
 inline void get_rect(std::vector<cv::Point>& p, cv::Rect& r, int64_t img_w, int64_t img_h, int64_t x_padding = 40, int64_t y_padding = 40)

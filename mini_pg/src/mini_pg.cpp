@@ -1,5 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
-//#define _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
 
 //#include <yaml-cpp/yaml.h>
 //#define RYML_SINGLE_HDR_DEFINE_NOW
@@ -33,6 +33,7 @@
 #include <thread>
 #include <complex>
 #include <mutex>
+#include <random>
 
 // custom includes
 #include "get_current_time.h"
@@ -52,6 +53,8 @@
 #include <opencv2/video.hpp>
 #include <opencv2/imgcodecs.hpp>
 
+#include <test_gen.h>
+
 #define M_PI 3.14159265358979323846
 #define M_2PI 6.283185307179586476925286766559
 
@@ -66,73 +69,34 @@ std::string console_input1;
 const cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
 const cv::Mat SE5_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
 
-inline std::vector<std::complex<int16_t>> generate_oqpsk(std::vector<uint8_t> data, double amplitude, uint32_t sample_rate, float half_bit_length)
+// ----------------------------------------------------------------------------
+template<typename T>
+void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
 {
-    uint64_t idx;
-    uint8_t num;
+    std::ofstream data_file;
 
-    std::vector<std::complex<int16_t>> iq_data;
+    //T r, q;
 
-    uint32_t samples_per_bit = floor(sample_rate * half_bit_length);
+    data_file.open(filename, ios::out | ios::binary);
 
-    // check for odd numberand append a 0 at the end if it is odd
-    if (data.size() % 2 == 1)
-        data.push_back(0);
-
-    uint64_t num_bit_pairs = data.size() >> 1;
-
-    //% this will expand the bit to fill the right number of samples
-    //s = ones(floor(2 * samples_per_bit), 1);
-
-    // pre calculate the base 45 degree value
-    int16_t v = (int16_t)(amplitude * (sqrt(2) / 2.0));
-    int16_t v_i, v_q;
-
-    // start with Iand Q offset by half a bit length
-    std::vector<int16_t> I;
-    std::vector<int16_t> Q(samples_per_bit, 0);
-
-    for (idx = 0; idx < num_bit_pairs; idx += 2)
+    if (!data_file.is_open())
     {
-        num = 2*data[idx] + data[idx+1];
-
-        // map the bit pair value to IQ values
-        switch (num)
-        {
-        case 0:
-            v_i = -v;
-            v_q = -v;
-            break;
-        case 1:
-            v_i = -v;
-            v_q = v;
-            break;
-        case 2:
-            v_i = v;
-            v_q = -v;
-            break;
-        case 3:
-            v_i = v;
-            v_q = v;
-            break;
-        }
-
-        // append the new data
-        I.insert(I.end(), samples_per_bit, v_i);
-        Q.insert(Q.end(), samples_per_bit, v_q);
-
+        std::cout << "Could not save data. Closing... " << std::endl;
+        //std::cin.ignore();
+        return;
     }
 
-    // add half a bit length of zeros to the I channel
-    I.insert(I.end(), samples_per_bit, 0);
+    data_file.write(reinterpret_cast<const char*>(data.data()), 2 * data.size() * sizeof(T));
 
-    // merge the Iand Q channels
-    for(idx=0; idx< I.size(); ++idx)
-        iq_data.push_back(std::complex<int16_t>(I[idx], Q[idx]));
-
-    return iq_data;
+    //for (uint64_t idx = 0; idx < data.size(); ++idx)
+    //{
+    //    //r = data[idx].real();
+    //    //q = data[idx].imag();
+    //    data_file.write(reinterpret_cast<const char*>(data[idx].real()), sizeof(T));
+    //    data_file.write(reinterpret_cast<const char*>(data[idx].imag()), sizeof(T));
+    //}
+    data_file.close();
 }
-
 
 //----------------------------------------------------------------------------
 inline void get_rect(std::vector<cv::Point>& p, cv::Rect& r, int64_t img_w, int64_t img_h, int64_t x_padding = 40, int64_t y_padding = 40)
@@ -222,7 +186,46 @@ int main(int argc, char** argv)
         std::vector<std::vector<cv::Point> > img_contours;
         std::vector<cv::Vec4i> img_hr;
 
+        std::default_random_engine generator(10);
+        std::uniform_int_distribution<int32_t> distribution(0, 1);
 
+        std::vector<uint8_t> data;
+        double amplitude = 2000;
+        uint32_t sample_rate = 50000000;
+        float half_bit_length = 0.0000001;
+
+        uint32_t num_bits = 384;
+        uint32_t num_bursts = 16;
+        //for (idx = 0; idx < num_bits; ++idx)
+        //    data.push_back(distribution(generator));
+
+        //data.clear();
+        //for (idx = 0; idx < num_bits; ++idx)
+        //    data.push_back(distribution(generator));
+
+        //std::vector<std::complex<int16_t>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_bit_length);
+
+        std::vector<std::complex<int16_t>> iq_data;
+        burst_generator bg(amplitude, sample_rate, half_bit_length);
+
+        bg.generator_channel_rot(num_bits);
+
+        start_time = chrono::high_resolution_clock::now();
+
+        bg.generate_burst(num_bursts, num_bits, iq_data);
+
+        stop_time = chrono::high_resolution_clock::now();
+
+        const auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+
+        std::cout << "elapsed_time: " << int_ms.count()/1e6 << std::endl;
+
+        std::cin.ignore();
+        save_complex_data("D:/data/RF/test_oqpsk_burst.sc16", iq_data);
+
+
+        bp = 10;
+        
         //num_blocks = std::ceil(num_loops / (double)num_threads);
 
         /*

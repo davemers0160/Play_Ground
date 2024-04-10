@@ -13,11 +13,11 @@ commandwindow;
 
 %%
 
-sample_rate = 50e6;
+sample_rate = 52e6;
 
 num_bits = 384;
 
-symbol_length = 280e-9;
+symbol_length = 272e-9;
 
 channels = [-0.8:0.1:-0.1, 0.1:0.1:0.8]*10e6;
 % channels = [0];
@@ -43,6 +43,11 @@ apf = create_fir_filter(1.0, w);   %ones(n_taps,1)
 hpf = 0.3*(apf-lpf2);
 cpf = (lpf + hpf)/2.0;
 
+fft_lpf = fft(lpf)/numel(lpf);
+fft_lpf2 = fft(lpf2)/numel(lpf2);
+fft_hpf = fft(hpf)/numel(hpf);
+
+fft_apf = fft(apf)/numel(apf);
 fft_cpf = fft(cpf)/numel(cpf);
 
 % calculate the x axis
@@ -51,7 +56,12 @@ x_cpf = linspace(-sample_rate/2, sample_rate/2, numel(fft_cpf));
 figure(plot_num)
 set(gcf,'position',([50,50,1400,500]),'color','w')
 hold on;
+plot(x_cpf/1e6, 20*log10(abs(fftshift(fft_lpf))),'b')
+plot(x_cpf/1e6, 20*log10(abs(fftshift(fft_lpf2))),'g')
+plot(x_cpf/1e6, 20*log10(abs(fftshift(fft_apf))),'r')
+plot(x_cpf/1e6, 20*log10(abs(fftshift(fft_hpf))),'m')
 plot(x_cpf/1e6, 20*log10(abs(fftshift(fft_cpf))),'k')
+
 grid on
 box on
 set(gca,'fontweight','bold','FontSize', 13);
@@ -72,7 +82,8 @@ for idx=1:num_bursts
     
     [iq] = generate_oqpsk(data, sample_rate, symbol_length/2);
     
-    iq_cpf = conv(iq, cpf(end:-1:1), 'same');
+    iq_cpf = conv(iq, lpf(end:-1:1), 'same');
+    % iq_cpf = iq;
     
     iq_r = iq_cpf .* exp(2*1i*pi()*ch/sample_rate*(0:1:numel(iq_cpf)-1)).';
     
@@ -86,11 +97,14 @@ spectrogram(iq_oqpsk, 128, 64, 128, sample_rate, 'centered');
 plot_num = plot_num + 1;
 
 
+t_oqpsk = (0:1:numel(iq_oqpsk)-1)/sample_rate;
+t_oqpsk(end)
+
 figure(plot_num)
 set(gcf,'position',([50,50,1400,500]),'color','w')
 hold on;
-plot(real(iq_oqpsk),'b')
-plot(imag(iq_oqpsk),'r')
+plot(t_oqpsk, real(iq_oqpsk),'b')
+plot(t_oqpsk, imag(iq_oqpsk),'r')
 grid on
 box on
 set(gca,'fontweight','bold','FontSize', 13);

@@ -210,15 +210,24 @@ int main(int argc, char** argv)
 
         bg.generator_channel_rot(num_bits);
 
-        start_time = chrono::high_resolution_clock::now();
+        double run_time_sum = 0.0;
 
-        bg.generate_burst(num_bursts, num_bits, iq_data);
+        for(idx=0; idx<100; ++idx)
+        {
+            start_time = chrono::high_resolution_clock::now();
 
-        stop_time = chrono::high_resolution_clock::now();
+            bg.generate_burst(num_bursts, num_bits, iq_data);
 
-        const auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+            stop_time = chrono::high_resolution_clock::now();
 
-        std::cout << "elapsed_time: " << int_ms.count()/1e6 << std::endl;
+            const auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+
+            std::cout << "elapsed_time: " << int_ms.count()/1e6 << std::endl;
+
+            run_time_sum += int_ms.count() / 1.0e6;
+        }
+
+        std::cout << "average elapsed_time: " << run_time_sum/100.0 << std::endl;
 
         std::cin.ignore();
         save_complex_data("D:/data/RF/test_oqpsk_burst.sc16", iq_data);

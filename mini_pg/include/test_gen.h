@@ -176,6 +176,9 @@ public:
 
             // rotate the samples
             apply_rotation(x1, ch_rot[ch_rnd], x2);
+            //apply_rotation(iq_data, ch_rot[ch_rnd], x2);
+
+            //apply_filter_rotation(iq_data, ch_rot[ch_rnd], x2);
 
             // append the samples
             IQ.insert(IQ.end(), x2.begin(), x2.end());
@@ -272,19 +275,51 @@ private:
 
         x1.clear();
         x1.resize(iq_data.size(), std::complex<float>(0, 0));
-        
+        int32_t temp = 0;
+
         for (idx = offset; idx < (iq_data.size() - offset); ++idx)
         {
             accum = 0.0;
+            temp = idx - offset;
 
             for (jdx = 0; jdx < n_taps; ++jdx)
             {
                 //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
                 //std::complex<double> t2 = iq_data[idx + jdx - offset];
-                accum += iq_data[idx + jdx - offset] * cpf[jdx];
+                accum += iq_data[temp + jdx] * cpf[jdx];
             }
 
-            x1[idx - offset] = accum;
+            x1[temp] = accum;
+        }
+
+    }   // end of apply_filter
+
+    //-----------------------------------------------------------------------------
+    void apply_filter_rotation(std::vector<std::complex<float>>& iq_data, std::vector<std::complex<float>>& f_rot, std::vector<std::complex<int16_t>>& x1)
+    {
+        uint32_t idx, jdx;
+        uint32_t offset = n_taps >> 1;
+
+        std::complex<float> accum;
+
+        x1.clear();
+        x1.resize(iq_data.size(), std::complex<float>(0, 0));
+
+        int32_t temp = 0;
+
+        for (idx = offset; idx < (iq_data.size() - offset); ++idx)
+        {
+            accum = 0.0;
+            temp = idx - offset;
+            for (jdx = 0; jdx < n_taps; ++jdx)
+            {
+                //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
+                //std::complex<double> t2 = iq_data[idx + jdx - offset];
+                accum += iq_data[temp + jdx] * cpf[jdx];
+            }
+
+            x1[temp] = std::complex<int16_t>(f_rot[temp] * accum);
+
         }
 
     }   // end of apply_filter

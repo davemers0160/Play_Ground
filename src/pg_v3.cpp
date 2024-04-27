@@ -31,6 +31,8 @@
 #include <list>
 #include <thread>
 #include <complex>
+#include <random>
+
 
 // dlib includes
 #include "dlib/rand.h"
@@ -111,7 +113,7 @@
 
 //#include "cyclic_analysis.h"
 
-#include <yaml-cpp/yaml.h>
+//#include <yaml-cpp/yaml.h>
 
 #define M_PI 3.14159265358979323846
 #define M_2PI 6.283185307179586476925286766559
@@ -652,140 +654,6 @@ double nan_mean(cv::Mat& img)
     return (mn / (double)count);
 }   // end of nan_mean
 
-/*
-// ----------------------------------------------------------------------------------------
-void generate_random_image(
-    cv::Mat& img,
-    cv::RNG rng,
-    long nr, 
-    long nc, 
-    unsigned int N, 
-    double scale   
-)
-{
-    unsigned int idx;
-
-    // get the random background color
-    cv::Scalar bg_color = cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
-
-    // create the image with the random background color
-    img = cv::Mat(nr, nc, CV_8UC3, bg_color);
-
-    // create N shapes
-    for (idx = 0; idx < N; ++idx)
-    {
-
-        // get the random color for the shape
-        cv::Scalar C = cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
-
-        // make sure the color picked is not the background color
-        while (C == bg_color)
-        {
-            C = cv::Scalar(rng.uniform(0, 256), rng.uniform(0, 256), rng.uniform(0, 256));
-        }
-
-        // generate the random point
-        long x = rng.uniform(0, nc);
-        long y = rng.uniform(0, nr);
-        long r1, r2, h, w, s;
-        double a;
-
-        cv::RotatedRect rect;
-        cv::Point2f vertices2f[4];
-        cv::Point vertices[4];
-        //cv::Point pt[2][3];
-        std::vector<cv::Point> pts(3);
-        std::vector<std::vector<cv::Point> > vpts(1);
-        vpts.push_back(pts);
-
-
-        long x_1; //= -window_width / 2;
-        long x_2; //= window_width * 3 / 2;
-        long y_1; //= -window_width / 2;
-        long y_2; //= window_width * 3 / 2;
-
-        // get the shape type
-        switch (rng.uniform(0, 3))
-        {
-        case 0:
-            
-            // pick a random radi for the ellipse
-            r1 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
-            r2 = std::floor(0.5 * scale * rng.uniform(0, std::min(nr, nc)));
-            a = rng.uniform(0.0, 360.0);
-
-            cv::ellipse(img, cv::Point(x, y), cv::Size(r1, r2), a, 0.0, 360.0, C, -1, cv::LineTypes::LINE_8, 0);
-            break;
-
-        case 1:
-
-            h = std::floor(scale * rng.uniform(0, std::min(nr, nc)));
-            w = std::floor(scale * rng.uniform(0, std::min(nr, nc)));
-            a = rng.uniform(0.0, 360.0);
-
-            // Create the rotated rectangle
-            rect = cv::RotatedRect(cv::Point(x,y), cv::Size(w,h), a);
-
-            // We take the edges that OpenCV calculated for us
-            rect.points(vertices2f);
-
-            // Convert them so we can use them in a fillConvexPoly
-            for (int jdx = 0; jdx < 4; ++jdx) 
-            {
-                vertices[jdx] = vertices2f[jdx];
-            }
-
-            // Now we can fill the rotated rectangle with our specified color
-            cv::fillConvexPoly(img, vertices, 4, C);
-            break;
-
-        case 2:
-
-            s = rng.uniform(3, 9);
-            x_1 = -(0.5 * scale * nc);
-            x_2 = (1.5 * scale * nc);
-            y_1 = -(0.5 * scale * nr);
-            y_2 = (1.5 * scale * nc);
-
-            pts.clear();
-
-            for (int jdx = 0; jdx < s; ++jdx)
-            {
-                pts.push_back(cv::Point((long)(rng.uniform((int)x_1, (int)x_2) + x), (long)(rng.uniform((int)y_1, (int)y_2) + y)));
-            }
-
-            vpts[0] = pts;
-            cv::fillPoly(img, vpts, C, cv::LineTypes::LINE_8, 0);
-
-            break;
-
-        }
-
-    }
-
-}
-
-
-void generate_random_image(unsigned char*& img,
-    long long seed,
-    long nr,
-    long nc,
-    unsigned int N,
-    double scale
-)
-{
-    cv::RNG rng(seed);
-
-    cv::Mat cv_img;
-
-    generate_random_image(cv_img, rng, nr, nc, N, scale);
-
-    //    memcpy((void*)data_params, &network_output(0, 0), network_output.size() * sizeof(float));
-    img = new unsigned char[cv_img.total()*3];
-    memcpy((void*)img, cv_img.ptr<unsigned char>(0), cv_img.total()*3);
-
-}
-*/
 
 dlib::matrix<uint32_t, 1, 4> get_color_match(dlib::matrix<dlib::rgb_pixel>& img, dlib::mmod_rect& det)
 {
@@ -1224,8 +1092,6 @@ std::ostream& operator<< (std::ostream& out, const fixed_width_mat<T>& fmw)
 
 
 // ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
-
 namespace dlib
 {
     //template <typename T>
@@ -1235,7 +1101,24 @@ namespace dlib
 
         for (int64_t idx = 0; idx <= N; ++idx)
         {
-            w(idx, 0) = 0.5f * (1.0f - std::cos(2.0f * M_PI * idx / (double)N));
+            w(idx, 0) = 0.5 * (1.0 - std::cos(2.0 * M_PI * idx / (double)(N - 1)));
+        }
+
+        return w;
+    }   // end of hann_window
+
+    inline matrix<double> blackman_nutall_window(int64_t N)
+    {
+        double a0 = 0.3635819;
+        double a1 = 0.4891775;
+        double a2 = 0.1365995;
+        double a3 = 0.0106411;
+
+        matrix<double> w = zeros_matrix<double>(N + 1, 1);
+
+        for (int64_t idx = 0; idx <= N; ++idx)
+        {
+            w(idx, 0) = a0 - a1 * std::cos(2.0f * M_PI * idx / (double)(N - 1)) + a2 * std::cos(4.0f * M_PI * idx / (double)(N - 1)) - a3 * std::cos(6.0f * M_PI * idx / (double)(N - 1));
         }
 
         return w;
@@ -1246,22 +1129,21 @@ namespace dlib
     matrix<T> create_fir_filter(int64_t N, float fc, funct window_function)
     {
         double v;
-        matrix<double> g = zeros_matrix<double>(N + 1, 1);
+        matrix<double> g = zeros_matrix<double>(N, 1);
 
         matrix<double> w = window_function(N);
         
-        for (int64_t idx = 0; idx <= N; ++idx)
+        for (int64_t idx = 0; idx < N; ++idx)
         {
             if (std::abs((double)(idx - (N >> 1))) < 1e-6)
                 g(idx, 0) = w(idx, 0) * fc;
             else
             {
-                v = std::sin(M_PI * fc * (idx - (N >> 1))) / (M_PI * (idx - (N >> 1)));
+                v = std::sin(M_PI * fc * (idx - ((N - 1) >> 1))) / (M_PI * (idx - ((N - 1) >> 1)));
                 g(idx, 0) = w(idx, 0) * v;
             }
         }
         
-
         return matrix_cast<T>(g);
 
     }   // end of create_fir_filter
@@ -1295,7 +1177,7 @@ namespace dlib
     {
         uint64_t idx;
 
-        dlib::matrix<std::complex<T>> dst = zeros_matrix(N, 1);
+        dlib::matrix<std::complex<T>> dst = dlib::zeros_matrix<std::complex<T>>(N, 1);
 
         for (idx = 0; idx < N; ++idx)
         {
@@ -1330,9 +1212,6 @@ namespace dlib
     }
 
 }
-
-// ----------------------------------------------------------------------------------------
-// ----------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------
 constexpr size_t CARRIER = 2400;
@@ -1445,6 +1324,84 @@ std::vector<uint64_t> find_match(std::vector<std::vector<uint64_t>> v)
 }
 
 
+//-----------------------------------------------------------------------------
+inline std::vector<std::complex<double>> generate_oqpsk(std::vector<uint8_t> data, double amplitude, uint32_t sample_rate, float half_symbol_length)
+{
+    uint32_t idx = 0, jdx = 0;
+    uint8_t num;
+
+    uint32_t samples_per_bit = floor(sample_rate * half_symbol_length);
+    uint32_t samples_per_symbol = samples_per_bit << 1;
+
+    uint32_t i_index = 0, q_index = samples_per_bit;
+
+    // check for odd numberand append a 0 at the end if it is odd
+    if (data.size() % 2 == 1)
+        data.push_back(0);
+
+    uint32_t num_bit_pairs = data.size() >> 1;
+
+    //% this will expand the bit to fill the right number of samples
+    //s = ones(floor(2 * samples_per_bit), 1);
+
+    // pre calculate the base 45 degree value
+    float v = (float)(amplitude * 0.70710678118654752440084436210485);
+    float v_i, v_q;
+
+    std::vector<std::complex<double>> iq_data(num_bit_pairs * samples_per_symbol + samples_per_bit);
+
+    // start with Iand Q offset by half a bit length
+    //std::vector<int16_t> I;
+    //std::vector<int16_t> Q(samples_per_bit, 0);
+
+    std::vector<float> I(num_bit_pairs * samples_per_symbol + samples_per_bit, 0);
+    std::vector<float> Q(num_bit_pairs * samples_per_symbol + samples_per_bit, 0);
+
+
+    //v_i = data[idx] == 0 ? -v : v;
+    //v_q = data[idx + 1] == 0 ? -v : v;
+
+    //for (jdx = 0; jdx < samples_per_symbol; ++jdx)
+    //{
+        //I[i_index] = v_i;
+        //Q[q_index] = v_q;
+    //    ++i_index;
+    //    ++q_index;
+    //}
+
+
+    for (idx = 0; idx < data.size(); idx += 2)
+    {
+
+        // map the bit pair value to IQ values
+        v_i = data[idx] == 0 ? -v : v;
+        v_q = data[idx + 1] == 0 ? -v : v;
+
+        // append the new data
+        //I.insert(I.end(), samples_per_symbol, v_i);
+        //Q.insert(Q.end(), samples_per_symbol, v_q);
+
+        for (jdx = 0; jdx < samples_per_symbol; ++jdx)
+        {
+            I[i_index] = v_i;
+            Q[q_index] = v_q;
+            ++i_index;
+            ++q_index;
+        }
+
+    }
+
+    // merge the Iand Q channels
+    for (idx = 0; idx < I.size(); ++idx)
+    {
+        //iq_data.push_back(std::complex<int16_t>(I[idx], Q[idx]));
+        iq_data[idx] = (std::complex<float>(I[idx], Q[idx]));
+    }
+
+    return iq_data;
+}   // end of generate_oqpsk
+
+
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -1515,44 +1472,56 @@ int main(int argc, char** argv)
 
         int32_t position = 0;
 
-        //std::ifstream fin("D:/Projects/Play_Ground/dfd_input_laptop.yml");
-        //YAML::Parser parser(fin);
-        
-        //YAML::Node doc;
-        
-        //parser.GetNextDocument(doc);
+        double amplitude = 2000;
+        uint32_t sample_rate = 50000000;
+        float half_symbol_length = 0.0000001;
+
+        uint32_t num_bits = 384;
+        uint32_t num_bursts = 16;
+
+        std::vector<int32_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
+
+        std::default_random_engine generator(time(0));
+
+        std::uniform_int_distribution<int32_t> bits_gen = std::uniform_int_distribution<int32_t>(0, 1);
+        std::uniform_int_distribution<int32_t> channel_gen = std::uniform_int_distribution<int32_t>(0, channels.size() - 1);
+
+        std::vector<uint8_t> data(num_bits);
+
+        // create the random bit sequence
+        for (idx = 0; idx < num_bits; ++idx)
+            data[idx] = bits_gen(generator);
 
 
-        YAML::Node config = YAML::LoadFile("D:/Projects/Play_Ground/dfd_input_laptop.yml");
+        std::vector<std::complex<double>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
 
-        auto scenario = config["scenario"].as<std::string>();
-        auto test2 = config["stop_criteria"][0];
+        dlib::matrix<std::complex<double>> temp = dlib::mat(iq_data);
 
-        //auto test2a = test2["hours"];
+        dlib::matrix<std::complex<double>> f_rot = dlib::generate_frequency_shift<double>(iq_data.size(), (double)channels[0], (double)sample_rate);
 
-        double duration = config["stop_criteria"][0]["hours"].as<double>();// = test2[0].as<double>(); //test2["hours"].as<double>();
-        uint64_t steps = config["stop_criteria"][0]["steps"].as<uint64_t>();// = test2[1].as<uint64_t>();  //test2["steps"].as<uint64_t>();
+        dlib::matrix<std::complex<double>> lpf = dlib::create_fir_filter<std::complex<double>>(31, 4e6/(double)sample_rate, dlib::blackman_nutall_window);
 
-        std::string train_file2 = config["train_file"].as<std::string>();
-        std::string test_file2 = config["test_file"].as<std::string>();
-
-        //auto test3 = config["crop_size"];
-
-        uint32_t h = config["crop_size"][0]["height"].as<uint32_t>();
-        uint32_t w = config["crop_size"][0]["width"].as<uint32_t>();
-
-
-        std::vector<uint32_t> f;
-        auto test4 = config["filter_num"];
-
-        auto sz = test4.size();
-
-
-        for (uint32_t i = 0; i < sz; ++i)
+        for(idx=0; idx<100; ++idx)
         {
-            f.push_back(test4[i].as<uint32_t>());
+        start_time = chrono::system_clock::now();
+
+        for (jdx = 0; jdx < num_bursts; ++jdx)
+        {
+            dlib::matrix<std::complex<double>> x2 = dlib::conv_same(temp, lpf);
+
+
+            dlib::matrix<std::complex<double>> x3 = dlib::apply_frequency_shift(x2, f_rot);
         }
-        bp = 0;
+
+        stop_time = chrono::system_clock::now();
+        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        std::cout << std::fixed << std::setprecision(16) << "exp: " << elapsed_time.count() << std::endl;
+
+        }
+
+        bp = 990;
+
+
         //dlib::matrix<double> hw = dlib::hann_window(N);
 
 

@@ -191,8 +191,8 @@ int main(int argc, char** argv)
 
         std::vector<uint8_t> data;
         double amplitude = 2000;
-        uint32_t sample_rate = 50000000;
-        float half_bit_length = 0.0000001;
+        uint32_t sample_rate = 52000000;
+        float half_bit_length = 0.0000001360677;
 
         uint32_t num_bits = 384;
         uint32_t num_bursts = 16;
@@ -216,7 +216,7 @@ int main(int argc, char** argv)
         {
             start_time = chrono::high_resolution_clock::now();
 
-            bg.generate_burst(num_bursts, num_bits, iq_data);
+            bg.generate_linear_burst(num_bursts, num_bits, iq_data);
 
             stop_time = chrono::high_resolution_clock::now();
 
@@ -228,9 +228,9 @@ int main(int argc, char** argv)
         }
 
         std::cout << "average elapsed_time: " << run_time_sum/100.0 << std::endl;
+        save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data);
 
         std::cin.ignore();
-        save_complex_data("D:/data/RF/test_oqpsk_burst.sc16", iq_data);
 
 
         bp = 10;

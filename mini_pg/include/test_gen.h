@@ -129,7 +129,7 @@ public:
         generator_channel_rot(num_samples);
 	}
 
-	burst_generator(double a, uint32_t fs, float hst) : amplitude(a), sample_rate(fs), half_symbol_length(hst)
+	burst_generator(double a, uint32_t fs, float hsl) : amplitude(a), sample_rate(fs), half_symbol_length(hsl)
 	{
 		data.clear();
         cpf.resize(n_taps);
@@ -172,13 +172,55 @@ public:
             std::vector<std::complex<float>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
 
             // filter the IQ samples
-            apply_filter(iq_data, x1);
+            //apply_filter(iq_data, x1);
 
             // rotate the samples
-            apply_rotation(x1, ch_rot[ch_rnd], x2);
+            //apply_rotation(x1, ch_rot[ch_rnd], x2);
             //apply_rotation(iq_data, ch_rot[ch_rnd], x2);
 
-            //apply_filter_rotation(iq_data, ch_rot[ch_rnd], x2);
+            apply_filter_rotation(iq_data, ch_rot[ch_rnd], x2);
+
+            // append the samples
+            IQ.insert(IQ.end(), x2.begin(), x2.end());
+
+        }
+    }   // end of generate_burst
+    
+
+        //-----------------------------------------------------------------------------
+    void generate_linear_burst(uint32_t num_bursts, uint32_t num_bits, std::vector<std::complex<int16_t>>& IQ)
+    {
+        uint32_t idx, jdx;
+        std::vector<uint8_t> data(num_bits);
+
+        uint32_t ch, ch_rnd;
+
+        std::vector<std::complex<float>> x1;
+        std::vector<std::complex<int16_t>> x2;
+
+        IQ.clear();
+
+        for (jdx = 0; jdx < num_bursts; ++jdx)
+        {
+
+            ch_rnd = channel_gen(generator);
+            //ch = channels[ch_rnd];
+
+            // create the random bit sequence
+            for (idx = 0; idx < num_bits; ++idx)
+                data[idx] = bits_gen(generator);
+
+            // generate the IQ data
+            std::vector<std::complex<float>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
+
+            // filter the IQ samples
+            //apply_filter(iq_data, x1);
+
+            // rotate the samples
+            //apply_rotation(x1, ch_rot[ch_rnd], x2);
+            //apply_rotation(iq_data, ch_rot[ch_rnd], x2);
+
+            apply_filter_rotation(iq_data, ch_rot[jdx], x2);
 
             // append the samples
             IQ.insert(IQ.end(), x2.begin(), x2.end());
@@ -227,7 +269,7 @@ private:
 	float half_symbol_length = 0.0000001;
 
     // window/filter size
-    const int32_t n_taps = 31;
+    const int32_t n_taps = 63;
     std::vector<std::complex<float>> cpf;
 
     std::default_random_engine generator;
@@ -248,19 +290,18 @@ private:
         uint32_t idx, jdx;
 
         // filter cutoff frequency
-        float fc_m = 4.0e6 / (float)sample_rate;
+        float fc_l = 3.0e6 / (float)sample_rate;
         float fc_h = 29.0e6 / (float)sample_rate;
 
         // create the low pass filter
-        std::vector<float> lpf = DSP::create_fir_filter<float>(n_taps, fc_m, &DSP::nuttall_window);
-        std::vector<float> apf = DSP::create_fir_filter<float>(n_taps, 1.0, &DSP::nuttall_window);
-        std::vector<float> hpf = DSP::create_fir_filter<float>(n_taps, fc_h, &DSP::nuttall_window);
-
-        //cpf = (lpf + 0.3 * (apf - hpf)) / 2.0;
+        std::vector<float> lpf = DSP::create_fir_filter<float>(n_taps, fc_l, &DSP::blackman_nuttall_window);
+        std::vector<float> apf = DSP::create_fir_filter<float>(n_taps, 1.0, &DSP::blackman_nuttall_window);
+        std::vector<float> hpf = DSP::create_fir_filter<float>(n_taps, fc_h, &DSP::blackman_nuttall_window);
 
         for (idx = 0; idx < n_taps; ++idx)
         {
-            cpf[idx] = std::complex <float>(0.5 * (lpf[idx] + (0.3 * (apf[idx] - hpf[idx]))), 0.0f);
+            //cpf[idx] = std::complex<float>(0.5 * (lpf[idx] + (0.3 * (apf[idx] - hpf[idx]))), 0.0f);
+            cpf[idx] = std::complex<float>(lpf[idx], 0.0f);
         }
 
     }   // end of create_filter
@@ -268,28 +309,30 @@ private:
     //-----------------------------------------------------------------------------
     void apply_filter(std::vector<std::complex<float>> &iq_data, std::vector<std::complex<float>> &x1)
     {
-        uint32_t idx, jdx;
-        uint32_t offset = n_taps >> 1;
+        int32_t idx, jdx;
+        int32_t dx = n_taps >> 1;
+        int32_t x;
 
         std::complex<float> accum;
 
         x1.clear();
         x1.resize(iq_data.size(), std::complex<float>(0, 0));
-        int32_t temp = 0;
+        //int32_t temp = 0;
 
-        for (idx = offset; idx < (iq_data.size() - offset); ++idx)
+        for (idx = 0; idx < iq_data.size(); ++idx)
         {
             accum = 0.0;
-            temp = idx - offset;
 
             for (jdx = 0; jdx < n_taps; ++jdx)
             {
+                x = idx + jdx - dx;
                 //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
                 //std::complex<double> t2 = iq_data[idx + jdx - offset];
-                accum += iq_data[temp + jdx] * cpf[jdx];
+                if (x >= 0 && x < iq_data.size())
+                    accum += iq_data[x] * cpf[jdx];
             }
 
-            x1[temp] = accum;
+            x1[idx] = accum;
         }
 
     }   // end of apply_filter
@@ -298,7 +341,8 @@ private:
     void apply_filter_rotation(std::vector<std::complex<float>>& iq_data, std::vector<std::complex<float>>& f_rot, std::vector<std::complex<int16_t>>& x1)
     {
         uint32_t idx, jdx;
-        uint32_t offset = n_taps >> 1;
+        int32_t dx = n_taps >> 1;
+        int32_t x;
 
         std::complex<float> accum;
 
@@ -307,18 +351,21 @@ private:
 
         int32_t temp = 0;
 
-        for (idx = offset; idx < (iq_data.size() - offset); ++idx)
+        for (idx = 0; idx < iq_data.size(); ++idx)
         {
             accum = 0.0;
-            temp = idx - offset;
+
             for (jdx = 0; jdx < n_taps; ++jdx)
             {
+                x = idx + jdx - dx;
+
                 //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
                 //std::complex<double> t2 = iq_data[idx + jdx - offset];
-                accum += iq_data[temp + jdx] * cpf[jdx];
+                if (x >= 0 && x < iq_data.size())
+                    accum += iq_data[x] * cpf[jdx];
             }
 
-            x1[temp] = std::complex<int16_t>(f_rot[temp] * accum);
+            x1[idx] = std::complex<int16_t>(f_rot[idx] * accum);
 
         }
 

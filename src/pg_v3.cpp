@@ -32,6 +32,7 @@
 #include <thread>
 #include <complex>
 #include <random>
+#include <functional>
 
 
 // dlib includes
@@ -1097,9 +1098,9 @@ namespace dlib
     //template <typename T>
     inline matrix<double> hann_window(int64_t N)
     {
-        matrix<double> w = zeros_matrix<double>(N + 1, 1);
+        matrix<double> w = zeros_matrix<double>(N, 1);
 
-        for (int64_t idx = 0; idx <= N; ++idx)
+        for (int64_t idx = 0; idx < N; ++idx)
         {
             w(idx, 0) = 0.5 * (1.0 - std::cos(2.0 * M_PI * idx / (double)(N - 1)));
         }
@@ -1114,11 +1115,11 @@ namespace dlib
         double a2 = 0.1365995;
         double a3 = 0.0106411;
 
-        matrix<double> w = zeros_matrix<double>(N + 1, 1);
+        matrix<double> w = zeros_matrix<double>(1, N);
 
-        for (int64_t idx = 0; idx <= N; ++idx)
+        for (int64_t idx = 0; idx < N; ++idx)
         {
-            w(idx, 0) = a0 - a1 * std::cos(2.0f * M_PI * idx / (double)(N - 1)) + a2 * std::cos(4.0f * M_PI * idx / (double)(N - 1)) - a3 * std::cos(6.0f * M_PI * idx / (double)(N - 1));
+            w(0, idx) = a0 - a1 * std::cos(2.0f * M_PI * idx / (double)(N - 1)) + a2 * std::cos(4.0f * M_PI * idx / (double)(N - 1)) - a3 * std::cos(6.0f * M_PI * idx / (double)(N - 1));
         }
 
         return w;
@@ -1129,22 +1130,48 @@ namespace dlib
     matrix<T> create_fir_filter(int64_t N, float fc, funct window_function)
     {
         double v;
-        matrix<double> g = zeros_matrix<double>(N, 1);
+        matrix<float> g = zeros_matrix<float>(1, N);
 
         matrix<double> w = window_function(N);
         
         for (int64_t idx = 0; idx < N; ++idx)
         {
             if (std::abs((double)(idx - (N >> 1))) < 1e-6)
-                g(idx, 0) = w(idx, 0) * fc;
+                g(0, idx) = w(0, idx) * fc;
             else
             {
                 v = std::sin(M_PI * fc * (idx - ((N - 1) >> 1))) / (M_PI * (idx - ((N - 1) >> 1)));
-                g(idx, 0) = w(idx, 0) * v;
+                g(0, idx) = w(0, idx) * v;
             }
         }
         
         return matrix_cast<T>(g);
+
+    }   // end of create_fir_filter
+
+    //template <typename funct>
+    dlib::matrix<std::complex<float>> create_fft_fir_filter(int64_t N, float fc, std::function<matrix<double>(int64_t)> window_function)
+    {
+        double v;
+        matrix<std::complex<float>> g(1, N);
+        //matrix<float> g = zeros_matrix<float>(1, N);
+
+
+        matrix<double> w = window_function(N);
+
+        for (int64_t idx = 0; idx < N; ++idx)
+        {
+            if (std::abs((double)(idx - (N >> 1))) < 1e-6)
+                g(0, idx) = std::complex<float>(w(0, idx) * fc, 0.0f);
+            else
+            {
+                v = std::sin(M_PI * fc * (idx - ((N - 1) >> 1))) / (M_PI * (idx - ((N - 1) >> 1)));
+                g(0, idx) = std::complex<float>((float)w(0, idx) * v, 0.0f);
+            }
+        }
+
+        fft_inplace(g);
+        return g;
 
     }   // end of create_fir_filter
 
@@ -1325,7 +1352,7 @@ std::vector<uint64_t> find_match(std::vector<std::vector<uint64_t>> v)
 
 
 //-----------------------------------------------------------------------------
-inline std::vector<std::complex<double>> generate_oqpsk(std::vector<uint8_t> data, double amplitude, uint32_t sample_rate, float half_symbol_length)
+inline dlib::matrix<std::complex<float>> generate_oqpsk(std::vector<uint8_t> data, float amplitude, uint32_t sample_rate, float half_symbol_length)
 {
     uint32_t idx = 0, jdx = 0;
     uint8_t num;
@@ -1348,7 +1375,9 @@ inline std::vector<std::complex<double>> generate_oqpsk(std::vector<uint8_t> dat
     float v = (float)(amplitude * 0.70710678118654752440084436210485);
     float v_i, v_q;
 
-    std::vector<std::complex<double>> iq_data(num_bit_pairs * samples_per_symbol + samples_per_bit);
+    //std::vector<std::complex<float>> iq_data(num_bit_pairs * samples_per_symbol + samples_per_bit);
+
+    dlib::matrix<std::complex<float>> iq_data(1, num_bit_pairs * samples_per_symbol + samples_per_bit);
 
     // start with Iand Q offset by half a bit length
     //std::vector<int16_t> I;
@@ -1395,27 +1424,60 @@ inline std::vector<std::complex<double>> generate_oqpsk(std::vector<uint8_t> dat
     for (idx = 0; idx < I.size(); ++idx)
     {
         //iq_data.push_back(std::complex<int16_t>(I[idx], Q[idx]));
-        iq_data[idx] = (std::complex<float>(I[idx], Q[idx]));
+        iq_data(0, idx) = (std::complex<float>(I[idx], Q[idx]));
     }
 
     return iq_data;
 }   // end of generate_oqpsk
 
+void generate_channel_rot(uint32_t num_bits, uint64_t sample_rate, double half_symbol_length, std::vector<int64_t> &channels, std::vector<dlib::matrix<std::complex<float>>> &ch_rot)
+{
+    uint32_t idx, jdx;
+
+    float ch;
+    std::complex<float> j(0,1);
+
+    if (num_bits % 2 == 1)
+        ++num_bits;
+
+    uint32_t num_bit_pairs = num_bits >> 1;
+    uint32_t samples_per_bit = floor(sample_rate * half_symbol_length);
+
+    uint32_t num_samples = num_bit_pairs * (samples_per_bit << 1) + samples_per_bit;
+
+    ch_rot.clear();
+    ch_rot.resize(channels.size());
+
+    for (idx = 0; idx < channels.size(); ++idx)
+    {
+        ch_rot[idx] = dlib::matrix<std::complex<float>>(1, num_samples);
+
+        ch = M_2PI * (channels[idx] / (float)sample_rate);
+
+        for (jdx = 0; jdx < num_samples; ++jdx)
+        {
+            ch_rot[idx](0,jdx) = std::exp(j * (ch * jdx));
+        }
+    }
+
+}   // end of generator_channel_rot
 
 // ----------------------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
     std::string sdate, stime;
 
-    uint64_t idx=0, jdx=0;
+    uint64_t idx=0, jdx=0, kdx = 0;
     uint64_t r, c;
     char key = 0;
 
     typedef std::chrono::duration<double> d_sec;
-    auto start_time = chrono::system_clock::now();
-    auto stop_time = chrono::system_clock::now();
+    typedef chrono::nanoseconds ns;
+    auto start_time = chrono::high_resolution_clock::now();
+    auto stop_time = chrono::high_resolution_clock::now();
+    auto elapsed_time = chrono::duration_cast<ns>(stop_time - start_time);
+
     unsigned long training_duration = 1;  // number of hours to train 
-    auto elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
 
     std::vector<double> stop_criteria;
     uint64_t num_crops = 0;
@@ -1474,12 +1536,13 @@ int main(int argc, char** argv)
 
         double amplitude = 2000;
         uint32_t sample_rate = 50000000;
-        float half_symbol_length = 0.0000001;
+        double half_symbol_length = 0.0000001;
 
         uint32_t num_bits = 384;
         uint32_t num_bursts = 16;
+        uint32_t ch, ch_rnd;
 
-        std::vector<int32_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
+        std::vector<int64_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
 
         std::default_random_engine generator(time(0));
 
@@ -1488,36 +1551,58 @@ int main(int argc, char** argv)
 
         std::vector<uint8_t> data(num_bits);
 
-        // create the random bit sequence
-        for (idx = 0; idx < num_bits; ++idx)
-            data[idx] = bits_gen(generator);
+        std::vector<dlib::matrix<std::complex<float>>> ch_rot;
+        generate_channel_rot(num_bits, sample_rate, half_symbol_length, channels, ch_rot);
+        
+        dlib::matrix<std::complex<float>> lpf = dlib::create_fir_filter<std::complex<float>>(31, 4e6 / (float)sample_rate, dlib::blackman_nutall_window);
+//        dlib::matrix<std::complex<float>> lpf = dlib::create_fft_fir_filter(ch_rot[0].nc(), 4e6 / (float)sample_rate, dlib::blackman_nutall_window);
+        //dlib::matrix<std::complex<float>> lpf = dlib::create_fft_fir_filter(ch_rot[0].nc(), 4e6 / (float)sample_rate, dlib::blackman_nutall_window);
 
+        double time_accum = 0.0;
 
-        std::vector<std::complex<double>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
+        dlib::matrix<std::complex<float>> x2(1, 1925);
 
-        dlib::matrix<std::complex<double>> temp = dlib::mat(iq_data);
-
-        dlib::matrix<std::complex<double>> f_rot = dlib::generate_frequency_shift<double>(iq_data.size(), (double)channels[0], (double)sample_rate);
-
-        dlib::matrix<std::complex<double>> lpf = dlib::create_fir_filter<std::complex<double>>(31, 4e6/(double)sample_rate, dlib::blackman_nutall_window);
-
-        for(idx=0; idx<100; ++idx)
+        for(kdx=0; kdx<100; ++kdx)
         {
-        start_time = chrono::system_clock::now();
+            start_time = chrono::high_resolution_clock::now();
 
-        for (jdx = 0; jdx < num_bursts; ++jdx)
-        {
-            dlib::matrix<std::complex<double>> x2 = dlib::conv_same(temp, lpf);
+                // create the random bit sequence
+                for (idx = 0; idx < num_bits; ++idx)
+                    data[idx] = bits_gen(generator);
 
 
-            dlib::matrix<std::complex<double>> x3 = dlib::apply_frequency_shift(x2, f_rot);
+                dlib::matrix<std::complex<float>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
+
+                //dlib::matrix<std::complex<float>> temp = dlib::mat(iq_data);
+
+                //dlib::fft_inplace(iq_data);
+
+            for (jdx = 0; jdx < num_bursts; ++jdx)
+            {
+
+                ch_rnd = channel_gen(generator);
+
+
+
+                //dlib::matrix<std::complex<double>> f_rot = dlib::generate_frequency_shift<double>(iq_data.size(), (double)channels[0], (double)sample_rate);
+
+
+                iq_data = dlib::conv_same(iq_data, lpf);
+
+                //iq_data = dlib::pointwise_multiply(iq_data, lpf);
+                //dlib::ifft_inplace(iq_data);
+
+                dlib::matrix<std::complex<float>> x3 = dlib::apply_frequency_shift(iq_data, ch_rot[ch_rnd]);
+            }
+
+            stop_time = chrono::high_resolution_clock::now();
+            const auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+            std::cout << std::fixed << std::setprecision(16) << "time: " << int_ms.count()/1e6 << std::endl;
+
+            time_accum += int_ms.count()/1e6;
         }
 
-        stop_time = chrono::system_clock::now();
-        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
-        std::cout << std::fixed << std::setprecision(16) << "exp: " << elapsed_time.count() << std::endl;
-
-        }
+        std::cout << std::fixed << std::setprecision(16) << "aveage time: " << time_accum/100.0 << std::endl;
 
         bp = 990;
 
@@ -1635,7 +1720,7 @@ int main(int argc, char** argv)
 
         double a = 0.0;
 
-        start_time = chrono::system_clock::now();
+        start_time = chrono::high_resolution_clock::now();
         for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
         {
             for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
@@ -1643,12 +1728,12 @@ int main(int argc, char** argv)
                 a = std::exp(-0.6 * std::log(9.8));
             }
         }
-        stop_time = chrono::system_clock::now();
-        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        stop_time = chrono::high_resolution_clock::now();
+        //elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
         std::cout << std::fixed << std::setprecision(16) << "exp: " << a << " = " << elapsed_time.count() << std::endl;
 
 
-        start_time = chrono::system_clock::now();
+        start_time = chrono::high_resolution_clock::now();
         for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
         {
             for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
@@ -1656,8 +1741,8 @@ int main(int argc, char** argv)
                 a = std::pow(9.8, -0.6);
             }
         }
-        stop_time = chrono::system_clock::now();
-        elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        stop_time = chrono::high_resolution_clock::now();
+        //elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
         std::cout << std::fixed << std::setprecision(16) << "pow: " << a << " = " << elapsed_time.count() << std::endl;
 
         bp = 2;

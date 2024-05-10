@@ -269,7 +269,7 @@ private:
 	float half_symbol_length = 0.0000001;
 
     // window/filter size
-    const int32_t n_taps = 63;
+    const int32_t n_taps = 41;
     std::vector<std::complex<float>> cpf;
 
     std::default_random_engine generator;

@@ -34,6 +34,7 @@ inline std::vector<std::complex<float>> generate_oqpsk(std::vector<uint8_t> data
     uint32_t samples_per_bit = floor(sample_rate * half_symbol_length);
     uint32_t samples_per_symbol = samples_per_bit << 1;
 
+    // start with I and Q offset by half a bit length
     uint32_t i_index = 0, q_index = samples_per_bit;
 
     // check for odd numberand append a 0 at the end if it is odd
@@ -51,25 +52,8 @@ inline std::vector<std::complex<float>> generate_oqpsk(std::vector<uint8_t> data
 
     std::vector<std::complex<float>> iq_data(num_bit_pairs * samples_per_symbol + samples_per_bit);
 
-    // start with Iand Q offset by half a bit length
-    //std::vector<int16_t> I;
-    //std::vector<int16_t> Q(samples_per_bit, 0);
-
     std::vector<float> I(num_bit_pairs * samples_per_symbol + samples_per_bit, 0);
     std::vector<float> Q(num_bit_pairs * samples_per_symbol + samples_per_bit, 0);
-
-
-    //v_i = data[idx] == 0 ? -v : v;
-    //v_q = data[idx + 1] == 0 ? -v : v;
-
-    //for (jdx = 0; jdx < samples_per_symbol; ++jdx)
-    //{
-        //I[i_index] = v_i;
-        //Q[q_index] = v_q;
-    //    ++i_index;
-    //    ++q_index;
-    //}
-
 
     for (idx = 0; idx < data.size(); idx += 2)
     {
@@ -109,44 +93,36 @@ class burst_generator
 //-----------------------------------------------------------------------------
 public:
 
-	burst_generator()
-	{
-		amplitude = 2000;
-		sample_rate = 50000000;
-        half_symbol_length = 0.0000001;
-
-		data.clear();
-        cpf.resize(n_taps);
-
-        generator = std::default_random_engine(time(0));
-        bits_gen = std::uniform_int_distribution<int32_t>(0, 1);
-
-        channel_gen = std::uniform_int_distribution<int32_t>(0, channels.size()-1);
-
-        create_filter();
-
-        uint32_t num_samples = floor(sample_rate * half_symbol_length);
-        generator_channel_rot(num_samples);
-	}
-
-	burst_generator(double a, uint32_t fs, float hsl) : amplitude(a), sample_rate(fs), half_symbol_length(hsl)
+	burst_generator(float a, uint32_t fs, float hsl, uint32_t fc, uint32_t num_bits, std::vector<int32_t>& ch) : amplitude(a), sample_rate(fs), half_symbol_length(hsl)
 	{
 		data.clear();
-        cpf.resize(n_taps);
+        //cpf.resize(n_taps);
 
+        //uint32_t num_samples = floor(sample_rate * half_symbol_length);
+
+        // configure the hopping channels - if no hopping set to 1 channel
+        configure_hop_channels(ch);
+
+        // create a low pass filter to clean up the RF before rotating
+        create_filter(fc);
+
+        // pre generate all of the rotation vectord based on the RF channels
+        generate_channel_rot(num_bits);
+
+        // configure the random number generators
         generator = std::default_random_engine(time(0));
         bits_gen = std::uniform_int_distribution<int32_t>(0, 1);
-
         channel_gen = std::uniform_int_distribution<int32_t>(0, channels.size() - 1);
 
-        create_filter();
+	}   // end of burst_generator
 
-        uint32_t num_samples = floor(sample_rate * half_symbol_length);
-        generator_channel_rot(num_samples);
-	}
+    void configure_generator(float a, uint32_t fs, float hsl, uint32_t fc, std::vector<int32_t>& ch)
+    {
+
+    }   // end of configure_generator
 
 	//-----------------------------------------------------------------------------
-    void generate_burst(uint32_t num_bursts, uint32_t num_bits, std::vector<std::complex<int16_t>> &IQ)
+    void generate_random_bursts(uint32_t num_bursts, uint32_t num_bits, std::vector<std::complex<int16_t>> &IQ)
     {
         uint32_t idx, jdx;
         std::vector<uint8_t> data(num_bits);
@@ -187,8 +163,8 @@ public:
     }   // end of generate_burst
     
 
-        //-----------------------------------------------------------------------------
-    void generate_linear_burst(uint32_t num_bursts, uint32_t num_bits, std::vector<std::complex<int16_t>>& IQ)
+    //-----------------------------------------------------------------------------
+    void generate_linear_bursts(uint32_t num_bursts, uint32_t num_bits, std::vector<std::complex<int16_t>>& IQ)
     {
         uint32_t idx, jdx;
         std::vector<uint8_t> data(num_bits);
@@ -203,8 +179,8 @@ public:
         for (jdx = 0; jdx < num_bursts; ++jdx)
         {
 
-            ch_rnd = channel_gen(generator);
-            //ch = channels[ch_rnd];
+            //ch_rnd = channel_gen(generator);
+            ch = jdx % channels.size();
 
             // create the random bit sequence
             for (idx = 0; idx < num_bits; ++idx)
@@ -220,7 +196,7 @@ public:
             //apply_rotation(x1, ch_rot[ch_rnd], x2);
             //apply_rotation(iq_data, ch_rot[ch_rnd], x2);
 
-            apply_filter_rotation(iq_data, ch_rot[jdx], x2);
+            apply_filter_rotation(iq_data, ch_rot[ch], x2);
 
             // append the samples
             IQ.insert(IQ.end(), x2.begin(), x2.end());
@@ -229,7 +205,7 @@ public:
     }   // end of generate_burst
 
     //-----------------------------------------------------------------------------
-    void generator_channel_rot(uint32_t num_bits)
+    void generate_channel_rot(uint32_t num_bits)
     {
         uint32_t idx, jdx;
 
@@ -260,6 +236,50 @@ public:
 
     }   // end of generator_channel_rot
 
+
+    //-----------------------------------------------------------------------------
+    void configure_hop_channels(std::vector<int32_t> &ch)
+    {
+        uint32_t idx;
+
+        channels.clear();
+
+        for (idx = 0; idx < ch.size(); ++idx)
+        {
+            channels.push_back(ch[idx]);
+        }
+
+    }   // end of configure_hop_channels
+
+    void configure_hop_channels(int32_t start, int32_t stop, int32_t step)
+    {
+        channels.clear();
+
+        int32_t s = start;
+        if (step > 0)
+        {
+            while (s <= stop)
+            {
+                channels.push_back(s);
+                s += step;
+            }
+        }
+        else if (step < 0)
+        {
+            while (s >= stop)
+            {
+                channels.push_back(s);
+                s += step;
+            }
+        }
+        else
+        {
+            channels.push_back(start);
+        }
+    }   // end of configure_hop_channels
+
+
+
 //-----------------------------------------------------------------------------
 private:
 	//uint8_t burst_type;
@@ -269,7 +289,7 @@ private:
 	float half_symbol_length = 0.0000001;
 
     // window/filter size
-    const int32_t n_taps = 41;
+    const int32_t n_taps = 63;
     std::vector<std::complex<float>> cpf;
 
     std::default_random_engine generator;
@@ -282,21 +302,25 @@ private:
 
     //uint32_t num_bursts;
 
-    std::vector<int32_t> channels = {-8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
+   //std::vector<int32_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
+    std::vector<int32_t> channels = { 0 };
 
     //-----------------------------------------------------------------------------
-    void create_filter()
+    void create_filter(uint32_t fc)
     {
         uint32_t idx, jdx;
 
+        cpf.clear();
+        cpf.resize(n_taps);
+
         // filter cutoff frequency
-        float fc_l = 3.0e6 / (float)sample_rate;
-        float fc_h = 29.0e6 / (float)sample_rate;
+        float fc_lpf = (float)(fc) / (float)sample_rate;
+        //float fc_h = 29.0e6 / (float)sample_rate;
 
         // create the low pass filter
-        std::vector<float> lpf = DSP::create_fir_filter<float>(n_taps, fc_l, &DSP::blackman_nuttall_window);
-        std::vector<float> apf = DSP::create_fir_filter<float>(n_taps, 1.0, &DSP::blackman_nuttall_window);
-        std::vector<float> hpf = DSP::create_fir_filter<float>(n_taps, fc_h, &DSP::blackman_nuttall_window);
+        std::vector<float> lpf = DSP::create_fir_filter<float>(n_taps, fc_lpf, &DSP::blackman_nuttall_window);
+        //std::vector<float> apf = DSP::create_fir_filter<float>(n_taps, 1.0, &DSP::blackman_nuttall_window);
+        //std::vector<float> hpf = DSP::create_fir_filter<float>(n_taps, fc_h, &DSP::blackman_nuttall_window);
 
         for (idx = 0; idx < n_taps; ++idx)
         {

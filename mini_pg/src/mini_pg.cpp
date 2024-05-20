@@ -190,11 +190,12 @@ int main(int argc, char** argv)
         std::uniform_int_distribution<int32_t> distribution(0, 1);
 
         std::vector<uint8_t> data;
-        double amplitude = 2000;
+        float amplitude = 2000;
         uint32_t sample_rate = 52000000;
-        float half_bit_length = 0.0000001360677;
+        float half_bit_length = 0.00000025;
+        uint32_t fc = 1200000;
 
-        uint32_t num_bits = 384;
+        uint32_t num_bits = 208;
         uint32_t num_bursts = 16;
         //for (idx = 0; idx < num_bits; ++idx)
         //    data.push_back(distribution(generator));
@@ -203,20 +204,20 @@ int main(int argc, char** argv)
         //for (idx = 0; idx < num_bits; ++idx)
         //    data.push_back(distribution(generator));
 
-        //std::vector<std::complex<int16_t>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_bit_length);
+        std::vector<int32_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
 
         std::vector<std::complex<int16_t>> iq_data;
-        burst_generator bg(amplitude, sample_rate, half_bit_length);
+        burst_generator bg(amplitude, sample_rate, half_bit_length, fc, num_bits, channels);
 
-        bg.generator_channel_rot(num_bits);
+        //bg.generate_channel_rot(num_bits);
 
         double run_time_sum = 0.0;
 
-        for(idx=0; idx<100; ++idx)
+        for(idx=0; idx<1; ++idx)
         {
             start_time = chrono::high_resolution_clock::now();
 
-            bg.generate_linear_burst(num_bursts, num_bits, iq_data);
+            bg.generate_random_bursts(num_bursts*16, num_bits, iq_data);
 
             stop_time = chrono::high_resolution_clock::now();
 

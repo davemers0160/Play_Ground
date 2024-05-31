@@ -53,7 +53,7 @@
 #include <opencv2/video.hpp>
 #include <opencv2/imgcodecs.hpp>
 
-#include <test_gen.h>
+#include <test_gen_lib.h>
 
 #define M_PI 3.14159265358979323846
 #define M_2PI 6.283185307179586476925286766559
@@ -186,8 +186,8 @@ int main(int argc, char** argv)
         std::vector<std::vector<cv::Point> > img_contours;
         std::vector<cv::Vec4i> img_hr;
 
-        std::default_random_engine generator(10);
-        std::uniform_int_distribution<int32_t> distribution(0, 1);
+        //std::default_random_engine generator(10);
+        //std::uniform_int_distribution<int32_t> distribution(0, 1);
 
         std::vector<uint8_t> data;
         float amplitude = 2000;
@@ -196,18 +196,44 @@ int main(int argc, char** argv)
         uint32_t fc = 1200000;
 
         uint32_t num_bits = 208;
-        uint32_t num_bursts = 16;
-        //for (idx = 0; idx < num_bits; ++idx)
-        //    data.push_back(distribution(generator));
-
-        //data.clear();
-        //for (idx = 0; idx < num_bits; ++idx)
-        //    data.push_back(distribution(generator));
+        uint32_t num_bursts = 16*16;
 
         std::vector<int32_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
 
         std::vector<std::complex<int16_t>> iq_data;
-        burst_generator bg(amplitude, sample_rate, half_bit_length, fc, num_bits, channels);
+
+        // use these variables for the datatype > 0
+        //typedef void (*init_)(long seed);
+        //typedef void (*create_color_map_)(unsigned int h, unsigned int w, double scale, unsigned int octaves, double persistence, unsigned char* color, unsigned char* map);
+        
+        typedef void (*init_generator_)(float amplitude, uint32_t sample_rate, float half_bit_length, uint32_t filter_cutoff, uint32_t num_bits, int32_t * ch, uint32_t num_channels);
+        typedef void (*generate_random_bursts_)(uint32_t num_bursts, uint32_t num_bits, int16_t* iq_ptr, uint32_t* data_size);
+        
+        
+        HINSTANCE test_lib = NULL;
+
+        init_generator_ init_generator;
+        generate_random_bursts_ generate_random_bursts;
+
+        std::string lib_filename = "D:/Projects/rpi_tester/x_compile/build/Debug/test_gen.dll";
+
+        test_lib = LoadLibrary(lib_filename.c_str());
+
+        if (test_lib == NULL)
+        {
+            throw std::runtime_error("error loading library");
+        }
+
+        init_generator = (init_generator_)GetProcAddress(test_lib, "init_generator");
+        generate_random_bursts = (generate_random_bursts_)GetProcAddress(test_lib, "generate_random_bursts");
+
+
+        init_generator(amplitude, sample_rate, half_bit_length, fc, num_bits, channels.data(), (uint32_t)channels.size());
+
+        uint32_t data_size = 0;
+        generate_random_bursts(num_bursts, num_bits,(int16_t*)iq_data.data(), &data_size);
+
+        //burst_generator bg(amplitude, sample_rate, half_bit_length, fc, num_bits, channels);
 
         //bg.generate_channel_rot(num_bits);
 
@@ -217,7 +243,7 @@ int main(int argc, char** argv)
         {
             start_time = chrono::high_resolution_clock::now();
 
-            bg.generate_random_bursts(num_bursts*16, num_bits, iq_data);
+            //bg.generate_random_bursts(num_bursts*16, num_bits, iq_data);
 
             stop_time = chrono::high_resolution_clock::now();
 

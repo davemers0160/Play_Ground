@@ -283,7 +283,7 @@ int main(int argc, char** argv)
 
         double run_time_sum = 0.0;
 
-        for(idx=0; idx<200; ++idx)
+        for(idx=0; idx<2; ++idx)
         {
             start_time = chrono::high_resolution_clock::now();
 

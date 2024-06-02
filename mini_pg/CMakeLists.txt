@@ -61,7 +61,8 @@ else()
         set(COMMON_ROOT "$HOME/Common")
     else()
         set(COMMON_ROOT "~/Projects/Common")
-        set(RYML_PATH "~/Projects/rapidyaml")        
+        set(RYML_PATH "~/Projects/rapidyaml")   
+        
     endif()
     
     set(RYML_LIB "${RYML_PATH}/build/libryml.so")
@@ -80,6 +81,7 @@ file(GLOB SOURCES "src/*.c*"
 set(project_includes "include" 
     "${COMMON_ROOT}/include" 
     "${RYML_PATH}/include"
+    "../../../rpi_tester/x_compile/include"
     )
 
 

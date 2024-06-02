@@ -298,7 +298,7 @@ int main(int argc, char** argv)
     ' ! video/x-h264,profile=baseline' + \
     ' ! rtspclientsink location=rtsp://localhost:8554/mystream'
         */
-        
+/*        
         //std::string cap_string = "rtsp://192.168.1.150:8554/temp";
         std::string cap_string = "rtsp://192.168.1.153:8554/camera-15";
         cv::VideoCapture cap(cap_string);
@@ -450,7 +450,7 @@ int main(int argc, char** argv)
         std::cout << "elapsed_time " << elapsed_time.count() << std::endl;
 
         //----------------------------------------------------------------------------------------
-
+*/
         bp = 4;
 
     }
@@ -460,7 +460,7 @@ int main(int argc, char** argv)
     }
 
 
-    cv::destroyAllWindows();
+    //cv::destroyAllWindows();
 
     std::cout << std::endl << "Press Enter to close" << std::endl;
     std::cin.ignore();

@@ -84,17 +84,17 @@ set(project_includes "include"
 
 
 # look for opencv
-message(STATUS "--------------------------------------------------------------------------------")
-message(STATUS "Looking for OpenCV installation...")
-find_package(OpenCV REQUIRED)
-if (OpenCV_FOUND)
-	set(project_includes ${project_includes} ${OpenCV_INCLUDE_DIRS})
-	set(project_libs ${project_libs} ${OpenCV_LIBS})
-	message(STATUS "Found OpenCV: " ${OpenCV_DIR})
-else()
-	message("OpenCV not found...")
-endif()
-message(STATUS "--------------------------------------------------------------------------------")
+# message(STATUS "--------------------------------------------------------------------------------")
+# message(STATUS "Looking for OpenCV installation...")
+# find_package(OpenCV REQUIRED)
+# if (OpenCV_FOUND)
+	# set(project_includes ${project_includes} ${OpenCV_INCLUDE_DIRS})
+	# set(project_libs ${project_libs} ${OpenCV_LIBS})
+	# message(STATUS "Found OpenCV: " ${OpenCV_DIR})
+# else()
+	# message("OpenCV not found...")
+# endif()
+# message(STATUS "--------------------------------------------------------------------------------")
 
 
 message(" ")

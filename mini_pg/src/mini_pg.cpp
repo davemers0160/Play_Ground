@@ -12,7 +12,9 @@
 //#include <iphlpapi.h>
 //
 //#pragma comment(lib, "IPHLPAPI.lib")    // Link with Iphlpapi.lib
-
+#else
+#include <dlfcn.h>
+typedef void* HINSTANCE;
 #endif
 
 // C/C++ includes
@@ -66,8 +68,8 @@ volatile bool entry = false;
 volatile bool run = true;
 std::string console_input1;
 
-const cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-const cv::Mat SE5_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+//const cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+//const cv::Mat SE5_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
 
 // ----------------------------------------------------------------------------
 template<typename T>
@@ -119,6 +121,7 @@ void save_complex_data(std::string filename, int16_t* data, uint64_t data_size)
     data_file.close();
 }
 
+/*
 //----------------------------------------------------------------------------
 inline void get_rect(std::vector<cv::Point>& p, cv::Rect& r, int64_t img_w, int64_t img_h, int64_t x_padding = 40, int64_t y_padding = 40)
 {
@@ -145,7 +148,7 @@ inline void get_rect(std::vector<cv::Point>& p, cv::Rect& r, int64_t img_w, int6
 
 }   // end of get_rect
 
-
+*/
 //----------------------------------------------------------------------------
 template<typename T>
 inline void vector_to_pair(std::vector<T> &v1, std::vector<T> &v2, std::vector<std::pair<T, T>> &p1)
@@ -204,8 +207,8 @@ int main(int argc, char** argv)
         
         num_loops = 100;
 
-        std::vector<std::vector<cv::Point> > img_contours;
-        std::vector<cv::Vec4i> img_hr;
+        //std::vector<std::vector<cv::Point> > img_contours;
+        //std::vector<cv::Vec4i> img_hr;
 
         //std::default_random_engine generator(10);
         //std::uniform_int_distribution<int32_t> distribution(0, 1);
@@ -238,7 +241,11 @@ int main(int argc, char** argv)
         init_generator_ init_generator;
         generate_random_bursts_ generate_random_bursts;
 
-        std::string lib_filename = "D:/Projects/rpi_tester/x_compile/build/Release/test_gen.dll";
+        std::string lib_filename;
+
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+
+        lib_filename = "D:/Projects/rpi_tester/x_compile/build/Release/test_gen.dll";
 
         test_lib = LoadLibrary(lib_filename.c_str());
 
@@ -249,7 +256,20 @@ int main(int argc, char** argv)
 
         init_generator = (init_generator_)GetProcAddress(test_lib, "init_generator");
         generate_random_bursts = (generate_random_bursts_)GetProcAddress(test_lib, "generate_random_bursts");
+#else
+        lib_filename = "~/Projects/rpi_tester/x_compile/build/libtest_gen.so";
 
+        test_lib = dlopen(lib_filename.c_str(), RTLD_NOW);
+
+        if (test_lib == NULL)
+        {
+            throw std::runtime_error("error loading library");
+        }
+
+        init_generator = (init_generator_)dlsym(test_lib, "init_generator");
+        generate_random_bursts = (generate_random_bursts_)dlsym(test_lib, "generate_random_bursts");
+
+#endif
 
         init_generator(amplitude, sample_rate, half_bit_length, fc, num_bits, channels.data(), (uint32_t)channels.size());
 

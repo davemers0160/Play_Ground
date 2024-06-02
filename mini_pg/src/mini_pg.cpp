@@ -98,6 +98,27 @@ void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
     data_file.close();
 }
 
+// ----------------------------------------------------------------------------
+void save_complex_data(std::string filename, int16_t* data, uint64_t data_size)
+{
+    std::ofstream data_file;
+
+    //T r, q;
+
+    data_file.open(filename, ios::out | ios::binary);
+
+    if (!data_file.is_open())
+    {
+        std::cout << "Could not save data. Closing... " << std::endl;
+        //std::cin.ignore();
+        return;
+    }
+
+    data_file.write(reinterpret_cast<const char*>(data), data_size * sizeof(*data));
+
+    data_file.close();
+}
+
 //----------------------------------------------------------------------------
 inline void get_rect(std::vector<cv::Point>& p, cv::Rect& r, int64_t img_w, int64_t img_h, int64_t x_padding = 40, int64_t y_padding = 40)
 {
@@ -200,14 +221,16 @@ int main(int argc, char** argv)
 
         std::vector<int32_t> channels = { -8000000, -7000000, -6000000, -5000000, -4000000, -3000000, -2000000, -1000000, 1000000, 2000000, 3000000, 4000000, 5000000, 6000000, 7000000, 8000000 };
 
-        std::vector<std::complex<int16_t>> iq_data;
+        //std::vector<std::complex<int16_t>> iq_data;
+        //std::vector<int16_t> iq_data;
+        int16_t *iq_data = NULL;
 
         // use these variables for the datatype > 0
         //typedef void (*init_)(long seed);
         //typedef void (*create_color_map_)(unsigned int h, unsigned int w, double scale, unsigned int octaves, double persistence, unsigned char* color, unsigned char* map);
         
         typedef void (*init_generator_)(float amplitude, uint32_t sample_rate, float half_bit_length, uint32_t filter_cutoff, uint32_t num_bits, int32_t * ch, uint32_t num_channels);
-        typedef void (*generate_random_bursts_)(uint32_t num_bursts, uint32_t num_bits, int16_t* iq_ptr, uint32_t* data_size);
+        typedef void (*generate_random_bursts_)(uint32_t num_bursts, uint32_t num_bits, int16_t** iq_ptr, uint32_t* data_size);
         
         
         HINSTANCE test_lib = NULL;
@@ -215,7 +238,7 @@ int main(int argc, char** argv)
         init_generator_ init_generator;
         generate_random_bursts_ generate_random_bursts;
 
-        std::string lib_filename = "D:/Projects/rpi_tester/x_compile/build/Debug/test_gen.dll";
+        std::string lib_filename = "D:/Projects/rpi_tester/x_compile/build/Release/test_gen.dll";
 
         test_lib = LoadLibrary(lib_filename.c_str());
 
@@ -231,7 +254,8 @@ int main(int argc, char** argv)
         init_generator(amplitude, sample_rate, half_bit_length, fc, num_bits, channels.data(), (uint32_t)channels.size());
 
         uint32_t data_size = 0;
-        generate_random_bursts(num_bursts, num_bits,(int16_t*)iq_data.data(), &data_size);
+        generate_random_bursts(num_bursts, num_bits, &iq_data, &data_size);
+        generate_random_bursts(num_bursts, num_bits, &iq_data, &data_size);
 
         //burst_generator bg(amplitude, sample_rate, half_bit_length, fc, num_bits, channels);
 
@@ -239,11 +263,12 @@ int main(int argc, char** argv)
 
         double run_time_sum = 0.0;
 
-        for(idx=0; idx<1; ++idx)
+        for(idx=0; idx<200; ++idx)
         {
             start_time = chrono::high_resolution_clock::now();
 
             //bg.generate_random_bursts(num_bursts*16, num_bits, iq_data);
+            generate_random_bursts(num_bursts, num_bits, &iq_data, &data_size);
 
             stop_time = chrono::high_resolution_clock::now();
 
@@ -254,9 +279,11 @@ int main(int argc, char** argv)
             run_time_sum += int_ms.count() / 1.0e6;
         }
 
-        std::cout << "average elapsed_time: " << run_time_sum/100.0 << std::endl;
-        save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data);
-
+        //std::cout << "average elapsed_time: " << run_time_sum/100.0 << std::endl;
+        //save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data);
+        save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data, data_size);
+        
+        std::cout << "done saving data..." << std::endl;
         std::cin.ignore();
 
 

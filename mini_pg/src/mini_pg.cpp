@@ -44,14 +44,14 @@
 #include "modulo.h"
 //#include "console_input.h"
 
-#include "ocv_threshold_functions.h"
+//#include "ocv_threshold_functions.h"
 
 // OpenCV includes
-#include <opencv2/core.hpp>           
-#include <opencv2/highgui.hpp>     
-#include <opencv2/imgproc.hpp> 
-#include <opencv2/video.hpp>
-#include <opencv2/imgcodecs.hpp>
+// #include <opencv2/core.hpp>           
+// #include <opencv2/highgui.hpp>     
+// #include <opencv2/imgproc.hpp> 
+// #include <opencv2/video.hpp>
+// #include <opencv2/imgcodecs.hpp>
 
 #include <test_gen_lib.h>
 

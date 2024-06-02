@@ -257,7 +257,7 @@ int main(int argc, char** argv)
         init_generator = (init_generator_)GetProcAddress(test_lib, "init_generator");
         generate_random_bursts = (generate_random_bursts_)GetProcAddress(test_lib, "generate_random_bursts");
 #else
-        lib_filename = "~/Projects/rpi_tester/x_compile/build/libtest_gen.so";
+        lib_filename = "../../../rpi_tester/x_compile/build/libtest_gen.so";
 
         test_lib = dlopen(lib_filename.c_str(), RTLD_NOW);
 
@@ -301,7 +301,18 @@ int main(int argc, char** argv)
 
         //std::cout << "average elapsed_time: " << run_time_sum/100.0 << std::endl;
         //save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data);
-        save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data, data_size);
+
+        std::string savefile;
+
+#if defined(_WIN32) | defined(__WIN32__) | defined(__WIN32) | defined(_WIN64) | defined(__WIN64)
+
+        savefile = "D:/Projects/data/RF/test_oqpsk_burst.sc16";
+
+#else
+        savefile = "../../../data/RF/test_oqpsk_burst.sc16";
+
+#endif
+        save_complex_data(savefile, iq_data, data_size);
         
         std::cout << "done saving data..." << std::endl;
         std::cin.ignore();

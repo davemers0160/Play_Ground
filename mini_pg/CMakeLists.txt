@@ -81,7 +81,7 @@ file(GLOB SOURCES "src/*.c*"
 set(project_includes "include" 
     "${COMMON_ROOT}/include" 
     "${RYML_PATH}/include"
-    "../../../rpi_tester/x_compile/include"
+    "../../rpi_tester/x_compile/include"
     )
 
 

@@ -55,6 +55,8 @@ typedef void* HINSTANCE;
 // #include <opencv2/video.hpp>
 // #include <opencv2/imgcodecs.hpp>
 
+#include "rds.h"
+
 #include <test_gen_lib.h>
 
 #define M_PI 3.14159265358979323846
@@ -206,6 +208,13 @@ int main(int argc, char** argv)
         int32_t four_cc = 0;
         
         num_loops = 100;
+
+        rds_block_1 b1_0A(0x001);
+        rds_block_2 b2_0A(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5<< PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI3::DI3_0 | 0));
+        rds_block_3 b3_0A(0xFF, 0xFF);
+        rds_block_4 b4_0A('A', 'B');
+
+        rds_group g_0A(b1_0A, b2_0A, b3_0A, b4_0A);
 
         //std::vector<std::vector<cv::Point> > img_contours;
         //std::vector<cv::Vec4i> img_hr;

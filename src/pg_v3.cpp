@@ -583,10 +583,10 @@ double schwefel(particle p)
 cv::Mat octave_image;
 
 const int scale_slider_max = 100;
-int scale_slider = 8;
+int scale_slider = 5;
 
 const int octave_slider_max = 200;
-int octave_slider = 7;
+int octave_slider = 3;
 
 const int per_slider_max = 100;
 int per_slider = 79;
@@ -1552,7 +1552,7 @@ int main(int argc, char** argv)
         std::vector<uint8_t> data(num_bits);
 
         std::vector<dlib::matrix<std::complex<float>>> ch_rot;
-        generate_channel_rot(num_bits, sample_rate, half_symbol_length, channels, ch_rot);
+        //generate_channel_rot(num_bits, sample_rate, half_symbol_length, channels, ch_rot);
         
         dlib::matrix<std::complex<float>> lpf = dlib::create_fir_filter<std::complex<float>>(31, 4e6 / (float)sample_rate, dlib::blackman_nutall_window);
 //        dlib::matrix<std::complex<float>> lpf = dlib::create_fft_fir_filter(ch_rot[0].nc(), 4e6 / (float)sample_rate, dlib::blackman_nutall_window);
@@ -1560,51 +1560,51 @@ int main(int argc, char** argv)
 
         double time_accum = 0.0;
 
-        dlib::matrix<std::complex<float>> x2(1, 1925);
+        //dlib::matrix<std::complex<float>> x2(1, 1925);
 
-        for(kdx=0; kdx<100; ++kdx)
-        {
-            start_time = chrono::high_resolution_clock::now();
+        //for(kdx=0; kdx<100; ++kdx)
+        //{
+        //    start_time = chrono::high_resolution_clock::now();
 
-                // create the random bit sequence
-                for (idx = 0; idx < num_bits; ++idx)
-                    data[idx] = bits_gen(generator);
-
-
-                dlib::matrix<std::complex<float>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
-
-                //dlib::matrix<std::complex<float>> temp = dlib::mat(iq_data);
-
-                //dlib::fft_inplace(iq_data);
-
-            for (jdx = 0; jdx < num_bursts; ++jdx)
-            {
-
-                ch_rnd = channel_gen(generator);
+        //        // create the random bit sequence
+        //        for (idx = 0; idx < num_bits; ++idx)
+        //            data[idx] = bits_gen(generator);
 
 
+        //        dlib::matrix<std::complex<float>> iq_data = generate_oqpsk(data, amplitude, sample_rate, half_symbol_length);
 
-                //dlib::matrix<std::complex<double>> f_rot = dlib::generate_frequency_shift<double>(iq_data.size(), (double)channels[0], (double)sample_rate);
+        //        //dlib::matrix<std::complex<float>> temp = dlib::mat(iq_data);
+
+        //        //dlib::fft_inplace(iq_data);
+
+        //    for (jdx = 0; jdx < num_bursts; ++jdx)
+        //    {
+
+        //        ch_rnd = channel_gen(generator);
 
 
-                iq_data = dlib::conv_same(iq_data, lpf);
 
-                //iq_data = dlib::pointwise_multiply(iq_data, lpf);
-                //dlib::ifft_inplace(iq_data);
+        //        //dlib::matrix<std::complex<double>> f_rot = dlib::generate_frequency_shift<double>(iq_data.size(), (double)channels[0], (double)sample_rate);
 
-                dlib::matrix<std::complex<float>> x3 = dlib::apply_frequency_shift(iq_data, ch_rot[ch_rnd]);
-            }
 
-            stop_time = chrono::high_resolution_clock::now();
-            const auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
-            std::cout << std::fixed << std::setprecision(16) << "time: " << int_ms.count()/1e6 << std::endl;
+        //        iq_data = dlib::conv_same(iq_data, lpf);
 
-            time_accum += int_ms.count()/1e6;
-        }
+        //        //iq_data = dlib::pointwise_multiply(iq_data, lpf);
+        //        //dlib::ifft_inplace(iq_data);
 
-        std::cout << std::fixed << std::setprecision(16) << "aveage time: " << time_accum/100.0 << std::endl;
+        //        dlib::matrix<std::complex<float>> x3 = dlib::apply_frequency_shift(iq_data, ch_rot[ch_rnd]);
+        //    }
 
-        bp = 990;
+        //    stop_time = chrono::high_resolution_clock::now();
+        //    const auto int_ms = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+        //    std::cout << std::fixed << std::setprecision(16) << "time: " << int_ms.count()/1e6 << std::endl;
+
+        //    time_accum += int_ms.count()/1e6;
+        //}
+
+        //std::cout << std::fixed << std::setprecision(16) << "aveage time: " << time_accum/100.0 << std::endl;
+
+        //bp = 990;
 
 
         //dlib::matrix<double> hw = dlib::hann_window(N);
@@ -1718,60 +1718,60 @@ int main(int argc, char** argv)
 
         bp = 3;
 
-        double a = 0.0;
+        //double a = 0.0;
 
-        start_time = chrono::high_resolution_clock::now();
-        for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
-        {
-            for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
-            {
-                a = std::exp(-0.6 * std::log(9.8));
-            }
-        }
-        stop_time = chrono::high_resolution_clock::now();
-        //elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
-        std::cout << std::fixed << std::setprecision(16) << "exp: " << a << " = " << elapsed_time.count() << std::endl;
+        //start_time = chrono::high_resolution_clock::now();
+        //for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
+        //{
+        //    for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
+        //    {
+        //        a = std::exp(-0.6 * std::log(9.8));
+        //    }
+        //}
+        //stop_time = chrono::high_resolution_clock::now();
+        ////elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        //std::cout << std::fixed << std::setprecision(16) << "exp: " << a << " = " << elapsed_time.count() << std::endl;
 
 
-        start_time = chrono::high_resolution_clock::now();
-        for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
-        {
-            for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
-            {
-                a = std::pow(9.8, -0.6);
-            }
-        }
-        stop_time = chrono::high_resolution_clock::now();
-        //elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
-        std::cout << std::fixed << std::setprecision(16) << "pow: " << a << " = " << elapsed_time.count() << std::endl;
+        //start_time = chrono::high_resolution_clock::now();
+        //for (jdx = 0; jdx < 0xFFFFFFFFFFFFFFFF; ++jdx)
+        //{
+        //    for (idx = 0; idx < 0xFFFFFFFFFFFFFFFF; ++idx)
+        //    {
+        //        a = std::pow(9.8, -0.6);
+        //    }
+        //}
+        //stop_time = chrono::high_resolution_clock::now();
+        ////elapsed_time = chrono::duration_cast<d_sec>(stop_time - start_time);
+        //std::cout << std::fixed << std::setprecision(16) << "pow: " << a << " = " << elapsed_time.count() << std::endl;
 
-        bp = 2;
+        //bp = 2;
 
-        std::cin.ignore();
+        //std::cin.ignore();
 
-        cv::Mat img = cv::imread("D:/data/checker_board_512x512.png");
+        //cv::Mat img = cv::imread("D:/data/checker_board_512x512.png");
 
-        uint32_t kernel_size = 64;
-        double sigma = 5.0, weight = 0.6;
-        cv::Mat kernel, img1, img2, img3, img4;
+        //uint32_t kernel_size = 64;
+        //double sigma = 5.0, weight = 0.6;
+        //cv::Mat kernel, img1, img2, img3, img4;
 
-        create_gaussian_kernel(kernel_size, sigma, kernel);
-        img.convertTo(img, CV_32FC1);
+        //create_gaussian_kernel(kernel_size, sigma, kernel);
+        //img.convertTo(img, CV_32FC1);
 
-        cv::filter2D(img, img1, -1, kernel, cv::Point(-1, -1), 0.0, cv::BorderTypes::BORDER_REPLICATE);
+        //cv::filter2D(img, img1, -1, kernel, cv::Point(-1, -1), 0.0, cv::BorderTypes::BORDER_REPLICATE);
 
-        sigma = 3.0;
-        create_gaussian_kernel(kernel_size, sigma, kernel);
+        //sigma = 3.0;
+        //create_gaussian_kernel(kernel_size, sigma, kernel);
 
-        cv::filter2D(img1, img2, -1, kernel, cv::Point(-1, -1), 0.0, cv::BorderTypes::BORDER_REPLICATE);
+        //cv::filter2D(img1, img2, -1, kernel, cv::Point(-1, -1), 0.0, cv::BorderTypes::BORDER_REPLICATE);
 
-        img3 = (weight / (2 * weight - 1)) * img1 - ((1 - weight) / (2 * weight - 1)) * img2;
-        img3.convertTo(img3, CV_8UC3);
-        
-        img4 = (1.0 + weight) * img1 - weight * img2;
-        img4.convertTo(img4, CV_8UC3);
+        //img3 = (weight / (2 * weight - 1)) * img1 - ((1 - weight) / (2 * weight - 1)) * img2;
+        //img3.convertTo(img3, CV_8UC3);
+        //
+        //img4 = (1.0 + weight) * img1 - weight * img2;
+        //img4.convertTo(img4, CV_8UC3);
 
-        bp = 1;
+        //bp = 1;
 
         //std::thread gi(get_input);
 
@@ -1797,24 +1797,24 @@ int main(int argc, char** argv)
 
         //gi.join();
 
-        cv::Mat cb;
-        generate_checkerboard(35, 35, 300, 150, cb);
+        //cv::Mat cb;
+        //generate_checkerboard(35, 35, 300, 150, cb);
 
-        cv::Mat X, Y;
-        meshgrid(cv::Range(0, 5), cv::Range(3, 6), X, Y);
-        
-        std::string mmap_name = "test";
+        //cv::Mat X, Y;
+        //meshgrid(cv::Range(0, 5), cv::Range(3, 6), X, Y);
+        //
+        //std::string mmap_name = "test";
 
-        std::vector<std::pair<uint8_t, uint8_t>> bg_br_table;
+        //std::vector<std::pair<uint8_t, uint8_t>> bg_br_table;
 
-        bg_br_table.push_back(std::make_pair(0, 1));
-        bg_br_table.push_back(std::make_pair(2, 3));
-        bg_br_table.push_back(std::make_pair(4, 5));
+        //bg_br_table.push_back(std::make_pair(0, 1));
+        //bg_br_table.push_back(std::make_pair(2, 3));
+        //bg_br_table.push_back(std::make_pair(4, 5));
 
-        auto br_ptr = bg_br_table.data();
+        //auto br_ptr = bg_br_table.data();
 
-        test_pair((void *)(br_ptr));
-        bp = 1;
+        //test_pair((void *)(br_ptr));
+        //bp = 1;
 
 
         //mem_map mm(mmap_name, 256);
@@ -1843,7 +1843,7 @@ int main(int argc, char** argv)
         //mm2.close();
 
         //std::cout << "done with test" << std::endl;
-        std::cout << std::string(argv[0]) << std::endl;
+ /*       std::cout << std::string(argv[0]) << std::endl;
 
         test_inputfile = "../../rf_zsl/data/lfm_test_10M_100m_0000.bin";
 
@@ -1866,9 +1866,9 @@ int main(int argc, char** argv)
 
         input_file.read((char*)buffer.data(), filesize);
 
-        bp = 2;
+        bp = 2;*/
 
-        uint32_t octaves = 7;
+        uint32_t octaves = 3;
         double sn_scale = 0.020;
         double persistence = 50 / 100.0;
         std::vector<uint8_t> wood = { 41,44,35, 57,91,61, 80,114,113, 64,126,132 };
@@ -1898,7 +1898,7 @@ int main(int argc, char** argv)
 
         sn.init((long)time(NULL));
 
-        octave_image = cv::Mat(480, 480, CV_8UC3);
+        octave_image = cv::Mat(600, 600, CV_8UC3);
         //create_color_map(img_h, img_w, sn_scale, octaves, persistence, wood.data(), random_img.data);
 
         cv::namedWindow(window_name, cv::WINDOW_NORMAL); // Create Window

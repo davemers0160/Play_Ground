@@ -56,11 +56,12 @@ typedef void* HINSTANCE;
 // #include <opencv2/imgcodecs.hpp>
 
 #include "rds.h"
+#include "dsp/dsp_windows.h"
 
 #include <test_gen_lib.h>
 
 #define M_PI 3.14159265358979323846
-#define M_2PI 6.283185307179586476925286766559
+#define M_2PI 6.283185307179586476925286766559f
 
 // -------------------------------GLOBALS--------------------------------------
 std::string platform;
@@ -73,7 +74,113 @@ std::string console_input1;
 //const cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
 //const cv::Mat SE5_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
 
-// ----------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+template <typename T, typename U>
+void apply_filter(std::vector<T>& data, std::vector<U>& filter, std::vector<float>& filtered_data)
+{
+    int32_t idx, jdx;
+    int32_t dx = filter.size() >> 1;
+    int32_t x;
+
+    float accum;
+
+    filtered_data.clear();
+    filtered_data.resize(data.size(), 0.0);
+
+    // loop throught the data and the filter and convolve (assumes a symmetric filter so no flip required)
+    for (idx = 0; idx < data.size(); ++idx)
+    {
+        accum = 0.0;
+
+        for (jdx = 0; jdx < filter.size(); ++jdx)
+        {
+            x = idx + jdx - dx;
+            //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
+            //std::complex<double> t2 = iq_data[idx + jdx - offset];
+            if (x >= 0 && x < data.size())
+                accum += data[x] * filter[jdx];
+        }
+
+        filtered_data[idx] = accum;
+    }
+
+}   // end of apply_filter
+
+//-----------------------------------------------------------------------------
+template <typename T>
+std::vector<float> upsample_data(std::vector<T>& d, uint32_t factor)
+{
+    uint64_t idx;
+    uint64_t index = 0;
+
+    uint64_t num_samples = d.size() * factor;
+
+    std::vector<float> u(num_samples, 0.0f);
+
+    for (idx = 0; idx < d.size(); ++idx)
+    {
+        u[index] = (float)d[idx];
+        index += factor;
+    }
+
+    return u;
+
+}   // end of upsample_data
+
+
+//-----------------------------------------------------------------------------
+template <typename T>
+std::vector<std::complex<float>> generate_fm(std::vector<T> data, uint64_t sample_rate, uint32_t N, float k)
+{
+    uint64_t idx;
+
+    // interpolation scale multiplier
+    //N = math.floor(rf_fs / audio_fs)
+    //sample_rate = N * audio_fs
+    uint64_t num_data_samples = data.size();
+    uint64_t num_rf_samples = std::floor(num_data_samples * N);
+
+    // scale
+    std::complex<float> scale = (M_2PI * k) * std::complex<float>(0, M_2PI * k);
+
+    // create empty data
+    std::vector<std::complex<float>> iq(num_rf_samples, std::complex<float>(0.0, 0.0));
+
+
+    // upsample data
+    std::vector<float> y2 = upsample_data(data, N);
+
+    // filter data
+    int64_t num_taps = 20*N + 1;
+
+    float fc = 1.0 / (float)N;
+    std::vector<float> lpf = DSP::create_fir_filter<float>(num_taps, fc, &DSP::blackman_nuttall_window);
+
+    std::vector<float> y2_f;
+    apply_filter(y2, lpf, y2_f);
+
+    // shift data to approximately zero mean
+    //y2_mean = np.mean(y2)
+    //y2 = y2 - y2_mean
+
+    float accum = 0.0f;
+
+    // apply FM modulation
+    for(idx=0; idx< y2_f.size(); ++idx)
+    {
+        //y_accum = np.cumsum(y2)
+        accum += y2_f[idx];
+        
+        //iq = np.exp(scale * y_accum)
+        iq[idx] = std::exp(scale * accum);
+    }
+
+    return iq;
+
+}   // end of generate_fm
+
+
+//-----------------------------------------------------------------------------
 template<typename T>
 void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
 {
@@ -206,15 +313,138 @@ int main(int argc, char** argv)
         uint32_t img_w = 320;
         double fps = 30;
         int32_t four_cc = 0;
+
+        std::vector<float> w = DSP::blackman_nuttall_window(601);
         
         num_loops = 100;
 
-        rds_block_1 b1_0A(0x001);
+        uint32_t factor = 300;
+        uint64_t sample_rate = (1187.5*2.0) * factor;
+
+        // create the data
+        rds_block_1 b1_0A(0x72C0);   // WLKI --> hex(11*676 + 10*26 + 8 + 21672) = hex(29376) = 72C0
         rds_block_2 b2_0A(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5<< PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI3::DI3_0 | 0));
         rds_block_3 b3_0A(0xFF, 0xFF);
         rds_block_4 b4_0A('A', 'B');
 
-        rds_group g_0A(b1_0A, b2_0A, b3_0A, b4_0A);
+        rds_group g_0A_3(b1_0A, b2_0A, b3_0A, b4_0A);
+
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI2::DI2_0 | 1));
+
+        rds_group g_0A_2(b1_0A, b2_0A, b3_0A, b4_0A);
+
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI1::DI1_0 | 2));
+
+        rds_group g_0A_1(b1_0A, b2_0A, b3_0A, b4_0A);
+
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI0::DI0_0 | 3));
+
+        rds_group g_0A_0(b1_0A, b2_0A, b3_0A, b4_0A);
+
+        std::vector<int16_t> data_bits = g_0A_3.to_bits();
+        std::vector<int16_t> g_0A_3_bits = g_0A_3.to_bits();
+        std::vector<int16_t> g_0A_2_bits = g_0A_2.to_bits();
+        std::vector<int16_t> g_0A_1_bits = g_0A_1.to_bits();
+        std::vector<int16_t> g_0A_0_bits = g_0A_0.to_bits();
+
+        data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
+        data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
+        data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
+
+        for (idx = 0; idx < 104; ++idx)
+        {
+            std::cout << (g_0A_3_bits[idx] + 1)*0.5 << " ";
+        }
+        std::cout << std::endl;
+
+        for (idx = 0; idx < 104; ++idx)
+        {
+            std::cout << (g_0A_2_bits[idx]+1)*0.5 << " ";
+        }
+        std::cout << std::endl;
+
+        for (idx = 0; idx < 104; ++idx)
+        {
+            std::cout << (g_0A_1_bits[idx]+1)*0.5 << " ";
+        }
+        std::cout << std::endl;
+
+        for (idx = 0; idx < 104; ++idx)
+        {
+            std::cout << (g_0A_0_bits[idx]+1)*0.5 << " ";
+        }
+        std::cout << std::endl;
+
+        int16_t previous_bit = 0;
+        data_bits = differential_encode(data_bits, previous_bit);
+
+        biphase_encode(data_bits);
+
+        // upsample the data
+        std::vector<float> data_bits_u = upsample_data(data_bits, factor);
+
+        // shift and subtract -- biphase
+        std::vector<float> data_bits_offset(factor>>1, 0.0);
+        data_bits_offset.insert(data_bits_offset.end(), data_bits_u.begin(), data_bits_u.end()- (factor >> 1));
+
+        for (idx = 0; idx < data_bits_u.size(); ++idx)
+        {
+            data_bits_u[idx] = data_bits_u[idx] - data_bits_offset[idx];
+        }
+
+
+
+        // filter the data
+        int64_t num_taps = factor + 1;       //data_bits_u .size();
+        float fc = 2000/(double)sample_rate;
+        //std::vector<float> w = DSP::blackman_nuttall_window(num_taps);
+        std::vector<float> lpf = DSP::create_fir_filter<float>(num_taps, fc, &DSP::blackman_nuttall_window);
+
+        std::vector<float> rds;
+        apply_filter(data_bits_u, lpf, rds);
+
+        // create the pilot tone based on the data length and the rds rotation vector
+        uint64_t num_samples = rds.size();
+
+        float pilot_tone = 19000;
+        std::complex<float> j(0, 1);
+        const float math_2pi = 6.283185307179586476925286766559f;
+
+        std::vector<complex<float>> pt(num_samples, std::complex<float>(0,0));
+        std::vector<complex<float>> rds_rot(num_samples, std::complex<float>(0, 0));
+        std::vector<complex<int16_t>> iq_data(num_samples, std::complex<int16_t>(0, 0));
+
+        std::vector<float> audio_data(num_samples, 0);
+
+        // create audio tone
+        for (idx = 0; idx < num_samples; ++idx)
+        {
+            audio_data[idx] = std::cos(M_2PI*(300 / (float)sample_rate)*idx);
+        }
+
+        std::vector<complex<float>> audio_fm = generate_fm(audio_data, sample_rate, 1, 0.8);
+
+        for (idx = 0; idx < num_samples; ++idx)
+        {
+            pt[idx] = std::complex<float>(100.0f, 0.0f) * std::exp(j * math_2pi * (float)((pilot_tone / (double)sample_rate) * idx));
+            rds_rot[idx] = std::complex<float>(200000.0f*rds[idx], 0.0f)*std::exp(j * math_2pi * (float)((3.0f*pilot_tone / (double)sample_rate) * idx));
+
+            iq_data[idx] = (pt[idx] + std::complex<float>(1200.0f, 0.0f) *audio_fm[idx] + rds_rot[idx]);
+
+        }
+
+
+        std:string savefile = "D:/Projects/data/RF/test_rds.sc16";
+
+        save_complex_data(savefile, iq_data);
+
+
+
+
+
+
+
+
 
         //std::vector<std::vector<cv::Point> > img_contours;
         //std::vector<cv::Vec4i> img_hr;
@@ -222,6 +452,7 @@ int main(int argc, char** argv)
         //std::default_random_engine generator(10);
         //std::uniform_int_distribution<int32_t> distribution(0, 1);
 
+        /*
         std::vector<uint8_t> data;
         float amplitude = 2000;
         uint32_t sample_rate = 52000000;
@@ -235,7 +466,7 @@ int main(int argc, char** argv)
 
         //std::vector<std::complex<int16_t>> iq_data;
         //std::vector<int16_t> iq_data;
-        int16_t *iq_data = NULL;
+        //int16_t *iq_data = NULL;
 
         // use these variables for the datatype > 0
         //typedef void (*init_)(long seed);
@@ -310,6 +541,7 @@ int main(int argc, char** argv)
 
         //std::cout << "average elapsed_time: " << run_time_sum/100.0 << std::endl;
         //save_complex_data("D:/Projects/data/RF/test_oqpsk_burst.sc16", iq_data);
+        
 
         std::string savefile;
 
@@ -322,7 +554,9 @@ int main(int argc, char** argv)
 
 #endif
         save_complex_data(savefile, iq_data, data_size);
-        
+        */
+
+
         std::cout << "done saving data..." << std::endl;
         std::cin.ignore();
 

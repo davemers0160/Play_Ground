@@ -323,9 +323,14 @@ int main(int argc, char** argv)
 
         // create the data
         rds_block_1 b1_0A(0x72C0);   // WLKI --> hex(11*676 + 10*26 + 8 + 21672) = hex(29376) = 72C0
-        rds_block_2 b2_0A(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5<< PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI3::DI3_0 | 0));
-        rds_block_3 b3_0A(0xFF, 0xFF);
+        rds_block_2 b2_0A(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI3::DI3_0 | 0));
+        rds_block_3 b3_0A(224, 205);
         rds_block_4 b4_0A('A', 'B');
+
+        std::cout << b1_0A << std::endl;
+        std::cout << b2_0A << std::endl;
+        std::cout << b3_0A << std::endl;
+        std::cout << b4_0A << std::endl;
 
         rds_group g_0A_3(b1_0A, b2_0A, b3_0A, b4_0A);
 
@@ -337,7 +342,7 @@ int main(int argc, char** argv)
 
         rds_group g_0A_1(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI0::DI0_0 | 3));
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI0::DI0_1 | 3));
 
         rds_group g_0A_0(b1_0A, b2_0A, b3_0A, b4_0A);
 
@@ -347,57 +352,30 @@ int main(int argc, char** argv)
         std::vector<int16_t> g_0A_1_bits = g_0A_1.to_bits();
         std::vector<int16_t> g_0A_0_bits = g_0A_0.to_bits();
 
-        data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
-        data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
-        data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
-
-        for (idx = 0; idx < 104; ++idx)
-        {
-            std::cout << (g_0A_3_bits[idx] + 1)*0.5 << " ";
-        }
-        std::cout << std::endl;
-
-        for (idx = 0; idx < 104; ++idx)
-        {
-            std::cout << (g_0A_2_bits[idx]+1)*0.5 << " ";
-        }
-        std::cout << std::endl;
-
-        for (idx = 0; idx < 104; ++idx)
-        {
-            std::cout << (g_0A_1_bits[idx]+1)*0.5 << " ";
-        }
-        std::cout << std::endl;
-
-        for (idx = 0; idx < 104; ++idx)
-        {
-            std::cout << (g_0A_0_bits[idx]+1)*0.5 << " ";
-        }
-        std::cout << std::endl;
+        //data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
+        //data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
+        //data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
 
         int16_t previous_bit = 0;
         data_bits = differential_encode(data_bits, previous_bit);
 
-        biphase_encode(data_bits);
+        std::vector<float> data_bits_f = biphase_encode(data_bits);
+
+        std::cout << std::endl << "biphase out" << std::endl;
+        for (idx = 0; idx < data_bits_f.size(); ++idx)
+        {
+            std::cout << (data_bits_f[idx]) << ", ";
+        }
+        std::cout << std::endl;
 
         // upsample the data
-        std::vector<float> data_bits_u = upsample_data(data_bits, factor);
-
-        // shift and subtract -- biphase
-        std::vector<float> data_bits_offset(factor>>1, 0.0);
-        data_bits_offset.insert(data_bits_offset.end(), data_bits_u.begin(), data_bits_u.end()- (factor >> 1));
-
-        for (idx = 0; idx < data_bits_u.size(); ++idx)
-        {
-            data_bits_u[idx] = data_bits_u[idx] - data_bits_offset[idx];
-        }
-
-
+        std::vector<float> data_bits_u = upsample_data(data_bits_f, (factor>>1));
+        //std::vector<float> data_bits_u = upsample_data(data_bits_f, 1);
 
         // filter the data
         int64_t num_taps = factor + 1;       //data_bits_u .size();
-        float fc = 2000/(double)sample_rate;
-        //std::vector<float> w = DSP::blackman_nuttall_window(num_taps);
+        float fc = 2500.0/(float)sample_rate;
+
         std::vector<float> lpf = DSP::create_fir_filter<float>(num_taps, fc, &DSP::blackman_nuttall_window);
 
         std::vector<float> rds;
@@ -405,6 +383,13 @@ int main(int argc, char** argv)
 
         // create the pilot tone based on the data length and the rds rotation vector
         uint64_t num_samples = rds.size();
+
+        std::cout << std::endl;
+        for (idx = 0; idx < rds.size(); ++idx)
+        {
+            std::cout << (rds[idx]) << ", ";
+        }
+        std::cout << std::endl;
 
         float pilot_tone = 19000;
         std::complex<float> j(0, 1);

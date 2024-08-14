@@ -318,8 +318,10 @@ int main(int argc, char** argv)
         
         num_loops = 100;
 
-        uint32_t factor = 300;
+        uint32_t factor = 240;
         uint64_t sample_rate = (1187.5*2.0) * factor;
+
+        std::cout << "sample_rate: " << sample_rate << std::endl;
 
         // create the data
         rds_block_1 b1_0A(0x72C0);   // WLKI --> hex(11*676 + 10*26 + 8 + 21672) = hex(29376) = 72C0
@@ -334,15 +336,15 @@ int main(int argc, char** argv)
 
         rds_group g_0A_3(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI2::DI2_0 | 1));
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI2::DI2_0 | 1));
 
         rds_group g_0A_2(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI1::DI1_0 | 2));
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI1::DI1_0 | 2));
 
         rds_group g_0A_1(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_1, 5 << PTY_SHIFT, (RDS_TA::TA_1 | RDS_MS::MS_1 | RDS_DI0::DI0_1 | 3));
+        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI0::DI0_1 | 3));
 
         rds_group g_0A_0(b1_0A, b2_0A, b3_0A, b4_0A);
 
@@ -352,21 +354,21 @@ int main(int argc, char** argv)
         std::vector<int16_t> g_0A_1_bits = g_0A_1.to_bits();
         std::vector<int16_t> g_0A_0_bits = g_0A_0.to_bits();
 
-        //data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
-        //data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
-        //data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
+        data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
+        data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
+        data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
 
         int16_t previous_bit = 0;
         data_bits = differential_encode(data_bits, previous_bit);
 
         std::vector<float> data_bits_f = biphase_encode(data_bits);
 
-        std::cout << std::endl << "biphase out" << std::endl;
-        for (idx = 0; idx < data_bits_f.size(); ++idx)
-        {
-            std::cout << (data_bits_f[idx]) << ", ";
-        }
-        std::cout << std::endl;
+        //std::cout << std::endl << "biphase out" << std::endl;
+        //for (idx = 0; idx < data_bits_f.size(); ++idx)
+        //{
+        //    std::cout << (data_bits_f[idx]) << ", ";
+        //}
+        //std::cout << std::endl;
 
         // upsample the data
         std::vector<float> data_bits_u = upsample_data(data_bits_f, (factor>>1));
@@ -374,7 +376,7 @@ int main(int argc, char** argv)
 
         // filter the data
         int64_t num_taps = factor + 1;       //data_bits_u .size();
-        float fc = 2500.0/(float)sample_rate;
+        float fc = 2200.0/(float)sample_rate;
 
         std::vector<float> lpf = DSP::create_fir_filter<float>(num_taps, fc, &DSP::blackman_nuttall_window);
 
@@ -384,12 +386,12 @@ int main(int argc, char** argv)
         // create the pilot tone based on the data length and the rds rotation vector
         uint64_t num_samples = rds.size();
 
-        std::cout << std::endl;
-        for (idx = 0; idx < rds.size(); ++idx)
-        {
-            std::cout << (rds[idx]) << ", ";
-        }
-        std::cout << std::endl;
+        //std::cout << std::endl;
+        //for (idx = 0; idx < rds.size(); ++idx)
+        //{
+        //    std::cout << (rds[idx]) << ", ";
+        //}
+        //std::cout << std::endl;
 
         float pilot_tone = 19000;
         std::complex<float> j(0, 1);
@@ -411,10 +413,15 @@ int main(int argc, char** argv)
 
         for (idx = 0; idx < num_samples; ++idx)
         {
-            pt[idx] = std::complex<float>(100.0f, 0.0f) * std::exp(j * math_2pi * (float)((pilot_tone / (double)sample_rate) * idx));
-            rds_rot[idx] = std::complex<float>(200000.0f*rds[idx], 0.0f)*std::exp(j * math_2pi * (float)((3.0f*pilot_tone / (double)sample_rate) * idx));
+            //pt[idx] = std::complex<float>(200.0f, 0.0f) * std::exp(j * math_2pi * (float)((pilot_tone / (double)sample_rate) * idx));
+            pt[idx] = std::complex<float>(400.0f * std::cos(math_2pi * (float)((pilot_tone / (double)sample_rate) * idx)), 0.0f);
 
-            iq_data[idx] = (pt[idx] + std::complex<float>(1200.0f, 0.0f) *audio_fm[idx] + rds_rot[idx]);
+            //rds_rot[idx] = std::complex<float>(160000.0f * rds[idx], 0.0f) * std::exp(j * math_2pi * (float)((3.0f * pilot_tone / (double)sample_rate) * idx));
+            rds_rot[idx] = std::complex<float>(160000.0f * rds[idx] * std::cos(math_2pi * (float)((3.0f * pilot_tone / (double)sample_rate) * idx)), 0.0f) ;
+
+            //iq_data[idx] = (pt[idx] + std::complex<float>(800.0f, 0.0f) * audio_fm[idx] + rds_rot[idx]);
+            iq_data[idx] = (pt[idx] + rds_rot[idx]);
+            //iq_data[idx] = rds_rot[idx];
 
         }
 

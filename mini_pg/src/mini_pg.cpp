@@ -76,7 +76,7 @@ std::string console_input1;
 
 //-----------------------------------------------------------------------------
 template <typename T, typename U>
-void apply_filter(std::vector<T>& data, std::vector<U>& filter, std::vector<float>& filtered_data)
+void apply_filter(std::vector<T>& data, std::vector<U>& filter, float amplitude, std::vector<float>& filtered_data)
 {
     int32_t idx, jdx;
     int32_t dx = filter.size() >> 1;
@@ -98,7 +98,7 @@ void apply_filter(std::vector<T>& data, std::vector<U>& filter, std::vector<floa
             //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
             //std::complex<double> t2 = iq_data[idx + jdx - offset];
             if (x >= 0 && x < data.size())
-                accum += data[x] * filter[jdx];
+                accum += amplitude * data[x] * filter[jdx];
         }
 
         filtered_data[idx] = accum;
@@ -106,26 +106,7 @@ void apply_filter(std::vector<T>& data, std::vector<U>& filter, std::vector<floa
 
 }   // end of apply_filter
 
-//-----------------------------------------------------------------------------
-template <typename T>
-std::vector<float> upsample_data(std::vector<T>& d, uint32_t factor)
-{
-    uint64_t idx;
-    uint64_t index = 0;
 
-    uint64_t num_samples = d.size() * factor;
-
-    std::vector<float> u(num_samples, 0.0f);
-
-    for (idx = 0; idx < d.size(); ++idx)
-    {
-        u[index] = (float)d[idx];
-        index += factor;
-    }
-
-    return u;
-
-}   // end of upsample_data
 
 
 //-----------------------------------------------------------------------------
@@ -324,44 +305,54 @@ int main(int argc, char** argv)
         std::cout << "sample_rate: " << sample_rate << std::endl;
 
         // create the data
-        rds_block_1 b1_0A(0x72C0);   // WLKI --> hex(11*676 + 10*26 + 8 + 21672) = hex(29376) = 72C0
-        rds_block_2 b2_0A(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI3::DI3_0 | 0));
-        rds_block_3 b3_0A(224, 205);
-        rds_block_4 b4_0A('A', 'B');
+        //rds_block_1 b1_0A(0x72C0);   // WLKI --> hex(11*676 + 10*26 + 8 + 21672) = hex(29376) = 72C0
+        //rds_block_2 b2_0A(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI3::DI3_0 | 0));
+        //rds_block_3 b3_0A(224, 205);
+        //rds_block_4 b4_0A('A', 'B');
 
-        std::cout << b1_0A << std::endl;
-        std::cout << b2_0A << std::endl;
-        std::cout << b3_0A << std::endl;
-        std::cout << b4_0A << std::endl;
+        rds_params rp(0x72C0, RDS_VERSION::A, RDS_TP::TP_0, RDS_PTY::ROCK, RDS_TA::TA_0, RDS_MS::MS_1);
 
-        rds_group g_0A_3(b1_0A, b2_0A, b3_0A, b4_0A);
+        std::string program_name = "LKI_RDIO";
+        std::string radio_text = "All Day All Night, We Know What You Need!";
+        rds_generator rdg(rp);
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI2::DI2_0 | 1));
+        rdg.init_generator(program_name, radio_text);
 
-        rds_group g_0A_2(b1_0A, b2_0A, b3_0A, b4_0A);
+        std::vector<complex<int16_t>> iq_data = rdg.generate_bit_stream();
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI1::DI1_0 | 2));
+        //std::cout << b1_0A << std::endl;
+        //std::cout << b2_0A << std::endl;
+        //std::cout << b3_0A << std::endl;
+        //std::cout << b4_0A << std::endl;
 
-        rds_group g_0A_1(b1_0A, b2_0A, b3_0A, b4_0A);
+        //rds_group g_0A_3(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI0::DI0_1 | 3));
+        //b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI2::DI2_0 | 1));
 
-        rds_group g_0A_0(b1_0A, b2_0A, b3_0A, b4_0A);
+        //rds_group g_0A_2(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        std::vector<int16_t> data_bits = g_0A_3.to_bits();
-        std::vector<int16_t> g_0A_3_bits = g_0A_3.to_bits();
-        std::vector<int16_t> g_0A_2_bits = g_0A_2.to_bits();
-        std::vector<int16_t> g_0A_1_bits = g_0A_1.to_bits();
-        std::vector<int16_t> g_0A_0_bits = g_0A_0.to_bits();
+        //b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI1::DI1_0 | 2));
 
-        data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
-        data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
-        data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
+        //rds_group g_0A_1(b1_0A, b2_0A, b3_0A, b4_0A);
 
-        int16_t previous_bit = 0;
-        data_bits = differential_encode(data_bits, previous_bit);
+        //b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI0::DI0_1 | 3));
 
-        std::vector<float> data_bits_f = biphase_encode(data_bits);
+        //rds_group g_0A_0(b1_0A, b2_0A, b3_0A, b4_0A);
+
+        //std::vector<int16_t> data_bits = g_0A_3.to_bits();
+        //std::vector<int16_t> g_0A_3_bits = g_0A_3.to_bits();
+        //std::vector<int16_t> g_0A_2_bits = g_0A_2.to_bits();
+        //std::vector<int16_t> g_0A_1_bits = g_0A_1.to_bits();
+        //std::vector<int16_t> g_0A_0_bits = g_0A_0.to_bits();
+
+        //data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
+        //data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
+        //data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
+
+        //int16_t previous_bit = 0;
+        //data_bits = differential_encode(data_bits, previous_bit);
+
+        //std::vector<float> data_bits_f = biphase_encode(data_bits);
 
         //std::cout << std::endl << "biphase out" << std::endl;
         //for (idx = 0; idx < data_bits_f.size(); ++idx)
@@ -370,60 +361,55 @@ int main(int argc, char** argv)
         //}
         //std::cout << std::endl;
 
-        // upsample the data
-        std::vector<float> data_bits_u = upsample_data(data_bits_f, (factor>>1));
-        //std::vector<float> data_bits_u = upsample_data(data_bits_f, 1);
+        //// upsample the data
+        //std::vector<float> data_bits_u = upsample_data(data_bits_f, (factor>>1));
+        ////std::vector<float> data_bits_u = upsample_data(data_bits_f, 1);
 
-        // filter the data
-        int64_t num_taps = factor + 1;       //data_bits_u .size();
-        float fc = 2200.0/(float)sample_rate;
+        //// filter the data
+        //int64_t num_taps = factor + 1;       //data_bits_u .size();
+        //float fc = 2200.0/(float)sample_rate;
 
-        std::vector<float> lpf = DSP::create_fir_filter<float>(num_taps, fc, &DSP::blackman_nuttall_window);
+        //std::vector<float> lpf = DSP::create_fir_filter<float>(num_taps, fc, &DSP::blackman_nuttall_window);
 
-        std::vector<float> rds;
-        apply_filter(data_bits_u, lpf, rds);
+        //std::vector<float> rds;
+        //apply_filter(data_bits_u, lpf, rds);
 
-        // create the pilot tone based on the data length and the rds rotation vector
-        uint64_t num_samples = rds.size();
+        //// create the pilot tone based on the data length and the rds rotation vector
+        //uint64_t num_samples = rds.size();
 
-        //std::cout << std::endl;
-        //for (idx = 0; idx < rds.size(); ++idx)
+
+
+        //float pilot_tone = 19000;
+        //std::complex<float> j(0, 1);
+        //const float math_2pi = 6.283185307179586476925286766559f;
+
+        //std::vector<complex<float>> pt(num_samples, std::complex<float>(0,0));
+        //std::vector<complex<float>> rds_rot(num_samples, std::complex<float>(0, 0));
+        //std::vector<complex<int16_t>> iq_data(num_samples, std::complex<int16_t>(0, 0));
+
+        //std::vector<float> audio_data(num_samples, 0);
+
+        //// create audio tone
+        //for (idx = 0; idx < num_samples; ++idx)
         //{
-        //    std::cout << (rds[idx]) << ", ";
+        //    audio_data[idx] = std::cos(M_2PI*(300 / (float)sample_rate)*idx);
         //}
-        //std::cout << std::endl;
 
-        float pilot_tone = 19000;
-        std::complex<float> j(0, 1);
-        const float math_2pi = 6.283185307179586476925286766559f;
+        //std::vector<complex<float>> audio_fm = generate_fm(audio_data, sample_rate, 1, 0.8);
 
-        std::vector<complex<float>> pt(num_samples, std::complex<float>(0,0));
-        std::vector<complex<float>> rds_rot(num_samples, std::complex<float>(0, 0));
-        std::vector<complex<int16_t>> iq_data(num_samples, std::complex<int16_t>(0, 0));
+        //for (idx = 0; idx < num_samples; ++idx)
+        //{
+        //    //pt[idx] = std::complex<float>(200.0f, 0.0f) * std::exp(j * math_2pi * (float)((pilot_tone / (double)sample_rate) * idx));
+        //    pt[idx] = std::complex<float>(400.0f * std::cos(math_2pi * (float)((pilot_tone / (double)sample_rate) * idx)), 0.0f);
 
-        std::vector<float> audio_data(num_samples, 0);
+        //    //rds_rot[idx] = std::complex<float>(160000.0f * rds[idx], 0.0f) * std::exp(j * math_2pi * (float)((3.0f * pilot_tone / (double)sample_rate) * idx));
+        //    rds_rot[idx] = std::complex<float>(160000.0f * rds[idx] * std::cos(math_2pi * (float)((3.0f * pilot_tone / (double)sample_rate) * idx)), 0.0f) ;
 
-        // create audio tone
-        for (idx = 0; idx < num_samples; ++idx)
-        {
-            audio_data[idx] = std::cos(M_2PI*(300 / (float)sample_rate)*idx);
-        }
+        //    //iq_data[idx] = (pt[idx] + std::complex<float>(800.0f, 0.0f) * audio_fm[idx] + rds_rot[idx]);
+        //    iq_data[idx] = (pt[idx] + rds_rot[idx]);
+        //    //iq_data[idx] = rds_rot[idx];
 
-        std::vector<complex<float>> audio_fm = generate_fm(audio_data, sample_rate, 1, 0.8);
-
-        for (idx = 0; idx < num_samples; ++idx)
-        {
-            //pt[idx] = std::complex<float>(200.0f, 0.0f) * std::exp(j * math_2pi * (float)((pilot_tone / (double)sample_rate) * idx));
-            pt[idx] = std::complex<float>(400.0f * std::cos(math_2pi * (float)((pilot_tone / (double)sample_rate) * idx)), 0.0f);
-
-            //rds_rot[idx] = std::complex<float>(160000.0f * rds[idx], 0.0f) * std::exp(j * math_2pi * (float)((3.0f * pilot_tone / (double)sample_rate) * idx));
-            rds_rot[idx] = std::complex<float>(160000.0f * rds[idx] * std::cos(math_2pi * (float)((3.0f * pilot_tone / (double)sample_rate) * idx)), 0.0f) ;
-
-            //iq_data[idx] = (pt[idx] + std::complex<float>(800.0f, 0.0f) * audio_fm[idx] + rds_rot[idx]);
-            iq_data[idx] = (pt[idx] + rds_rot[idx]);
-            //iq_data[idx] = rds_rot[idx];
-
-        }
+        //}
 
 
         std:string savefile = "D:/Projects/data/RF/test_rds.sc16";

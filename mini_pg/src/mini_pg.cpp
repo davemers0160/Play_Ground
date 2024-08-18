@@ -71,44 +71,6 @@ volatile bool entry = false;
 volatile bool run = true;
 std::string console_input1;
 
-//const cv::Mat SE3_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-//const cv::Mat SE5_rect = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
-
-//-----------------------------------------------------------------------------
-template <typename T, typename U>
-void apply_filter(std::vector<T>& data, std::vector<U>& filter, float amplitude, std::vector<float>& filtered_data)
-{
-    int32_t idx, jdx;
-    int32_t dx = filter.size() >> 1;
-    int32_t x;
-
-    float accum;
-
-    filtered_data.clear();
-    filtered_data.resize(data.size(), 0.0);
-
-    // loop throught the data and the filter and convolve (assumes a symmetric filter so no flip required)
-    for (idx = 0; idx < data.size(); ++idx)
-    {
-        accum = 0.0;
-
-        for (jdx = 0; jdx < filter.size(); ++jdx)
-        {
-            x = idx + jdx - dx;
-            //std::complex<double> t1 = std::complex<double>(lpf[jdx], 0);
-            //std::complex<double> t2 = iq_data[idx + jdx - offset];
-            if (x >= 0 && x < data.size())
-                accum += amplitude * data[x] * filter[jdx];
-        }
-
-        filtered_data[idx] = accum;
-    }
-
-}   // end of apply_filter
-
-
-
-
 //-----------------------------------------------------------------------------
 template <typename T>
 std::vector<std::complex<float>> generate_fm(std::vector<T> data, uint64_t sample_rate, uint32_t N, float k)
@@ -312,8 +274,8 @@ int main(int argc, char** argv)
 
         rds_params rp(0x72C0, RDS_VERSION::A, RDS_TP::TP_0, RDS_PTY::ROCK, RDS_TA::TA_0, RDS_MS::MS_1);
 
-        std::string program_name = "LKI_RDIO";
-        std::string radio_text = "All Day All Night, We Know What You Need!";
+        std::string program_name = "TST_RDIO";
+        std::string radio_text = "All Day All Night, We Know What You Need!  \r";
         rds_generator rdg(rp);
 
         rdg.init_generator(program_name, radio_text);

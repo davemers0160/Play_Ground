@@ -275,41 +275,12 @@ int main(int argc, char** argv)
         rds_params rp(0x72C0, RDS_VERSION::A, RDS_TP::TP_0, RDS_PTY::ROCK, RDS_TA::TA_0, RDS_MS::MS_1);
 
         std::string program_name = "TST_RDIO";
-        std::string radio_text = "All Day All Night, We Know What You Need!  \r";
+        std::string radio_text = "All Day All Night, We Know What You Need!";
         rds_generator rdg(rp);
 
         rdg.init_generator(program_name, radio_text);
 
         std::vector<complex<int16_t>> iq_data = rdg.generate_bit_stream();
-
-        //std::cout << b1_0A << std::endl;
-        //std::cout << b2_0A << std::endl;
-        //std::cout << b3_0A << std::endl;
-        //std::cout << b4_0A << std::endl;
-
-        //rds_group g_0A_3(b1_0A, b2_0A, b3_0A, b4_0A);
-
-        //b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI2::DI2_0 | 1));
-
-        //rds_group g_0A_2(b1_0A, b2_0A, b3_0A, b4_0A);
-
-        //b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI1::DI1_0 | 2));
-
-        //rds_group g_0A_1(b1_0A, b2_0A, b3_0A, b4_0A);
-
-        //b2_0A = rds_block_2(RDS_GROUP_TYPE::GT_0, RDS_VERSION::A, RDS_TP::TP_0, (5 << PTY_SHIFT), (RDS_TA::TA_0 | RDS_MS::MS_1 | RDS_DI0::DI0_1 | 3));
-
-        //rds_group g_0A_0(b1_0A, b2_0A, b3_0A, b4_0A);
-
-        //std::vector<int16_t> data_bits = g_0A_3.to_bits();
-        //std::vector<int16_t> g_0A_3_bits = g_0A_3.to_bits();
-        //std::vector<int16_t> g_0A_2_bits = g_0A_2.to_bits();
-        //std::vector<int16_t> g_0A_1_bits = g_0A_1.to_bits();
-        //std::vector<int16_t> g_0A_0_bits = g_0A_0.to_bits();
-
-        //data_bits.insert(data_bits.end(), g_0A_2_bits.begin(), g_0A_2_bits.end());
-        //data_bits.insert(data_bits.end(), g_0A_1_bits.begin(), g_0A_1_bits.end());
-        //data_bits.insert(data_bits.end(), g_0A_0_bits.begin(), g_0A_0_bits.end());
 
         //int16_t previous_bit = 0;
         //data_bits = differential_encode(data_bits, previous_bit);
@@ -338,8 +309,6 @@ int main(int argc, char** argv)
 
         //// create the pilot tone based on the data length and the rds rotation vector
         //uint64_t num_samples = rds.size();
-
-
 
         //float pilot_tone = 19000;
         //std::complex<float> j(0, 1);
@@ -374,23 +343,11 @@ int main(int argc, char** argv)
         //}
 
 
-        std:string savefile = "D:/Projects/data/RF/test_rds.sc16";
+        //std:string savefile = "D:/Projects/data/RF/test_rds.sc16";
+        std:string savefile = "D:/data/RF/test_rds.sc16";
 
         save_complex_data(savefile, iq_data);
 
-
-
-
-
-
-
-
-
-        //std::vector<std::vector<cv::Point> > img_contours;
-        //std::vector<cv::Vec4i> img_hr;
-
-        //std::default_random_engine generator(10);
-        //std::uniform_int_distribution<int32_t> distribution(0, 1);
 
         /*
         std::vector<uint8_t> data;

@@ -261,10 +261,10 @@ int main(int argc, char** argv)
         
         num_loops = 100;
 
-        uint32_t factor = 240;
-        uint64_t sample_rate = (1187.5*2.0) * factor;
+        //uint32_t factor = 240;
+        //uint64_t sample_rate = (1187.5*2.0) * factor;
 
-        std::cout << "sample_rate: " << sample_rate << std::endl;
+        //std::cout << "sample_rate: " << sample_rate << std::endl;
 
         // create the data
         //rds_block_1 b1_0A(0x72C0);   // WLKI --> hex(11*676 + 10*26 + 8 + 21672) = hex(29376) = 72C0
@@ -343,8 +343,8 @@ int main(int argc, char** argv)
         //}
 
 
-        //std:string savefile = "D:/Projects/data/RF/test_rds.sc16";
-        std:string savefile = "D:/data/RF/test_rds.sc16";
+        std:string savefile = "D:/Projects/data/RF/test_rds.sc16";
+        //std:string savefile = "D:/data/RF/test_rds.sc16";
 
         save_complex_data(savefile, iq_data);
 

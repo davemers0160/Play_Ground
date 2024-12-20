@@ -36,6 +36,8 @@ typedef void* HINSTANCE;
 #include <complex>
 #include <mutex>
 #include <random>
+#include <bitset>
+
 
 // custom includes
 #include "get_current_time.h"
@@ -218,7 +220,73 @@ inline void vector_to_pair(std::vector<T> &v1, std::vector<T> &v2, std::vector<s
 
 }   // end of vector_to_pair
 
-// ----------------------------------------------------------------------------------------
+//-----------------------------------------------------------------------------
+inline std::vector<uint32_t> gray_code(uint16_t num_bits)
+{
+    std::vector<uint32_t> gc;
+
+    uint32_t idx;
+
+    uint32_t num = 1 << (num_bits);
+
+    for(idx=0; idx<num; ++idx)
+    {
+        gc.push_back(idx ^ (idx >> 1));
+    }
+
+    return gc;
+}
+
+//-----------------------------------------------------------------------------
+inline std::vector<std::complex<float>> generate_qam_constellation(uint16_t num_bits)
+{
+    uint32_t idx, jdx;
+
+    std::vector<uint32_t> gc = gray_code(num_bits);
+    uint32_t side_length = 1 << (num_bits >> 1);
+    
+    uint32_t index = 0;
+    uint32_t shift = 0;
+
+    std::vector<std::complex<float>> bit_mapper(1 << num_bits);
+    float offset = (side_length << 1) - 1.0;
+
+    // create the base locations for the constellation
+    std::vector<float> c_p;
+    double step = 2.0;
+    int16_t start = side_length - offset;
+    float scale = 1.0/abs(start);
+
+    // create the primary normalized points for the constellation
+    for (idx = 0; idx < side_length; ++idx)
+    {
+        c_p.push_back(start * scale);
+        start += step;
+    }
+
+    // cycle through the side_length x side_length matrix ans assign the constellation position based on the gray code
+    // everything is placed in a zig zag pattern
+    // Y
+    for (idx = 0; idx < side_length; ++idx)
+    {
+        // X
+        for (jdx = 0; jdx < side_length; ++jdx)
+        {
+            // odd/even row check
+            shift = ((idx & 0x01) == 1) ? (side_length - 1) - jdx : jdx;
+            
+            // assign
+            bit_mapper[gc[index + shift]] = std::complex<float>(c_p[jdx], c_p[idx]);
+        }
+        index += side_length;
+    }
+
+    return bit_mapper;
+
+}   // end of generate_qam_constellation
+
+
+//-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
     std::string sdate, stime;
@@ -260,6 +328,97 @@ int main(int argc, char** argv)
         std::vector<float> w = DSP::blackman_nuttall_window(601);
         
         num_loops = 100;
+
+        const uint16_t num_bits = 4;
+        uint32_t num = 1 << num_bits;
+        std::vector<uint32_t> gc = gray_code(num_bits);
+        std::bitset<num_bits> x;
+        uint32_t side_length = 1<<(num_bits>>1);
+        uint32_t index = 0;
+        uint32_t shift = 0;
+
+        std::vector<std::complex<float>> bit_mapper(1<< num_bits);
+        float offset = (side_length <<1) - 1.0;
+
+        // create the base locations for the constellation
+        std::vector<float> t_x;
+        double step = 2.0;
+        int16_t start = side_length - offset;
+
+        std::cout << "num_bits:    " << num_bits << std::endl;
+        std::cout << "num:         " << num << std::endl;
+        std::cout << "side_length: " << side_length << std::endl;
+        std::cout << "offset:      " << offset << std::endl;
+        std::cout << std::endl;
+
+        for (idx = 0; idx < side_length; ++idx)
+        {
+            t_x.push_back(start);
+            std::cout << start << "\t";
+
+            start += step;
+
+        }
+        std::cout << std::endl << std::endl;
+
+        uint32_t index2 = 0;
+
+        for (idx = 0; idx < side_length; ++idx)
+        {
+            for (jdx = 0; jdx < side_length; ++jdx)
+            {
+                shift = (idx&0x01 == 1) ? (side_length -1)-jdx : jdx;
+                x = (gc[index + shift]);
+                bit_mapper[gc[index + shift]] = std::complex<float>(t_x[jdx], t_x[idx]);
+                //bit_mapper[index2] = std::complex<float>(t_x[idx], t_x[jdx]);
+
+                std::cout << index2 << "  " << gc[index + shift] << " [" << x << "] " << bit_mapper[gc[index + shift]] << "  ";
+                ++index2;
+            }
+            index += side_length;
+            std::cout << std::endl;
+
+        }
+
+        std::cout << std::endl;
+
+
+        std::cout << "index\tgc\tbit\tbm[i]\tbm[gc[i]" <<std::endl;
+        for (idx = 0; idx < gc.size(); ++idx)
+        {
+            x = gc[idx];
+            std::cout << idx << "\t" << gc[idx] << "\t" << x << "\t" << bit_mapper[idx] << std::endl;
+        }
+
+        //index = 0;
+        //for (idx = 0; idx < side_length; ++idx)
+        //{
+        //    for (jdx = 0; jdx < side_length; ++jdx)
+        //    {
+        //        x = gc[index];
+        //        std::cout << index << " " << gc[index] << " " << x << " " << bit_mapper[gc[index]] << "  ";
+        //        ++index;
+        //    }
+        //    
+        //    std::cout << std::endl;
+
+        //}
+
+        std::cout << std::endl;
+
+
+        std::vector<std::complex<float>> bit_mapper2 = generate_qam_constellation(num_bits);
+
+        index = 0;
+        for (idx = 0; idx < bit_mapper2.size(); ++idx)
+        {
+            x = gc[idx];
+            std::cout << idx << "\t" << gc[idx] << "\t" << x << "\t" << 3.0f*bit_mapper2[idx] << std::endl;
+        }
+
+        std::cout << std::endl;
+
+        bp = 0;
 
         //uint32_t factor = 240;
         //uint64_t sample_rate = (1187.5*2.0) * factor;

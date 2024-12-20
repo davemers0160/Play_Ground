@@ -231,18 +231,6 @@ pip-log.txt
 *.mov
 
 
-###############################################################################
-## DfD Project specific ignore files/folders
-###############################################################################
-results/
-nets/
-data/
-sample_data/
-gorgon_save/
-DfD_DNN/results/dfd_train_results_v3_U.txt
-DfD_Analysis/.vscode/c_cpp_properties.json
-DfD_Analysis/.vscode/launch.json
-
 
 ###############################################################################
 ## No Compressed Files
@@ -260,4 +248,17 @@ DfD_Analysis/.vscode/launch.json
 
 html/
 latex/
+
+###############################################################################
+## MPLAB X IDE (Netbeans) specific
+###############################################################################
+**/*.X/build/
+**/*.X/debug/
+**/*.X/dist/
+**/*.X/disassembly/
+**/*.X/.generated_files/
+**/*.X/nbproject/private/
+**/*.X/nbproject/*.mk
+**/*.X/nbproject/*.bash
+**/*.X/nbproject/Makefile-genesis.properties
 

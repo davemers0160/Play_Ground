@@ -1,5 +1,5 @@
 /*
- * File:   PIC16F1823_Config.c
+ * File:   PIC12F1822_Config.c
  *
  * Created on June 2, 2016, 12:35 PM
  */
@@ -11,7 +11,11 @@
 //------------------------------------------------------------------------------
 void init_PIC(void)
 {
-    OSCCON = 0b11110000;            // 4x PLL enabled, set internal oscillator to 8(32)MHz, clock determined by FOSC
+    //OSCCON = 0b11110000;            // 4x PLL enabled, set internal oscillator to 8(32)MHz, clock determined by FOSC
+    OSCCONbits.SPLLEN = 1;
+    OSCCONbits.IRCF = 14;
+    OSCCONbits.SCS = 3;
+    
     OPTION_REG = 0b10000000;		// Turns internal pull up resistors off
     
     INTCON = 0b00000000;            // Global Interrupt Enable, Peripheral Interrupt Enable
@@ -23,7 +27,7 @@ void init_PIC(void)
     IOCIE = 0b00000000;             // Disable interrupt on change
 
     ANSELA = 0b00000000;
-    DACCON0 = 0b00000000;           //DAC disabled, positive reference source, DACOUT pin enabled, input is Vdd
+    //DACCON0 = 0b00000000;           //DAC disabled, positive reference source, DACOUT pin enabled, input is Vdd
 }
 
 //------------------------------------------------------------------------------
@@ -47,14 +51,21 @@ void init_TMR(void)
     OPTION_REGbits.TMR0SE = 0;              // Timer0 Source Edge Select bit
     
     // TMR1
-    T1CON = 0b01000001;                     // 1:1 Prescale Value, LP oscillator is disabled, Internal clock (FOSC/1), Timer1 on
-    T1GCON = 0b00000000;                    // delay set to ~1us
+    T1CONbits.TMR1CS = 1;                   // Timer1 clock source is system clock (FOSC)
+    T1CONbits.T1CKPS = 0;                   // 1:1 Prescale value
+    T1CONbits.nT1SYNC = 1;
+    T1CONbits.T1OSCEN = 0;
+    T1CONbits.TMR1ON = 1;
+
+    //T1GCON = 0b00000000;                    // delay set to ~1us
+    T1GCONbits.TMR1GE = 0;
+    
     TMR1 = 0;
     
     // TMR2
     T2CONbits.T2OUTPS = 0;                  // Timer2 Output Postscaler ->  1:1 Postscaler
     T2CONbits.T2CKPS = 1;                   // Timer2 Clock Prescale -> Prescaler = 4
-    T2CONbits.TMR2ON = 1;                   // Timer 2 On
+    T2CONbits.TMR2ON = 0;                   // Timer 2 On
     
     TMR2 = 0;
     
@@ -66,7 +77,7 @@ void init_PWM(void)
     unsigned short pulse_width = 0;
     
     // CCP1 CONTROL REGISTER 
-    CCP1CONbits.CCP1M = 0b1100;             // PWM mode: P1A, P1C active-high; P1B, P1D active-high
+    CCP1CONbits.CCP1M = 0x0C;             // PWM mode: P1A, P1C active-high; P1B, P1D active-high
     CCP1CONbits.P1M = 0;                    // Single output; P1A modulated; P1B, P1C, P1D assigned as port pins
     CCP1CONbits.DC1B = 0;
     
@@ -86,7 +97,7 @@ void init_PWM(void)
                                             // 199 --> 10kHz @ 32MHz, 1:4 Prescale
                                                                         
     pulse_width = (4*(PR2+1)) >> 1;
-    CCPR1L = (pulse_width >> 2) & 0x00FF;   // duty_cycle 50% --> CCPR1L = (0.5 * (4*(PR2+1))) >> 2
+    CCPR1L = 100;//(pulse_width >> 2) & 0x00FF;   // duty_cycle 50% --> CCPR1L = (0.5 * (4*(PR2+1))) >> 2
     
 }
 
@@ -95,7 +106,7 @@ void ms_delay(unsigned short delay)
 {
     unsigned short i;
 
-    for(i=0; i<delay; i++)
+    for(i=0; i<delay; ++i)
     {
         TMR1 = 0;
         while(TMR1 < 31912);    //3988 for 1:8 prescale with 32MHz FOSC internal clock
@@ -106,11 +117,15 @@ void ms_delay(unsigned short delay)
 //------------------------------------------------------------------------------
 void us_delay(unsigned short delay)
 {
-    unsigned short i;
-
-    for(i=0; i<delay; i++)
-    {
-        TMR1 = 0;
-        while(TMR1 < 31);        //for 1:1 prescale with 32MHz internal clock, theoretically should be 32
-    } 
+//    unsigned short i;
+//
+//    for(i=0; i<delay; ++i)
+//    {
+//        TMR1 = 0;
+//        while(TMR1 < 8);        //for 1:1 prescale with 32MHz internal clock, theoretically should be 32
+//    } 
+     
+    delay = delay*4;
+    
+    while(TMR1 < delay);
 }

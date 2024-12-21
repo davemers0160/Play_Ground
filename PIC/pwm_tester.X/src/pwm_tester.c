@@ -33,24 +33,67 @@ void main(void)
 {
 
     unsigned short idx;
+    unsigned short t = 4;
     
     init_PIC();
-    init_PWM();
+    //init_PWM();
     init_TMR();   
     
     TRISA = 0b00001000;  //RA0 to RA3 set as outputs, RA4 as input
     
-    LATA = 0x00;
+    //LATA = 0x00;
     us_delay(1000);
 
-    
     while(1)
     {
         // PWM runs on P1A --> RA5
         // nothing left to do
         
-        us_delay(100);
+        PORTAbits.RA5 = 1;
+        asm("nop");
+        asm("nop");
+        asm("nop");
+        asm("nop");
+      
+//        idx=0;
+//        while(idx<1)
+//            ++idx;
+        
+        //us_delay(t);
 
+        
+        PORTAbits.RA5 = 0;
+        asm("nop");
+        asm("nop");
+        asm("nop");
+        asm("nop");     // 38.4 kHz
+        asm("nop");
+//        asm("nop");     // 33.3 kHz
+//        asm("nop");
+//        asm("nop");     // 29.3 kHz
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");     // 23.7 kHz
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");     // 17.8 kHz
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");     // 14.7 kHz
+        
+
+        
+        //us_delay(1);      
+//        idx=0;
+//        while(idx<1)
+//            ++idx;
     }   // end of while(1))
     
 }   // end of main

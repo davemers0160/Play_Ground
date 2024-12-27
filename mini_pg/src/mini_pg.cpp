@@ -242,25 +242,22 @@ inline std::vector<std::complex<float>> generate_qam_constellation(uint16_t num_
 {
     uint32_t idx, jdx;
 
-    std::vector<uint32_t> gc = gray_code(num_bits);
     uint32_t side_length = 1 << (num_bits >> 1);
-    
+    double step = 2.0;
+    int16_t start = -side_length + 1;
+    float scale = 1.0/abs(start);
     uint32_t index = 0;
-    uint32_t shift = 0;
 
+    std::vector<uint32_t> gc = gray_code(num_bits);
     std::vector<std::complex<float>> bit_mapper(1 << num_bits);
-    float offset = (side_length << 1) - 1.0;
 
     // create the base locations for the constellation
-    std::vector<float> c_p;
-    double step = 2.0;
-    int16_t start = side_length - offset;
-    float scale = 1.0/abs(start);
+    std::vector<float> c_p(side_length, 0);
 
     // create the primary normalized points for the constellation
     for (idx = 0; idx < side_length; ++idx)
     {
-        c_p.push_back(start * scale);
+        c_p[idx] = (start * scale);
         start += step;
     }
 
@@ -272,13 +269,12 @@ inline std::vector<std::complex<float>> generate_qam_constellation(uint16_t num_
         // X
         for (jdx = 0; jdx < side_length; ++jdx)
         {
-            // odd/even row check
-            shift = ((idx & 0x01) == 1) ? (side_length - 1) - jdx : jdx;
-            
-            // assign
-            bit_mapper[gc[index + shift]] = std::complex<float>(c_p[jdx], c_p[idx]);
+            // check row and perform zig-zag assignment
+            index = ((idx & 0x01) == 1) ? (side_length * (idx + 1) - 1) - jdx : jdx + (side_length * idx);
+ 
+            // assign to bit_mapper
+            bit_mapper[gc[index]] = std::complex<float>(c_p[jdx], c_p[idx]);
         }
-        index += side_length;
     }
 
     return bit_mapper;
@@ -329,7 +325,7 @@ int main(int argc, char** argv)
         
         num_loops = 100;
 
-        const uint16_t num_bits = 4;
+        const uint16_t num_bits = 6;
         uint32_t num = 1 << num_bits;
         std::vector<uint32_t> gc = gray_code(num_bits);
         std::bitset<num_bits> x;
@@ -413,10 +409,29 @@ int main(int argc, char** argv)
         for (idx = 0; idx < bit_mapper2.size(); ++idx)
         {
             x = gc[idx];
-            std::cout << idx << "\t" << gc[idx] << "\t" << x << "\t" << 3.0f*bit_mapper2[idx] << std::endl;
+            std::cout << idx << "\t" << "\t" << x << "\t" << bit_mapper[idx] << "\t" << ((float)(side_length - 1.0)) * bit_mapper2[idx] << std::endl;
         }
 
         std::cout << std::endl;
+
+
+        index = 0;
+        for (idx = 0; idx < side_length; ++idx)
+        {
+            for (jdx = 0; jdx < side_length; ++jdx)
+            {
+                index = ((idx & 0x01) == 1) ? (side_length * (idx + 1) - 1) - jdx : jdx + (side_length * idx);
+                x = gc[index];
+                std::cout << index << " " << gc[index] << " " << x << " " << ((float)(side_length - 1.0)) * bit_mapper2[index] << "  \t";
+                //++index;
+            }
+            std::cout << std::endl;
+        }
+
+
+
+
+
 
         bp = 0;
 

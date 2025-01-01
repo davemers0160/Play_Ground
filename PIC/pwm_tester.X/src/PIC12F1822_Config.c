@@ -16,6 +16,8 @@ void init_PIC(void)
     OSCCONbits.IRCF = 14;
     OSCCONbits.SCS = 3;
     
+    OSCTUNEbits.TUN = 0;
+    
     OPTION_REG = 0b10000000;		// Turns internal pull up resistors off
     
     INTCON = 0b00000000;            // Global Interrupt Enable, Peripheral Interrupt Enable
@@ -55,10 +57,11 @@ void init_TMR(void)
     T1CONbits.T1CKPS = 0;                   // 1:1 Prescale value
     T1CONbits.nT1SYNC = 1;
     T1CONbits.T1OSCEN = 0;
-    T1CONbits.TMR1ON = 1;
 
     //T1GCON = 0b00000000;                    // delay set to ~1us
     T1GCONbits.TMR1GE = 0;
+    
+    T1CONbits.TMR1ON = 1;
     
     TMR1 = 0;
     
@@ -124,7 +127,8 @@ void us_delay(unsigned short delay)
 //        TMR1 = 0;
 //        while(TMR1 < 8);        //for 1:1 prescale with 32MHz internal clock, theoretically should be 32
 //    } 
-     
+    
+    TMR1 = 0;
     delay = delay*4;
     
     while(TMR1 < delay);

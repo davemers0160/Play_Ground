@@ -67,8 +67,7 @@ void main(void)
         asm("nop");
         asm("nop");
         asm("nop");     // 38.4 kHz
-        asm("nop");
-//        asm("nop");     // 33.3 kHz
+        asm("nop");     // 33.3 kHz
 //        asm("nop");
 //        asm("nop");     // 29.3 kHz
 //        asm("nop");
@@ -80,13 +79,13 @@ void main(void)
 //        asm("nop");
 //        asm("nop");
 //        asm("nop");
-//        asm("nop");     // 17.8 kHz
+//        asm("nop");     
+//        asm("nop");    // 17.8 kHz
 //        asm("nop");
 //        asm("nop");
 //        asm("nop");
-//        asm("nop");
-//        asm("nop");
-//        asm("nop");     // 14.7 kHz
+//        asm("nop");    // 14.7 kHz
+//        asm("nop");     
         
 
         

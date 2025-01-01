@@ -281,6 +281,42 @@ inline std::vector<std::complex<float>> generate_qam_constellation(uint16_t num_
 
 }   // end of generate_qam_constellation
 
+//-----------------------------------------------------------------------------
+inline std::vector<std::complex<int16_t>> generate_qam(std::vector<int16_t>& data, uint64_t sample_rate, uint16_t num_bits, float symbol_length, float amplitude)
+{
+    uint32_t idx, jdx;
+    uint16_t num = 0;
+
+    std::vector<std::complex<float>> bit_mapper = generate_qam_constellation(num_bits);
+
+    uint32_t samples_per_bit = floor(sample_rate * symbol_length + 0.5);
+
+    // make sure that data has the right number of bits
+    uint16_t n = mod(data.size(), num_bits);
+    if (n != 0)
+    {
+        data.insert(data.end(), n, 0);
+    }
+
+    // get the number of bit groupings
+    uint32_t num_bit_groups = floor(data.size() / num_bits);
+
+    std::vector<complex<int16_t>> iq;
+
+    for (idx = 0; idx < data.size(); idx += num_bits)
+    {
+        num = 0;
+        for (jdx = 0; jdx < num_bits; ++jdx)
+        {
+            num += data[idx+jdx] << (num_bits - jdx);
+        }
+
+        iq.insert(iq.end(), samples_per_bit, amplitude* bit_mapper[num]);
+
+    }
+
+}   // end of generate_qam
+
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -427,11 +463,6 @@ int main(int argc, char** argv)
             }
             std::cout << std::endl;
         }
-
-
-
-
-
 
         bp = 0;
 

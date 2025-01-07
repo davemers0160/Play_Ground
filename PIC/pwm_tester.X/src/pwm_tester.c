@@ -9,7 +9,7 @@
 #include "PIC12F1822_Config.h"
 
 //------------------------------------------------------------------------------
-#pragma config CLKOUTEN = OFF, MCLRE=OFF, WDTE=OFF, BOREN=OFF, PWRTE=OFF, FCMEN=OFF, IESO=OFF, CP=OFF, CPD=OFF, FOSC=INTOSC
+#pragma config CLKOUTEN = ON, MCLRE=OFF, WDTE=OFF, BOREN=OFF, PWRTE=OFF, FCMEN=OFF, IESO=OFF, CP=OFF, CPD=OFF, FOSC=INTOSC
 #pragma config STVREN = OFF, BORV = HI, LVP = OFF, WRT = OFF, PLLEN = ON
 
 
@@ -33,13 +33,14 @@ void main(void)
 {
 
     unsigned short idx;
-    unsigned short t = 4;
+    unsigned short t = 26;
     
     init_PIC();
     //init_PWM();
     init_TMR();   
     
     TRISA = 0b00001000;  //RA0 to RA3 set as outputs, RA4 as input
+    PORTAbits.RA5 = 0;
     
     //LATA = 0x00;
     us_delay(1000);
@@ -50,24 +51,27 @@ void main(void)
         // nothing left to do
         
         PORTAbits.RA5 = 1;
-        asm("nop");
-        asm("nop");
-        asm("nop");
-        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
       
+        TMR1 = 0;
+        t = 80;
+        while(TMR1 < t);
 //        idx=0;
 //        while(idx<1)
 //            ++idx;
         
-        //us_delay(t);
+        //us_delay(1);
 
         
         PORTAbits.RA5 = 0;
-        asm("nop");
-        asm("nop");
-        asm("nop");
-        asm("nop");     // 38.4 kHz
-        asm("nop");     // 33.3 kHz
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");
+//        asm("nop");     // 38.4 kHz
+//        asm("nop");     // 33.3 kHz
 //        asm("nop");
 //        asm("nop");     // 29.3 kHz
 //        asm("nop");
@@ -87,9 +91,11 @@ void main(void)
 //        asm("nop");    // 14.7 kHz
 //        asm("nop");     
         
-
+        TMR1 = 0;
+        t = 80;
+        while(TMR1 < t);
         
-        //us_delay(1);      
+       // us_delay(1);
 //        idx=0;
 //        while(idx<1)
 //            ++idx;

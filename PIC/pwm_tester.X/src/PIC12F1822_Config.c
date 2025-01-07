@@ -14,7 +14,7 @@ void init_PIC(void)
     //OSCCON = 0b11110000;            // 4x PLL enabled, set internal oscillator to 8(32)MHz, clock determined by FOSC
     OSCCONbits.SPLLEN = 1;
     OSCCONbits.IRCF = 14;
-    OSCCONbits.SCS = 3;
+    OSCCONbits.SCS = 0;
     
     OSCTUNEbits.TUN = 0;
     
@@ -120,16 +120,15 @@ void ms_delay(unsigned short delay)
 //------------------------------------------------------------------------------
 void us_delay(unsigned short delay)
 {
-//    unsigned short i;
-//
+    unsigned short i;
+
 //    for(i=0; i<delay; ++i)
 //    {
 //        TMR1 = 0;
-//        while(TMR1 < 8);        //for 1:1 prescale with 32MHz internal clock, theoretically should be 32
+//        while(TMR1 < 5);        //for 1:1 prescale with 32MHz internal clock, theoretically should be 32
 //    } 
     
     TMR1 = 0;
-    delay = delay*4;
-    
-    while(TMR1 < delay);
+    i = delay*8 + 135;
+    while(TMR1 < i);
 }

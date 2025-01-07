@@ -33,7 +33,8 @@ void main(void)
 {
 
     unsigned short idx;
-    unsigned short t = 26;
+    unsigned short t_on = 8*60;
+    unsigned short t_off = 8*60;
     
     init_PIC();
     //init_PWM();
@@ -45,6 +46,7 @@ void main(void)
     //LATA = 0x00;
     us_delay(1000);
 
+    
     while(1)
     {
         // PWM runs on P1A --> RA5
@@ -57,8 +59,8 @@ void main(void)
 //        asm("nop");
       
         TMR1 = 0;
-        t = 80;
-        while(TMR1 < t);
+        //t = 80;
+        while(TMR1 < t_on);
 //        idx=0;
 //        while(idx<1)
 //            ++idx;
@@ -92,8 +94,8 @@ void main(void)
 //        asm("nop");     
         
         TMR1 = 0;
-        t = 80;
-        while(TMR1 < t);
+        //t = 80;
+        while(TMR1 < t_off);
         
        // us_delay(1);
 //        idx=0;

@@ -168,7 +168,7 @@ inline std::vector<std::complex<int16_t>> generate_qam(std::vector<int16_t>& dat
     uint32_t idx, jdx;
     uint16_t num = 0;
 
-    std::vector<std::complex<float>> bit_mapper = generate_square_qam_constellation(num_bits);
+    std::vector<std::complex<float>> bit_mapper = generate_qam_constellation(num_bits);
 
     uint32_t samples_per_bit = floor(sample_rate * symbol_length + 0.5);
 
@@ -245,74 +245,69 @@ int main(int argc, char** argv)
         uint16_t num_bits = 6;
         uint32_t num = 1 << num_bits;
         std::vector<uint32_t> gc = gray_code(num_bits);
-        std::bitset<5> x;
+        std::bitset<6> x;
         uint32_t side_length = 1<<(num_bits>>1);
         uint32_t index = 0;
         uint32_t shift = 0;
 
         auto p16 = closest_integer_divisors(16);
 
-        std::vector<std::complex<float>> bit_mapper3 = generate_square_qam_constellation(num_bits);
+        std::vector<std::complex<float>> bit_mapper3 = generate_qam_constellation(num_bits);
 
-        num_bits = 5;
+        num_bits = 6;
         num = 1 << num_bits;
         int16_t rows, cols;
         std::vector<std::complex<float>> bit_mapper(num);
 
         auto p32 = closest_integer_divisors(num);
         int16_t div_diff;
-        if (p32.first == p32.second)
+
+        std::cout << "not square" << std::endl;
+        div_diff = (p32.second - p32.first)>>2;
+        rows = p32.first;
+        cols = p32.second;
+
+        gc = gray_code(num_bits);
+
+        std::vector<float> c_y(rows, 0);
+        std::vector<float> c_x(cols, 0);
+
+        float row_start = (-rows + 1);
+        float row_scale = 1.0 / (float)abs(row_start);
+
+        float col_start = (-cols + 1);
+        float col_scale = 1.0 / (float)abs(col_start);
+
+        // create the primary normalized points for the constellation
+        for (idx = 0; idx < rows; ++idx)
         {
-            std::cout << "square" << std::endl;
+            c_y[idx] = (row_start * row_scale);
+            row_start += 2;
         }
-        else
+
+        for (idx = 0; idx < cols; ++idx)
         {
-            std::cout << "not square" << std::endl;
-            div_diff = (p32.second - p32.first)>>2;
-            rows = p32.first;
-            cols = p32.second;
-
-            gc = gray_code(num_bits);
-
-            std::vector<float> c_r(rows, 0);
-            std::vector<float> c_c(cols, 0);
-
-            float row_start = (-rows + 1);
-            float row_scale = 1.0 / (float)abs(row_start);
-
-            float col_start = (-cols + 1);
-            float col_scale = 1.0 / (float)abs(col_start);
-
-            // create the primary normalized points for the constellation
-            for (idx = 0; idx < rows; ++idx)
-            {
-                c_r[idx] = (row_start * row_scale);
-                row_start += 2;
-            }
-
-            for (idx = 0; idx < cols; ++idx)
-            {
-                c_c[idx] = (col_start * col_scale);
-                col_start += 2;
-            }
-
-            // Y
-            for (idx = 0; idx < rows; ++idx)
-            {
-                // X
-                for (jdx = 0; jdx < cols; ++jdx)
-                {
-                    // check row and perform zig-zag assignment
-                    index = ((idx & 0x01) == 1) ? (idx+1)*cols - (jdx+1) : idx*cols + jdx;
-                    std::cout << "index: " << index << std::endl;
-                    // assign to bit_mapper
-                    bit_mapper[gc[index]] = std::complex<float>(c_c[jdx], c_r[idx]);
-                }
-            }
-
-            bp = 5;
-
+            c_x[idx] = (col_start * col_scale);
+            col_start += 2;
         }
+
+        // Y
+        for (idx = 0; idx < rows; ++idx)
+        {
+            // X
+            for (jdx = 0; jdx < cols; ++jdx)
+            {
+                // check row and perform zig-zag assignment
+                index = ((idx & 0x01) == 1) ? (idx+1)*cols - (jdx+1) : idx*cols + jdx;
+                std::cout << "index: " << index << std::endl;
+                // assign to bit_mapper
+                bit_mapper[gc[index]] = std::complex<float>(c_x[jdx], c_y[idx]);
+            }
+        }
+
+        bp = 5;
+
+        
 
 
         //
@@ -327,6 +322,19 @@ int main(int argc, char** argv)
             }
             std::cout << std::endl;
         }
+
+        index = 0;
+        for (idx = 0; idx < rows; ++idx)
+        {
+            for (jdx = 0; jdx < cols; ++jdx)
+            {
+                index = ((idx & 0x01) == 1) ? (idx + 1) * cols - (jdx + 1) : idx * cols + jdx;
+                x = gc[index];
+                std::cout << index << " " << gc[index] << " " << x << " (" << (float)(cols - 1) * bit_mapper3[index].real() << "," << (float)(rows - 1) * bit_mapper3[index].imag() << ") \t";
+            }
+            std::cout << std::endl;
+        }
+
 
         auto p64 = closest_integer_divisors(64);
         auto p128 = closest_integer_divisors(128);
@@ -402,7 +410,7 @@ int main(int argc, char** argv)
         std::cout << std::endl;
 
 
-        std::vector<std::complex<float>> bit_mapper2 = generate_square_qam_constellation(num_bits);
+        std::vector<std::complex<float>> bit_mapper2 = generate_qam_constellation(num_bits);
 
         index = 0;
         for (idx = 0; idx < bit_mapper2.size(); ++idx)

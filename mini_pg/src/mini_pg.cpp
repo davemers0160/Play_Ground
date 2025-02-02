@@ -75,12 +75,143 @@ volatile bool run = true;
 std::string console_input1;
 
 //-----------------------------------------------------------------------------
+enum MODULATION_TYPES
+{
+    MT_CW = 0,    /*!< Continuous Wave (CW) Waveform */
+    MT_ASK = 1,    /*!< Amplitude Shift Keyed (ASK) Modulation */
+    MT_4PAM = 2,    /*!< Pulse Amplitude Modulation (PAM) */
+    MT_FM = 3,    /*!< Frequency Modulation (FM) */
+    MT_FSK = 4,    /*!< Frequency Shift Keyed (FSK) Modulation -- AKA 2FSK */
+    MT_4FSK = 5,    /*!< 4 Frequency Shift Keyed (4FSK) Modulation */
+    MT_LFM = 6,    /*!< Linear Frequency Modulation (LFM) Modulation */
+    MT_BPSK = 7,    /*!< Binary Phased Shift Keyed (BPSK) Modulation */
+    MT_OQPSK = 8,    /*!< Offset Quadrature Phased Shift Keyed (OQPSK) Modulation */
+    MT_DPSK = 9,    /*!< Differential Phased Shift Keyed (DPSK) Modulation */
+    MT_DQPSK = 10,   /*!< Differential Quadrature Phased Shift Keyed (DQPSK) Modulation */
+    MT_16QAM = 11,   /*!< 16 Symbol Quadrature Amplitude Modulation (16-QAM) */
+    MT_64QAM = 12,    /*!< 64 Symbol Quadrature Amplitude Modulation (64-QAM) */
+    MT_PI4QPSK = 13     /*!< PI/4 Quadrature Phased Shift Keyed (PI/4-QPSK) Modulation */
+};
+
+//-----------------------------------------------------------------------------
+enum SPECIALTY_PARAMS_TYPE
+{
+    MP_AM = 0,
+    MP_FM = 1,
+    MP_IQ = 2
+};
+
+//-----------------------------------------------------------------------------
+typedef struct iq_params
+{
+    //bool filter;                            /*!< Does the signal need to be filtered */
+    int64_t filter_cutoff_freq;               /*!< Filter cutoff frequency in Hz */
+    //uint16_t num_bits;                        /*!< Number of bits used for QAM modulation */
+
+
+#ifdef __cplusplus
+
+    std::vector<std::complex<float>> bit_mapper;
+
+    /**
+    @brief Default constructor
+    */
+    iq_params() {};
+
+    /**
+    @brief Primary constructor
+
+    @param [in] filter_cutoff_freq Filter cutoff frequency in Hz
+    */
+    iq_params(int64_t fc) : filter_cutoff_freq(fc) {}
+
+    //-----------------------------------------------------------------------------
+    inline void set_bit_mapper(std::vector<std::complex<float>> bm)
+    {
+        bit_mapper.clear();
+        bit_mapper = bm;
+    }   // end of set_bit_mapper
+
+#endif
+
+} iq_params;
+
+//-----------------------------------------------------------------------------
+typedef struct modulation_params
+{
+    uint16_t modulation_type;               /*!< Modulation type */
+    uint64_t sample_rate;                   /*!< RF sample rate in units of Hz */
+    double symbol_length;                   /*!< Length of a single symbol in seconds */
+    double guard_time;                      /*!< Length of any off period between a group of symbols in seconds */
+    double amplitude;                       /*!< Final max amplitude of the signal */
+    bool filter;                            /*!< Does the signal need to be filtered */
+    bool hop;                               /*!< Does the signal hop */
+
+    void* mp_t;                             /*!< Pointer to a struct that will be used to pass specific modulation parameters */
+
+#ifdef __cplusplus
+
+    uint8_t specialty_type = 0;
+
+    /**
+    @brief Default constructor
+    */
+    modulation_params() {};
+
+    /**
+    @brief Primary constructor
+
+    @param [in] modulation_type Modulation type
+    @param [in] sample_rate RF sample rate in units of Hz
+    @param [in] symbol_length Length of a single symbol in seconds
+    @param [in] guard_time Length of any off period between a group of symbols in seconds
+    @param [in] amplitude Final max amplitude of the signal
+    @param [in] hop Does the signal hop
+    @param [in] filter Does the signal need to be filtered
+    @param [in] mp_t Void pointer to a struct that will be used to pass specific modulation parameters
+
+    @sa am_params, fm_params, iq_params
+    */
+    modulation_params(uint16_t mt, uint64_t sr, double sl, double gt, double amp, bool filt, bool h, void* mp_t_) :
+        modulation_type(mt), sample_rate(sr), symbol_length(sl), guard_time(gt), amplitude(amp), filter(filt), hop(h), mp_t(mp_t_)
+    {
+
+        switch (modulation_type)
+        {
+        case MODULATION_TYPES::MT_CW:
+        case MODULATION_TYPES::MT_FM:
+        case MODULATION_TYPES::MT_FSK:
+        case MODULATION_TYPES::MT_4FSK:
+        case MODULATION_TYPES::MT_LFM:
+            specialty_type = SPECIALTY_PARAMS_TYPE::MP_FM;
+            break;
+
+        case MODULATION_TYPES::MT_ASK:
+        case MODULATION_TYPES::MT_4PAM:
+            specialty_type = SPECIALTY_PARAMS_TYPE::MP_AM;
+            break;
+
+        case MODULATION_TYPES::MT_BPSK:
+        case MODULATION_TYPES::MT_OQPSK:
+        case MODULATION_TYPES::MT_DPSK:
+        case MODULATION_TYPES::MT_DQPSK:
+        case MODULATION_TYPES::MT_PI4QPSK:
+            specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
+            break;
+        }
+
+    }
+    
+
+#endif
+
+} modulation_params;
+
+//-----------------------------------------------------------------------------
 template<typename T>
 void save_complex_data(std::string filename, std::vector<std::complex<T>> data)
 {
     std::ofstream data_file;
-
-    //T r, q;
 
     data_file.open(filename, ios::out | ios::binary);
 
@@ -198,6 +329,44 @@ inline std::vector<std::complex<int16_t>> generate_qam(std::vector<int16_t>& dat
 
 }   // end of generate_qam
 
+//-----------------------------------------------------------------------------
+template<typename OUTPUT, typename DATA>
+inline std::vector<std::complex<OUTPUT>> generate_pi4qpsk(std::vector<DATA>& data, modulation_params& mp)
+{
+    uint32_t idx;
+    uint8_t index = 0;
+    uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
+
+    // data must be an even multiple of 2
+    if (data.size() & 0x0001 == 1)
+        data.push_back(0);
+
+    DATA v;
+    uint16_t offset;
+
+    iq_params* iq_mp = (iq_params*)mp.mp_t;
+
+    std::complex<OUTPUT> symbol;
+
+    std::vector<std::complex<OUTPUT>> iq_data;
+
+    for (idx = 0; idx < data.size(); idx += 2)
+    {
+        v = (data[idx] << 1 | data[idx + 1]) & 0x03;
+
+        offset = 4*(index & 0x0001);
+        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[v + offset]);
+
+        ++index;
+
+        // copy the repeated samples for a single symbol
+        iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
+    }
+
+    return iq_data;
+
+}
+
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -242,198 +411,236 @@ int main(int argc, char** argv)
         
         num_loops = 100;
 
-        uint16_t num_bits = 6;
-        uint32_t num = 1 << num_bits;
-        std::vector<uint32_t> gc = gray_code(num_bits);
-        std::bitset<6> x;
-        uint32_t side_length = 1<<(num_bits>>1);
-        uint32_t index = 0;
-        uint32_t shift = 0;
+        //uint16_t num_bits = 6;
+        //uint32_t num = 1 << num_bits;
+        //std::vector<uint32_t> gc = gray_code(num_bits);
+        //std::bitset<6> x;
+        //uint32_t side_length = 1<<(num_bits>>1);
+        //uint32_t index = 0;
+        //uint32_t shift = 0;
 
-        auto p16 = closest_integer_divisors(16);
+        int16_t mod_type = MODULATION_TYPES::MT_PI4QPSK;
+        uint64_t sample_rate = 10000000;
+        float symbol_length = 0.000001;
+        float guard_time = 0;
+        int64_t offset_frequency = 0;
+        int64_t freq_deviation = 12500;
+        bool hop = false;
+        bool filter = false;
+        int64_t fc = 2400000;
+        double amplitude = 2020;
+        double data_scale = 1000.0;
+        double k = 0.1;
+        uint32_t num_bits = 40;
 
-        std::vector<std::complex<float>> bit_mapper3 = generate_qam_constellation(num_bits);
+        float v0 = (float)(amplitude * 0.70710678118654752440084436210485);
+        float v1 = (float)(amplitude);
 
-        num_bits = 6;
-        num = 1 << num_bits;
-        int16_t rows, cols;
-        std::vector<std::complex<float>> bit_mapper(num);
+        std::vector<std::complex<float>> bit_mapper = {{-v0, -v0}, {-v0, v0}, {v0, -v0}, {v0, v0},  
+                                                       {-v1, 0}, {0, v1}, {0, -v1}, {v1, 0} };
 
-        auto p32 = closest_integer_divisors(num);
-        int16_t div_diff;
+        iq_params* p4qpsk_mp = new iq_params(fc);
+        p4qpsk_mp->set_bit_mapper(bit_mapper);
 
-        std::cout << "not square" << std::endl;
-        div_diff = (p32.second - p32.first)>>2;
-        rows = p32.first;
-        cols = p32.second;
+        modulation_params mp(mod_type, sample_rate, symbol_length, guard_time, amplitude, filter, hop, (void*)p4qpsk_mp);
 
-        gc = gray_code(num_bits);
+        // random number generators
+        std::default_random_engine generator;
+        std::uniform_int_distribution<int16_t> bits_gen = std::uniform_int_distribution<int16_t>(0, 1);
 
-        std::vector<float> c_y(rows, 0);
-        std::vector<float> c_x(cols, 0);
+        std::vector<int16_t> data(1024,0);
 
-        float row_start = (-rows + 1);
-        float row_scale = 1.0 / (float)abs(row_start);
+        for (jdx = 0; jdx < data.size(); ++jdx)
+            data[jdx] = bits_gen(generator);
 
-        float col_start = (-cols + 1);
-        float col_scale = 1.0 / (float)abs(col_start);
+        std::vector<complex<int16_t>> iq_tmp = generate_pi4qpsk<int16_t>(data, mp);
 
-        // create the primary normalized points for the constellation
-        for (idx = 0; idx < rows; ++idx)
-        {
-            c_y[idx] = (row_start * row_scale);
-            row_start += 2;
-        }
+        save_complex_data("d:/Projects/data/RF/p4_qpsk_test.sc16", iq_tmp);
 
-        for (idx = 0; idx < cols; ++idx)
-        {
-            c_x[idx] = (col_start * col_scale);
-            col_start += 2;
-        }
+        //auto p16 = closest_integer_divisors(16);
 
-        // Y
-        for (idx = 0; idx < rows; ++idx)
-        {
-            // X
-            for (jdx = 0; jdx < cols; ++jdx)
-            {
-                // check row and perform zig-zag assignment
-                index = ((idx & 0x01) == 1) ? (idx+1)*cols - (jdx+1) : idx*cols + jdx;
-                std::cout << "index: " << index << std::endl;
-                // assign to bit_mapper
-                bit_mapper[gc[index]] = std::complex<float>(c_x[jdx], c_y[idx]);
-            }
-        }
+        //std::vector<std::complex<float>> bit_mapper3 = generate_qam_constellation(num_bits);
 
-        bp = 5;
+        //num_bits = 6;
+        //num = 1 << num_bits;
+        //int16_t rows, cols;
+        //std::vector<std::complex<float>> bit_mapper(num);
 
-        
+        //auto p32 = closest_integer_divisors(num);
+        //int16_t div_diff;
 
+        //std::cout << "not square" << std::endl;
+        //div_diff = (p32.second - p32.first)>>2;
+        //rows = p32.first;
+        //cols = p32.second;
+
+        //gc = gray_code(num_bits);
+
+        //std::vector<float> c_y(rows, 0);
+        //std::vector<float> c_x(cols, 0);
+
+        //float row_start = (-rows + 1);
+        //float row_scale = 1.0 / (float)abs(row_start);
+
+        //float col_start = (-cols + 1);
+        //float col_scale = 1.0 / (float)abs(col_start);
+
+        //// create the primary normalized points for the constellation
+        //for (idx = 0; idx < rows; ++idx)
+        //{
+        //    c_y[idx] = (row_start * row_scale);
+        //    row_start += 2;
+        //}
+
+        //for (idx = 0; idx < cols; ++idx)
+        //{
+        //    c_x[idx] = (col_start * col_scale);
+        //    col_start += 2;
+        //}
+
+        //// Y
+        //for (idx = 0; idx < rows; ++idx)
+        //{
+        //    // X
+        //    for (jdx = 0; jdx < cols; ++jdx)
+        //    {
+        //        // check row and perform zig-zag assignment
+        //        index = ((idx & 0x01) == 1) ? (idx+1)*cols - (jdx+1) : idx*cols + jdx;
+        //        std::cout << "index: " << index << std::endl;
+        //        // assign to bit_mapper
+        //        bit_mapper[gc[index]] = std::complex<float>(c_x[jdx], c_y[idx]);
+        //    }
+        //}
+
+        //bp = 5;
 
         //
-        index = 0;
-        for (idx = 0; idx < rows; ++idx)
-        {
-            for (jdx = 0; jdx < cols; ++jdx)
-            {
-                index = ((idx & 0x01) == 1) ? (idx + 1) * cols - (jdx + 1) : idx * cols + jdx;
-                x = gc[index];
-                std::cout << index << " " << gc[index] << " " << x << " (" << (float)(cols-1)*bit_mapper[index].real() << "," << (float)(rows - 1) * bit_mapper[index].imag() << ") \t";
-            }
-            std::cout << std::endl;
-        }
-
-        index = 0;
-        for (idx = 0; idx < rows; ++idx)
-        {
-            for (jdx = 0; jdx < cols; ++jdx)
-            {
-                index = ((idx & 0x01) == 1) ? (idx + 1) * cols - (jdx + 1) : idx * cols + jdx;
-                x = gc[index];
-                std::cout << index << " " << gc[index] << " " << x << " (" << (float)(cols - 1) * bit_mapper3[index].real() << "," << (float)(rows - 1) * bit_mapper3[index].imag() << ") \t";
-            }
-            std::cout << std::endl;
-        }
 
 
-        auto p64 = closest_integer_divisors(64);
-        auto p128 = closest_integer_divisors(128);
-        auto p256 = closest_integer_divisors(256);
+        ////
+        //index = 0;
+        //for (idx = 0; idx < rows; ++idx)
+        //{
+        //    for (jdx = 0; jdx < cols; ++jdx)
+        //    {
+        //        index = ((idx & 0x01) == 1) ? (idx + 1) * cols - (jdx + 1) : idx * cols + jdx;
+        //        x = gc[index];
+        //        std::cout << index << " " << gc[index] << " " << x << " (" << (float)(cols-1)*bit_mapper[index].real() << "," << (float)(rows - 1) * bit_mapper[index].imag() << ") \t";
+        //    }
+        //    std::cout << std::endl;
+        //}
 
-        //std::vector<std::complex<float>> bit_mapper(1<< num_bits);
-        float offset = (side_length <<1) - 1.0;
-
-        // create the base locations for the constellation
-        std::vector<float> t_x;
-        double step = 2.0;
-        int16_t start = side_length - offset;
-
-        std::cout << "num_bits:    " << num_bits << std::endl;
-        std::cout << "num:         " << num << std::endl;
-        std::cout << "side_length: " << side_length << std::endl;
-        std::cout << "offset:      " << offset << std::endl;
-        std::cout << std::endl;
-
-        for (idx = 0; idx < side_length; ++idx)
-        {
-            t_x.push_back(start);
-            std::cout << start << "\t";
-
-            start += step;
-
-        }
-        std::cout << std::endl << std::endl;
-
-        uint32_t index2 = 0;
-
-        for (idx = 0; idx < side_length; ++idx)
-        {
-            for (jdx = 0; jdx < side_length; ++jdx)
-            {
-                shift = (idx&0x01 == 1) ? (side_length -1)-jdx : jdx;
-                x = (gc[index + shift]);
-                bit_mapper[gc[index + shift]] = std::complex<float>(t_x[jdx], t_x[idx]);
-                //bit_mapper[index2] = std::complex<float>(t_x[idx], t_x[jdx]);
-
-                std::cout << index2 << "  " << gc[index + shift] << " [" << x << "] " << bit_mapper[gc[index + shift]] << "  ";
-                ++index2;
-            }
-            index += side_length;
-            std::cout << std::endl;
-
-        }
-
-        std::cout << std::endl;
+        //index = 0;
+        //for (idx = 0; idx < rows; ++idx)
+        //{
+        //    for (jdx = 0; jdx < cols; ++jdx)
+        //    {
+        //        index = ((idx & 0x01) == 1) ? (idx + 1) * cols - (jdx + 1) : idx * cols + jdx;
+        //        x = gc[index];
+        //        std::cout << index << " " << gc[index] << " " << x << " (" << (float)(cols - 1) * bit_mapper3[index].real() << "," << (float)(rows - 1) * bit_mapper3[index].imag() << ") \t";
+        //    }
+        //    std::cout << std::endl;
+        //}
 
 
-        std::cout << "index\tgc\tbit\tbm[i]\tbm[gc[i]" <<std::endl;
-        for (idx = 0; idx < gc.size(); ++idx)
-        {
-            x = gc[idx];
-            std::cout << idx << "\t" << gc[idx] << "\t" << x << "\t" << bit_mapper[idx] << std::endl;
-        }
+        //auto p64 = closest_integer_divisors(64);
+        //auto p128 = closest_integer_divisors(128);
+        //auto p256 = closest_integer_divisors(256);
+
+        ////std::vector<std::complex<float>> bit_mapper(1<< num_bits);
+        //float offset = (side_length <<1) - 1.0;
+
+        //// create the base locations for the constellation
+        //std::vector<float> t_x;
+        //double step = 2.0;
+        //int16_t start = side_length - offset;
+
+        //std::cout << "num_bits:    " << num_bits << std::endl;
+        //std::cout << "num:         " << num << std::endl;
+        //std::cout << "side_length: " << side_length << std::endl;
+        //std::cout << "offset:      " << offset << std::endl;
+        //std::cout << std::endl;
+
+        //for (idx = 0; idx < side_length; ++idx)
+        //{
+        //    t_x.push_back(start);
+        //    std::cout << start << "\t";
+
+        //    start += step;
+
+        //}
+        //std::cout << std::endl << std::endl;
+
+        //uint32_t index2 = 0;
+
+        //for (idx = 0; idx < side_length; ++idx)
+        //{
+        //    for (jdx = 0; jdx < side_length; ++jdx)
+        //    {
+        //        shift = (idx&0x01 == 1) ? (side_length -1)-jdx : jdx;
+        //        x = (gc[index + shift]);
+        //        bit_mapper[gc[index + shift]] = std::complex<float>(t_x[jdx], t_x[idx]);
+        //        //bit_mapper[index2] = std::complex<float>(t_x[idx], t_x[jdx]);
+
+        //        std::cout << index2 << "  " << gc[index + shift] << " [" << x << "] " << bit_mapper[gc[index + shift]] << "  ";
+        //        ++index2;
+        //    }
+        //    index += side_length;
+        //    std::cout << std::endl;
+
+        //}
+
+        //std::cout << std::endl;
+
+
+        //std::cout << "index\tgc\tbit\tbm[i]\tbm[gc[i]" <<std::endl;
+        //for (idx = 0; idx < gc.size(); ++idx)
+        //{
+        //    x = gc[idx];
+        //    std::cout << idx << "\t" << gc[idx] << "\t" << x << "\t" << bit_mapper[idx] << std::endl;
+        //}
+
+        ////index = 0;
+        ////for (idx = 0; idx < side_length; ++idx)
+        ////{
+        ////    for (jdx = 0; jdx < side_length; ++jdx)
+        ////    {
+        ////        x = gc[index];
+        ////        std::cout << index << " " << gc[index] << " " << x << " " << bit_mapper[gc[index]] << "  ";
+        ////        ++index;
+        ////    }
+        ////    
+        ////    std::cout << std::endl;
+
+        ////}
+
+        //std::cout << std::endl;
+
+
+        //std::vector<std::complex<float>> bit_mapper2 = generate_qam_constellation(num_bits);
+
+        //index = 0;
+        //for (idx = 0; idx < bit_mapper2.size(); ++idx)
+        //{
+        //    x = gc[idx];
+        //    std::cout << idx << "\t" << "\t" << x << "\t" << bit_mapper[idx] << "\t" << ((float)(side_length - 1.0)) * bit_mapper2[idx] << std::endl;
+        //}
+
+        //std::cout << std::endl;
+
 
         //index = 0;
         //for (idx = 0; idx < side_length; ++idx)
         //{
         //    for (jdx = 0; jdx < side_length; ++jdx)
         //    {
+        //        index = ((idx & 0x01) == 1) ? (side_length * (idx + 1) - 1) - jdx : jdx + (side_length * idx);
         //        x = gc[index];
-        //        std::cout << index << " " << gc[index] << " " << x << " " << bit_mapper[gc[index]] << "  ";
-        //        ++index;
+        //        std::cout << index << " " << gc[index] << " " << x << " " << ((float)(side_length - 1.0)) * bit_mapper2[index] << "  \t";
+        //        //++index;
         //    }
-        //    
         //    std::cout << std::endl;
-
         //}
-
-        std::cout << std::endl;
-
-
-        std::vector<std::complex<float>> bit_mapper2 = generate_qam_constellation(num_bits);
-
-        index = 0;
-        for (idx = 0; idx < bit_mapper2.size(); ++idx)
-        {
-            x = gc[idx];
-            std::cout << idx << "\t" << "\t" << x << "\t" << bit_mapper[idx] << "\t" << ((float)(side_length - 1.0)) * bit_mapper2[idx] << std::endl;
-        }
-
-        std::cout << std::endl;
-
-
-        index = 0;
-        for (idx = 0; idx < side_length; ++idx)
-        {
-            for (jdx = 0; jdx < side_length; ++jdx)
-            {
-                index = ((idx & 0x01) == 1) ? (side_length * (idx + 1) - 1) - jdx : jdx + (side_length * idx);
-                x = gc[index];
-                std::cout << index << " " << gc[index] << " " << x << " " << ((float)(side_length - 1.0)) * bit_mapper2[index] << "  \t";
-                //++index;
-            }
-            std::cout << std::endl;
-        }
 
         bp = 0;
 

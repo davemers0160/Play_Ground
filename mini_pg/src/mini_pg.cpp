@@ -457,6 +457,8 @@ int main(int argc, char** argv)
 
         save_complex_data("d:/Projects/data/RF/p4_qpsk_test.sc16", iq_tmp);
 
+        bp = 3;
+
         //auto p16 = closest_integer_divisors(16);
 
         //std::vector<std::complex<float>> bit_mapper3 = generate_qam_constellation(num_bits);

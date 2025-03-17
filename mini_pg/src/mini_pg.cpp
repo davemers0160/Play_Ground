@@ -367,6 +367,44 @@ inline std::vector<std::complex<OUTPUT>> generate_pi4qpsk(std::vector<DATA>& dat
 
 }
 
+//-----------------------------------------------------------------------------
+template<typename OUTPUT, typename DATA>
+inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& data, modulation_params& mp)
+{
+    uint32_t idx;
+    uint8_t index = 0;
+    uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
+
+    // data must be an even multiple of 3
+    uint32_t rem = data.size() % num_bits;
+    if (rem != 0)
+        data.insert(data.end(), rem, 0);
+
+    DATA v;
+    uint16_t offset;
+
+    iq_params* iq_mp = (iq_params*)mp.mp_t;
+
+    std::complex<OUTPUT> symbol;
+
+    std::vector<std::complex<OUTPUT>> iq_data;
+
+    for (idx = 0; idx < data.size(); idx += 3)
+    {
+        v = (data[idx] << 2 | data[idx + 1] << 1 | data[idx + 2]) & 0x07;
+
+        offset = 8 * (index & 0x0001);
+        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[v + offset]);
+
+        ++index;
+
+        // copy the repeated samples for a single symbol
+        iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
+    }
+
+    return iq_data;
+
+}
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -420,18 +458,14 @@ int main(int argc, char** argv)
         std::vector<std::complex<int16_t>> iq_data = {{0,1}, {2,3}, {4,5}};
         uint32_t num_samples = iq_data.size();
 
-        test8_t.resize(2*sizeof(uint32_t) + num_samples *sizeof(iq_data[0]));
+        double amplitude = 1.0;
+        float v0 = (float)(amplitude * 0.70710678118654752440084436210485);
+        float v1 = (float)(amplitude);
+        float v2 = (float)(amplitude * 0.38268343236509);    // cos(3*pi/8)
+        float v3 = (float)(amplitude * 0.923879532511287);   // sin(3*pi/8)
 
-        uint8_t *temp;
-        temp = reinterpret_cast<uint8_t*>(&b1);
-        std::copy(temp, temp + sizeof(b1), test8_t.begin());
-        temp = reinterpret_cast<uint8_t*>(&b2);
-        std::copy(temp, temp + sizeof(b2), test8_t.begin()+4);
-
-        std::copy(reinterpret_cast<uint8_t*>(&iq_data[0]), reinterpret_cast<uint8_t*>(&iq_data[0]) + (4 * num_samples), test8_t.begin()+8);
-
-
-
+        std::vector<std::complex<float>> bit_mapper = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0}, 
+                                                        {v2, -v3}, {-v2, -v3}, {-v3, v2}, {-v3, -v2}, {v3, -v2}, {v3, v2}, {-v2, v3}, {v2, v3} };
 
         bp = 1;
 

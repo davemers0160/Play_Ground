@@ -369,6 +369,40 @@ inline std::vector<std::complex<OUTPUT>> generate_pi4qpsk(std::vector<DATA>& dat
 
 //-----------------------------------------------------------------------------
 template<typename OUTPUT, typename DATA>
+inline std::vector<std::complex<OUTPUT>> generate_8psk(std::vector<DATA>& data, modulation_params& mp)
+{
+    uint32_t idx;
+    uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
+
+    // data must be an even multiple of 3
+    uint32_t rem = data.size() % num_bits;
+    if (rem != 0)
+        data.insert(data.end(), rem, 0);
+
+    DATA v;
+
+    iq_params* iq_mp = (iq_params*)mp.mp_t;
+
+    std::complex<OUTPUT> symbol;
+
+    std::vector<std::complex<OUTPUT>> iq_data;
+
+    for (idx = 0; idx < data.size(); idx += 3)
+    {
+        v = (data[idx] << 2 | data[idx + 1] << 1 | data[idx + 2]) & 0x07;
+
+        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[v]);
+
+        // copy the repeated samples for a single symbol
+        iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
+    }
+
+    return iq_data;
+
+}   // end of generate_8psk
+
+//-----------------------------------------------------------------------------
+template<typename OUTPUT, typename DATA>
 inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& data, modulation_params& mp)
 {
     uint32_t idx;
@@ -404,7 +438,7 @@ inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& 
 
     return iq_data;
 
-}
+}   // end of generate_3pi8_8qpsk
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)

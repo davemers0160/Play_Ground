@@ -411,113 +411,29 @@ int main(int argc, char** argv)
         
         num_loops = 100;
 
-        //uint16_t num_bits = 6;
-        //uint32_t num = 1 << num_bits;
-        //std::vector<uint32_t> gc = gray_code(num_bits);
-        //std::bitset<6> x;
-        //uint32_t side_length = 1<<(num_bits>>1);
-        //uint32_t index = 0;
-        //uint32_t shift = 0;
+        std::vector<uint8_t> test8_t;
 
-        int16_t mod_type = MODULATION_TYPES::MT_PI4QPSK;
-        uint64_t sample_rate = 10000000;
-        float symbol_length = 0.000001;
-        float guard_time = 0;
-        int64_t offset_frequency = 0;
-        int64_t freq_deviation = 12500;
-        bool hop = false;
-        bool filter = false;
-        int64_t fc = 2400000;
-        double amplitude = 2020;
-        double data_scale = 1000.0;
-        double k = 0.1;
-        uint32_t num_bits = 40;
 
-        float v0 = (float)(amplitude * 0.70710678118654752440084436210485);
-        float v1 = (float)(amplitude);
+        uint32_t b1 = 0x12345678;
+        uint32_t b2 = 0xA5A5A5A5;
 
-        std::vector<std::complex<float>> bit_mapper = {{-v0, -v0}, {-v0, v0}, {v0, -v0}, {v0, v0},  
-                                                       {-v1, 0}, {0, v1}, {0, -v1}, {v1, 0} };
+        std::vector<std::complex<int16_t>> iq_data = {{0,1}, {2,3}, {4,5}};
+        uint32_t num_samples = iq_data.size();
 
-        iq_params* p4qpsk_mp = new iq_params(fc);
-        p4qpsk_mp->set_bit_mapper(bit_mapper);
+        test8_t.resize(2*sizeof(uint32_t) + num_samples *sizeof(iq_data[0]));
 
-        modulation_params mp(mod_type, sample_rate, symbol_length, guard_time, amplitude, filter, hop, (void*)p4qpsk_mp);
+        uint8_t *temp;
+        temp = reinterpret_cast<uint8_t*>(&b1);
+        std::copy(temp, temp + sizeof(b1), test8_t.begin());
+        temp = reinterpret_cast<uint8_t*>(&b2);
+        std::copy(temp, temp + sizeof(b2), test8_t.begin()+4);
 
-        // random number generators
-        std::default_random_engine generator;
-        std::uniform_int_distribution<int16_t> bits_gen = std::uniform_int_distribution<int16_t>(0, 1);
+        std::copy(reinterpret_cast<uint8_t*>(&iq_data[0]), reinterpret_cast<uint8_t*>(&iq_data[0]) + (4 * num_samples), test8_t.begin()+8);
 
-        std::vector<int16_t> data(1024,0);
 
-        for (jdx = 0; jdx < data.size(); ++jdx)
-            data[jdx] = bits_gen(generator);
 
-        std::vector<complex<int16_t>> iq_tmp = generate_pi4qpsk<int16_t>(data, mp);
 
-        save_complex_data("d:/Projects/data/RF/p4_qpsk_test.sc16", iq_tmp);
-
-        bp = 3;
-
-        //auto p16 = closest_integer_divisors(16);
-
-        //std::vector<std::complex<float>> bit_mapper3 = generate_qam_constellation(num_bits);
-
-        //num_bits = 6;
-        //num = 1 << num_bits;
-        //int16_t rows, cols;
-        //std::vector<std::complex<float>> bit_mapper(num);
-
-        //auto p32 = closest_integer_divisors(num);
-        //int16_t div_diff;
-
-        //std::cout << "not square" << std::endl;
-        //div_diff = (p32.second - p32.first)>>2;
-        //rows = p32.first;
-        //cols = p32.second;
-
-        //gc = gray_code(num_bits);
-
-        //std::vector<float> c_y(rows, 0);
-        //std::vector<float> c_x(cols, 0);
-
-        //float row_start = (-rows + 1);
-        //float row_scale = 1.0 / (float)abs(row_start);
-
-        //float col_start = (-cols + 1);
-        //float col_scale = 1.0 / (float)abs(col_start);
-
-        //// create the primary normalized points for the constellation
-        //for (idx = 0; idx < rows; ++idx)
-        //{
-        //    c_y[idx] = (row_start * row_scale);
-        //    row_start += 2;
-        //}
-
-        //for (idx = 0; idx < cols; ++idx)
-        //{
-        //    c_x[idx] = (col_start * col_scale);
-        //    col_start += 2;
-        //}
-
-        //// Y
-        //for (idx = 0; idx < rows; ++idx)
-        //{
-        //    // X
-        //    for (jdx = 0; jdx < cols; ++jdx)
-        //    {
-        //        // check row and perform zig-zag assignment
-        //        index = ((idx & 0x01) == 1) ? (idx+1)*cols - (jdx+1) : idx*cols + jdx;
-        //        std::cout << "index: " << index << std::endl;
-        //        // assign to bit_mapper
-        //        bit_mapper[gc[index]] = std::complex<float>(c_x[jdx], c_y[idx]);
-        //    }
-        //}
-
-        //bp = 5;
-
-        //
-
+        bp = 1;
 
         ////
         //index = 0;
@@ -665,7 +581,7 @@ int main(int argc, char** argv)
 
         rdg.init_generator(program_name, radio_text);
 
-        std::vector<complex<int16_t>> iq_data = rdg.generate_bit_stream();
+        //std::vector<complex<int16_t>> iq_data = rdg.generate_bit_stream();
 
         //int16_t previous_bit = 0;
         //data_bits = differential_encode(data_bits, previous_bit);

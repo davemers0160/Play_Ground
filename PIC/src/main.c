@@ -37,25 +37,25 @@
 // *****************************************************************************
 // *****************************************************************************
 //-----------------------------------------------------------------------------
-void maximal_length_sequence(uint16_t N, uint16_t *taps, uint16_t num_taps, uint8_t **seq, uint32_t *seq_length)
+void maximal_length_sequence(const uint16_t N, uint16_t *taps, uint16_t num_taps, uint8_t **seq, uint32_t *seq_length)
 {
     uint32_t idx, jdx;
     uint16_t tmp;
-    uint8_t *r;
+    uint8_t r[N];
 
     // initialize the shift register
-    r = (uint8_t*)calloc(N, sizeof(uint8_t));
+    //r = (uint8_t*)calloc(N, sizeof(uint8_t));
     r[0] = 1;
 
     // initialize the sequence to all 0's
-    uint32_t sr_size = (1 << N) - 1;
-    *seq = (uint8_t*)calloc(sr_size, sizeof(int8_t));
+    *seq_length = (1 << N) - 1;
+    *seq = (uint8_t*)calloc(*seq_length, sizeof(int8_t));
 
-    for (idx = 0; idx < sr_size; ++idx)
+    for (idx = 0; idx < *seq_length; ++idx)
     {
         // sr.insert(sr.end(), rep, amplitude * (2 * r[N - 1] - 1));
         //sr.insert(sr.end(), 1, r[N - 1]);
-        (*seq)[idx] = r[N-1]; 
+        (*seq)[idx] = r[N - 1]; 
 
         tmp = 0;
         for (jdx = 0; jdx < num_taps; ++jdx)
@@ -65,11 +65,12 @@ void maximal_length_sequence(uint16_t N, uint16_t *taps, uint16_t num_taps, uint
         tmp = tmp % 2;
 
         // go through the register and shift everything
-        r[0] = tmp;
         for(jdx=1; jdx<N; ++jdx)
         {
             r[idx] = r[idx-1];
         }
+        r[0] = tmp;
+        
     }
 
 }   // end of maximal_length_sequence
@@ -111,7 +112,7 @@ void bit2byte_array(uint8_t *binary_array, uint32_t binary_array_len, uint8_t **
 //-----------------------------------------------------------------------------
 int main ( void )
 {
-    uint16_t idx;
+    uint32_t idx;
     
     /* Initialize all modules */
     SYS_Initialize ( NULL );
@@ -119,15 +120,15 @@ int main ( void )
     uint8_t data[] = { 10, 255, 10, 128 };
     size_t  data_size = 4;
     
-    uint8_t burst_count = 16;
+    uint16_t burst_count = 100;
     
     // delay time (us) / tick time (us)
     uint32_t delay_count = (uint32_t)(10000.0/21.3333333333333);
     
     // sequence parameters
-    uint16_t N = 9;
-    uint16_t taps[] = {8,7,6,2};
-    uint16_t num_taps = 4;
+    uint16_t N = 4;
+    uint16_t taps[] = {3,2};
+    uint16_t num_taps = 2;
     uint8_t *seq;
     uint32_t seq_length = 0;
     uint8_t *byte_array;
@@ -171,7 +172,7 @@ int main ( void )
         TC0_Timer32bitCounterSet(0);
             
         // add long sleep here - wait for an interrupt to wake from sleep
-        // PM_StandbyModeEnter();
+        PM_StandbyModeEnter();
 
     }
 

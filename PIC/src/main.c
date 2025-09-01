@@ -37,11 +37,11 @@
 // *****************************************************************************
 // *****************************************************************************
 //-----------------------------------------------------------------------------
-void maximal_length_sequence(const uint16_t N, uint16_t *taps, uint16_t num_taps, uint8_t **seq, uint32_t *seq_length)
+void maximal_length_sequence(const uint16_t N, uint16_t *taps, uint16_t num_taps, uint8_t *seq[], uint32_t *seq_length)
 {
     uint32_t idx, jdx;
     uint16_t tmp;
-    uint8_t r[N];
+    uint8_t r[25] = {0};
 
     // initialize the shift register
     //r = (uint8_t*)calloc(N, sizeof(uint8_t));
@@ -67,7 +67,7 @@ void maximal_length_sequence(const uint16_t N, uint16_t *taps, uint16_t num_taps
         // go through the register and shift everything
         for(jdx=1; jdx<N; ++jdx)
         {
-            r[idx] = r[idx-1];
+            r[N-jdx] = r[N-jdx-1];
         }
         r[0] = tmp;
         
@@ -76,7 +76,7 @@ void maximal_length_sequence(const uint16_t N, uint16_t *taps, uint16_t num_taps
 }   // end of maximal_length_sequence
 
 //-----------------------------------------------------------------------------
-void bit2byte_array(uint8_t *binary_array, uint32_t binary_array_len, uint8_t **byte_array, uint32_t *byte_array_len)
+void bit2byte_array(uint8_t binary_array[], uint32_t binary_array_len, uint8_t *byte_array[], uint32_t *byte_array_len)
 {
     uint32_t idx;
     int32_t byte_index;
@@ -126,12 +126,12 @@ int main ( void )
     uint32_t delay_count = (uint32_t)(10000.0/21.3333333333333);
     
     // sequence parameters
-    uint16_t N = 4;
-    uint16_t taps[] = {3,2};
+    uint16_t N = 6;
+    uint16_t taps[] = {5,4};
     uint16_t num_taps = 2;
-    uint8_t *seq;
+    volatile uint8_t *seq;
     uint32_t seq_length = 0;
-    uint8_t *byte_array;
+    volatile uint8_t *byte_array;
     uint32_t byte_array_len = 0;
     
     // generate the sequence
@@ -157,7 +157,7 @@ int main ( void )
             TC0_Timer32bitCounterSet(0);
 
             // send data
-            SERCOM0_SPI_Write(&data, data_size);
+            SERCOM0_SPI_Write(byte_array, byte_array_len);
             
             // wait x milliseconds to send again
             // clock tick = 21333.33_ ns (from MCC)

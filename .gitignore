@@ -262,3 +262,5 @@ latex/
 **/*.X/nbproject/*.bash
 **/*.X/nbproject/Makefile-genesis.properties
 
+/PIC/src
+PIC/nano_spi_test.X/defmplabxtrace.log.inx

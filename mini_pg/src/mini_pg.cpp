@@ -90,7 +90,9 @@ enum MODULATION_TYPES
     MT_DQPSK = 10,   /*!< Differential Quadrature Phased Shift Keyed (DQPSK) Modulation */
     MT_16QAM = 11,   /*!< 16 Symbol Quadrature Amplitude Modulation (16-QAM) */
     MT_64QAM = 12,    /*!< 64 Symbol Quadrature Amplitude Modulation (64-QAM) */
-    MT_PI4QPSK = 13     /*!< PI/4 Quadrature Phased Shift Keyed (PI/4-QPSK) Modulation */
+    MT_PI4QPSK = 13,     /*!< PI/4 Quadrature Phased Shift Keyed (PI/4-QPSK) Modulation */
+    MT_32QAM = 20,
+    MT_128QAM = 21
 };
 
 //-----------------------------------------------------------------------------
@@ -196,6 +198,8 @@ typedef struct modulation_params
         case MODULATION_TYPES::MT_DPSK:
         case MODULATION_TYPES::MT_DQPSK:
         case MODULATION_TYPES::MT_PI4QPSK:
+        case MODULATION_TYPES::MT_32QAM:
+        case MODULATION_TYPES::MT_128QAM:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
             break;
         }
@@ -298,8 +302,14 @@ inline std::vector<std::complex<int16_t>> generate_qam(std::vector<int16_t>& dat
 {
     uint32_t idx, jdx;
     uint16_t num = 0;
+    std::vector<std::complex<float>> bit_mapper;
 
-    std::vector<std::complex<float>> bit_mapper = generate_qam_constellation(num_bits);
+    // select which QAM shape gets generated based even or odd bits
+    if((num_bits % 2) == 0)
+        bit_mapper = generate_square_qam_constellation(num_bits);
+    else
+        bit_mapper = generate_cross_qam_constellation(num_bits);
+
 
     uint32_t samples_per_bit = floor(sample_rate * symbol_length + 0.5);
 
@@ -586,24 +596,69 @@ int main(int argc, char** argv)
         //    std::cout << idx << "\t" << gc[idx] << "\t" << x << "\t" << bit_mapper[idx] << std::endl;
         //}
 
-        ////index = 0;
-        ////for (idx = 0; idx < side_length; ++idx)
-        ////{
-        ////    for (jdx = 0; jdx < side_length; ++jdx)
-        ////    {
-        ////        x = gc[index];
-        ////        std::cout << index << " " << gc[index] << " " << x << " " << bit_mapper[gc[index]] << "  ";
-        ////        ++index;
-        ////    }
-        ////    
-        ////    std::cout << std::endl;
 
-        ////}
+        uint16_t num_bits = 5;
+        std::vector<std::complex<float>> bit_mapper2 = generate_cross_qam_constellation(num_bits);
+        std::cout << std::endl;
+
+        print_constellation(bit_mapper2);
+
+        //uint32_t num = 1 << num_bits;
+        //std::pair<int64_t, int64_t> int_div = closest_integer_divisors(num);
+        //int32_t rows = int_div.first;
+        //int32_t cols = int_div.second;
+
+        //int32_t rc_max = 3 * (cols >> 2) - 1;
+        ////int32_t q_max = rows >> 1;
+
+        //uint32_t index = 0;
+        //bool found = false;
+
+        //for (int32_t r = rc_max; r >= -rc_max; r -= 2)
+        //{
+        //    for (int32_t c = -rc_max; c <= rc_max; c += 2)
+        //    {
+        //        found = false;
+        //        index = 0;
+        //        for (uint32_t mdx = 0; mdx < bit_mapper2.size(); ++mdx)
+        //        {
+        //            if (((int32_t)(bit_mapper2[mdx].real()) == c) && ((int32_t)(bit_mapper2[mdx].imag()) == r))
+        //            {
+        //                found = true;
+        //                index = mdx;
+        //                break;
+        //            }
+        //            //else
+        //            //{
+        //            //    ++index;
+        //            //}
+        //        }
+        //        
+        //        if (found == true)
+        //        {
+        //            std::bitset<5> binary_index(index);
+        //            //std::cout << binary_index << "  " << bit_mapper2[index] << "\t";
+        //            std::cout << binary_index << " (" << index << ")\t";
+        //        }
+        //        else
+        //        {
+        //            std::cout << "\t\t";
+        //        }
+
+        //        //x = gc[index];
+        //        //std::cout << index << " " << gc[index] << " " << x << " " << bit_mapper[gc[index]] << "  ";
+        //        //++index;
+        //    }
+        //    
+        //    std::cout << std::endl;
+
+        //}
 
         //std::cout << std::endl;
 
 
-        //std::vector<std::complex<float>> bit_mapper2 = generate_qam_constellation(num_bits);
+        bp = 3;
+
 
         //index = 0;
         //for (idx = 0; idx < bit_mapper2.size(); ++idx)

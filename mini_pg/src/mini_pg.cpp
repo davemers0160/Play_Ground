@@ -173,7 +173,7 @@ typedef struct modulation_params2
     double amplitude;                       /*!< Final max amplitude of the signal */
     bool filter;                            /*!< Does the signal need to be filtered */
     bool hop;                               /*!< Does the signal hop */
-    unsigned char specialty_type;           /*!< dfdfsf */
+    //unsigned char specialty_type;           /*!< dfdfsf */
 
     void* mp_t;                             /*!< Pointer to a struct that will be used to pass specific modulation parameters */
 
@@ -585,7 +585,7 @@ int main(int argc, char** argv)
         mp2.modulation_type = MT_FM;
         mp2.sample_rate = 1000000;
         mp2.symbol_length = 1e-6;
-        mp2.specialty_type = MP_FM;
+        //mp2.specialty_type = MP_FM;
         
         fm_params *qp = (fm_params*)malloc(sizeof(fm_params));
         //qp->filter_cutoff_freq = 500000;

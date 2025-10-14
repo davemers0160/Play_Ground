@@ -104,10 +104,35 @@ enum SPECIALTY_PARAMS_TYPE
 };
 
 //-----------------------------------------------------------------------------
+typedef struct am_params
+{
+    double f1;
+    double f2;
+
+#ifdef __cplusplus
+    am_params(double f1_, double f2_) : f1(f1_), f2(f2_) {}
+#endif
+} am_params;
+
+
+//-----------------------------------------------------------------------------
+typedef struct fm_params
+{
+    double f1;
+    double f2;
+    int f3;
+
+#ifdef __cplusplus
+    fm_params(double f1_, double f2_, int f3_) : f1(f1_), f2(f2_), f3(f3_) {}
+#endif
+
+} fm_params;
+
+//-----------------------------------------------------------------------------
 typedef struct iq_params
 {
     //bool filter;                            /*!< Does the signal need to be filtered */
-    int64_t filter_cutoff_freq;               /*!< Filter cutoff frequency in Hz */
+    long long filter_cutoff_freq;               /*!< Filter cutoff frequency in Hz */
     //uint16_t num_bits;                        /*!< Number of bits used for QAM modulation */
 
 
@@ -137,6 +162,22 @@ typedef struct iq_params
 #endif
 
 } iq_params;
+
+//-----------------------------------------------------------------------------
+typedef struct modulation_params2
+{
+    unsigned short modulation_type;         /*!< Modulation type */
+    unsigned long long sample_rate;         /*!< RF sample rate in units of Hz */
+    double symbol_length;                   /*!< Length of a single symbol in seconds */
+    double guard_time;                      /*!< Length of any off period between a group of symbols in seconds */
+    double amplitude;                       /*!< Final max amplitude of the signal */
+    bool filter;                            /*!< Does the signal need to be filtered */
+    bool hop;                               /*!< Does the signal hop */
+    unsigned char specialty_type;           /*!< dfdfsf */
+
+    void* mp_t;                             /*!< Pointer to a struct that will be used to pass specific modulation parameters */
+
+} modulation_params2;
 
 //-----------------------------------------------------------------------------
 typedef struct modulation_params
@@ -175,7 +216,7 @@ typedef struct modulation_params
     @sa am_params, fm_params, iq_params
     */
     modulation_params(uint16_t mt, uint64_t sr, double sl, double gt, double amp, bool filt, bool h, void* mp_t_) :
-        modulation_type(mt), sample_rate(sr), symbol_length(sl), guard_time(gt), amplitude(amp), filter(filt), hop(h), mp_t(mp_t_)
+        modulation_type(mt), sample_rate(sr), symbol_length(sl), guard_time(gt), amplitude(amp), filter(filt), hop(h)//, mp_t(mp_t_)
     {
 
         switch (modulation_type)
@@ -186,11 +227,21 @@ typedef struct modulation_params
         case MODULATION_TYPES::MT_4FSK:
         case MODULATION_TYPES::MT_LFM:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_FM;
+            {
+                //mp_t = (void*)malloc(sizeof(fm_params));
+                fm_params* tmp = (fm_params*)mp_t_;
+                mp_t = (void*)(&fm_params(tmp->f1, tmp->f2, tmp->f3));
+            }
             break;
 
         case MODULATION_TYPES::MT_ASK:
         case MODULATION_TYPES::MT_4PAM:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_AM;
+            {
+                am_params* tmp = (am_params*)mp_t_;
+                mp_t = (void*)(&am_params(tmp->f1, tmp->f2));
+            }
+            //mp_t = (void*)malloc(sizeof(am_params));
             break;
 
         case MODULATION_TYPES::MT_BPSK:
@@ -201,6 +252,10 @@ typedef struct modulation_params
         case MODULATION_TYPES::MT_32QAM:
         case MODULATION_TYPES::MT_128QAM:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
+            {
+                iq_params* tmp = (iq_params*)mp_t_;
+                mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq));
+            }
             break;
         }
 
@@ -210,6 +265,15 @@ typedef struct modulation_params
 #endif
 
 } modulation_params;
+
+//-----------------------------------------------------------------------------
+inline modulation_params copy_modulation_params(modulation_params2 mp2_)
+{
+    modulation_params mp(mp2_.modulation_type, mp2_.sample_rate, mp2_.symbol_length, mp2_.guard_time, \
+        mp2_.amplitude, mp2_.filter, mp2_.hop, mp2_.mp_t);
+
+    return mp;
+}
 
 //-----------------------------------------------------------------------------
 template<typename T>
@@ -512,6 +576,34 @@ int main(int argc, char** argv)
                                                         {v2, -v3}, {-v2, -v3}, {-v3, v2}, {-v3, -v2}, {v3, -v2}, {v3, v2}, {-v2, v3}, {v2, v3} };
 
         bp = 1;
+
+        modulation_params2 mp2;
+        mp2.amplitude = 2040;
+        mp2.filter = false;
+        mp2.guard_time = 0.001;
+        mp2.hop = false;
+        mp2.modulation_type = MT_FM;
+        mp2.sample_rate = 1000000;
+        mp2.symbol_length = 1e-6;
+        mp2.specialty_type = MP_FM;
+        
+        fm_params *qp = (fm_params*)malloc(sizeof(fm_params));
+        //qp->filter_cutoff_freq = 500000;
+        qp->f1 = 1;
+        qp->f2 = 2;
+        qp->f3 = 3;
+
+        mp2.mp_t = (void*)(qp);
+
+
+
+        modulation_params mp = copy_modulation_params(mp2);
+
+//        iq_params* iq_mp = (iq_params*)mp.mp_t;
+        fm_params* iq_mp = (fm_params*)mp.mp_t;
+//        am_params* iq_mp = (am_params*)mp.mp_t;
+
+        bp = 2;
 
         ////
         //index = 0;

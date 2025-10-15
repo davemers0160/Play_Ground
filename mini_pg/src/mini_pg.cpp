@@ -123,6 +123,8 @@ typedef struct fm_params
     int f3;
 
 #ifdef __cplusplus
+    fm_params() {};
+
     fm_params(double f1_, double f2_, int f3_) : f1(f1_), f2(f2_), f3(f3_) {}
 #endif
 
@@ -228,9 +230,11 @@ typedef struct modulation_params
         case MODULATION_TYPES::MT_LFM:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_FM;
             {
-                //mp_t = (void*)malloc(sizeof(fm_params));
                 fm_params* tmp = (fm_params*)mp_t_;
-                mp_t = (void*)(&fm_params(tmp->f1, tmp->f2, tmp->f3));
+                //mp_t = (void*)(&fm_params(tmp->f1, tmp->f2, tmp->f3));
+
+                //fm_params* tmp = new fm_params(tmp->f1, tmp->f2, tmp->f3);
+                mp_t = (void*)(new fm_params(tmp->f1, tmp->f2, tmp->f3));
             }
             break;
 

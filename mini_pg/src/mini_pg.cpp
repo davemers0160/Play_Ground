@@ -518,6 +518,47 @@ inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& 
 
 }   // end of generate_3pi8_8qpsk
 
+/**
+ * Apply SOS filter to a sequence of complex numbers
+ * Uses Direct Form II implementation
+ *
+ * @param input Input sequence of complex numbers
+ * @param sections Vector of SOS coefficient structures
+ * @return Filtered output sequence
+ */
+std::vector<std::complex<double>> apply_sos_iir_filter(
+    const std::vector<std::complex<double>>& input,
+    const std::vector<DSP::sos_coefficients>& sections)
+{
+
+    std::vector<std::complex<double>> output = input;
+
+    // Apply each second-order section in cascade
+    for (const auto& sos : sections) 
+    {
+        // State variables for Direct Form II (initialized to zero)
+        std::complex<double> w1(0.0, 0.0);  // Previous state
+        std::complex<double> w2(0.0, 0.0);  // Previous-previous state
+
+        // Filter the signal through this section
+        for (size_t n = 0; n < output.size(); ++n) 
+        {
+            // Direct Form II difference equation
+            // w[n] = x[n] - a1*w[n-1] - a2*w[n-2]
+            std::complex<double> w = output[n] - sos.a1 * w1 - sos.a2 * w2;
+
+            // y[n] = b0*w[n] + b1*w[n-1] + b2*w[n-2]
+            output[n] = sos.b0 * w + sos.b1 * w1 + sos.b2 * w2;
+
+            // Update state variables
+            w2 = w1;
+            w1 = w;
+        }
+    }
+
+    return output;
+}
+
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -591,23 +632,68 @@ int main(int argc, char** argv)
         mp2.symbol_length = 1e-6;
         //mp2.specialty_type = MP_FM;
         
-        fm_params *qp = (fm_params*)malloc(sizeof(fm_params));
-        //qp->filter_cutoff_freq = 500000;
-        qp->f1 = 1;
-        qp->f2 = 2;
-        qp->f3 = 3;
+        double fc = 2400 / (1000000.0);
+        int32_t order = 11;
 
-        mp2.mp_t = (void*)(qp);
+        auto tmp_coeff = DSP::calculate_iir_filter(fc, 2);
+
+        for (idx = 0; idx < tmp_coeff.size(); ++idx)
+        {
+            std::cout << tmp_coeff[idx].first << "\t" << tmp_coeff[idx].second << std::endl;
+        }
+
+        auto coefficients = DSP::butterworth_sos_iir(fc, order, true);
+
+        printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
+        printf("Number of SOS: %zu\n\n", coefficients.size());
+
+        for (size_t i = 0; i < coefficients.size(); ++i) {
+            printf("Section %zu:\n", i);
+            printf("  b0 = %12.8f, b1 = %12.8f, b2 = %12.8f\n",
+                coefficients[i].b0, coefficients[i].b1, coefficients[i].b2);
+            printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
+                coefficients[i].a0, coefficients[i].a1, coefficients[i].a2);
+        }
+
+        bp = 99;
 
 
+        // Create a test signal: sum of two complex sinusoids
+        const int N = 1000;
+        std::vector<std::complex<double>> signal(N);
 
-        modulation_params mp = copy_modulation_params(mp2);
+        for (int n = 0; n < N; ++n) {
+            // Low frequency component (should pass through)
+            double f1 = 2400/1000000.0;  // Normalized frequency
+            std::complex<double> s1 = 0.5*std::exp(std::complex<double>(0, 2.0 * M_PI * f1 * n));
 
-//        iq_params* iq_mp = (iq_params*)mp.mp_t;
-        fm_params* iq_mp = (fm_params*)mp.mp_t;
-//        am_params* iq_mp = (am_params*)mp.mp_t;
+            // High frequency component (should be attenuated)
+            double f2 = 5000/1000000.0;   // Normalized frequency
+            std::complex<double> s2 = 0.5 * std::exp(std::complex<double>(0, 2.0 * M_PI * f2 * n));
 
-        bp = 2;
+            signal[n] = s1 + s2;
+        }
+
+        std::cout << "s1 = [";
+        for (idx = 0; idx < signal.size()-1; ++idx)
+        {
+            std::cout << signal[idx].real() << (signal[idx].imag() >= 0 ? " + " : " - ") << abs(signal[idx].imag()) << "i, ";
+        }
+        std::cout << signal[idx].real() << (signal[idx].imag() >= 0 ? " + " : " - ") << abs(signal[idx].imag()) << "i];" << std::endl;
+        std::cout << std::endl;
+
+        // Apply the filter
+        auto filtered = apply_sos_iir_filter(signal, coefficients);
+
+        std::cout << "filtered = [";
+        for (idx = 0; idx < filtered.size() - 1; ++idx)
+        {
+            std::cout << filtered[idx].real() << (filtered[idx].imag() >= 0 ? " + " : " - ") << abs(filtered[idx].imag()) << "i, ";
+        }
+        std::cout << filtered[idx].real() << (filtered[idx].imag() >= 0 ? " + " : " - ") << abs(filtered[idx].imag()) << "i];" << std::endl;
+        std::cout << std::endl;
+
+        bp = 100;
 
         ////
         //index = 0;

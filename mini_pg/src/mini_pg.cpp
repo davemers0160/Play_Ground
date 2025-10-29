@@ -653,7 +653,30 @@ int main(int argc, char** argv)
                 coefficients[i].b0, coefficients[i].b1, coefficients[i].b2);
             printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
                 coefficients[i].a0, coefficients[i].a1, coefficients[i].a2);
+            printf("  gain = %12.8f\n\n", coefficients[i].gain);
         }
+
+        auto coeff2 = DSP::calculate_butterworth_sos(fc, order);
+
+        printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
+        printf("Number of SOS: %zu\n\n", coeff2.size());
+
+        for (size_t i = 0; i < coeff2.size(); ++i) {
+            printf("Section %zu:\n", i);
+            printf("  b0 = %12.8f, b1 = %12.8f, b2 = %12.8f\n",
+                coeff2[i].b0, coeff2[i].b1, coeff2[i].b2);
+            printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
+                coeff2[i].a0, coeff2[i].a1, coeff2[i].a2);
+            printf("  gain = %12.8f\n\n", coeff2[i].gain);
+
+        }
+
+        std::cout << std::endl;
+        for (idx = 0; idx < coeff2.size(); ++idx)
+        {
+            std::cout << coeff2[idx].b0 << ", " << coeff2[idx].b1 << ", " << coeff2[idx].b2 << ", " << coeff2[idx].a0 << ", " << coeff2[idx].a1 << ", " << coeff2[idx].a2 << std::endl;
+        }
+        std::cout << std::endl;
 
         bp = 99;
 
@@ -683,7 +706,7 @@ int main(int argc, char** argv)
         std::cout << std::endl;
 
         // Apply the filter
-        auto filtered = apply_sos_iir_filter(signal, coefficients);
+        auto filtered = apply_sos_iir_filter(signal, coeff2);
 
         std::cout << "filtered = [";
         for (idx = 0; idx < filtered.size() - 1; ++idx)

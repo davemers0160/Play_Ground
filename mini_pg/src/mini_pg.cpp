@@ -92,7 +92,8 @@ enum MODULATION_TYPES
     MT_64QAM = 12,    /*!< 64 Symbol Quadrature Amplitude Modulation (64-QAM) */
     MT_PI4QPSK = 13,     /*!< PI/4 Quadrature Phased Shift Keyed (PI/4-QPSK) Modulation */
     MT_32QAM = 20,
-    MT_128QAM = 21
+    MT_128QAM = 21,
+    MT_8PSK = 22
 };
 
 //-----------------------------------------------------------------------------
@@ -153,6 +154,11 @@ typedef struct iq_params
     @param [in] filter_cutoff_freq Filter cutoff frequency in Hz
     */
     iq_params(int64_t fc) : filter_cutoff_freq(fc) {}
+
+    iq_params(int64_t fc, std::vector<std::complex<float>> bm) : filter_cutoff_freq(fc) 
+    {
+        set_bit_mapper(bm);
+    }
 
     //-----------------------------------------------------------------------------
     inline void set_bit_mapper(std::vector<std::complex<float>> bm)
@@ -255,10 +261,16 @@ typedef struct modulation_params
         case MODULATION_TYPES::MT_PI4QPSK:
         case MODULATION_TYPES::MT_32QAM:
         case MODULATION_TYPES::MT_128QAM:
+        case MODULATION_TYPES::MT_8PSK:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
             {
                 iq_params* tmp = (iq_params*)mp_t_;
-                mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq));
+                float v0 = amplitude / sqrt(2.0);
+                float v1 = amplitude;
+
+                std::vector<std::complex<float>> bm = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0} };
+
+                mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq, bm));
             }
             break;
         }
@@ -451,11 +463,17 @@ inline std::vector<std::complex<OUTPUT>> generate_8psk(std::vector<DATA>& data, 
 {
     uint32_t idx;
     uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
+    uint16_t num_bits = 3;
 
     // data must be an even multiple of 3
     uint32_t rem = data.size() % num_bits;
     if (rem != 0)
-        data.insert(data.end(), rem, 0);
+        data.insert(data.end(), num_bits-rem, 0);
+
+    float v0 = mp.amplitude / sqrt(2.0);
+    float v1 = mp.amplitude;
+
+    std::vector<std::complex<float>> bm = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0} };
 
     DATA v;
 
@@ -469,7 +487,8 @@ inline std::vector<std::complex<OUTPUT>> generate_8psk(std::vector<DATA>& data, 
     {
         v = (data[idx] << 2 | data[idx + 1] << 1 | data[idx + 2]) & 0x07;
 
-        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[v]);
+//        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[v]);
+        symbol = static_cast<std::complex<OUTPUT>>(bm[v]);
 
         // copy the repeated samples for a single symbol
         iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
@@ -526,38 +545,42 @@ inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& 
  * @param sections Vector of SOS coefficient structures
  * @return Filtered output sequence
  */
-std::vector<std::complex<double>> apply_sos_iir_filter(
-    const std::vector<std::complex<double>>& input,
-    const std::vector<DSP::sos_coefficients>& sections)
+template <typename T>
+std::vector<std::complex<T>> apply_df2t_filter(const std::vector<std::complex<T>>& data, std::vector<std::vector<double>>& filter)
 {
+    uint64_t idx, jdx;
+    std::complex<double> current_input, section_output;
 
-    std::vector<std::complex<double>> output = input;
+    uint32_t num_sections = filter.size();
 
-    // Apply each second-order section in cascade
-    for (const auto& sos : sections) 
+    // state variables for the filter
+    std::vector<std::vector<std::complex<double>>> w(num_sections, std::vector<std::complex<double>>(2, { 0.0, 0.0 }));
+    
+    std::vector<std::complex<T>> output(data.size());
+
+    // Iterate through each sample of the input sequence
+    for (idx = 0; idx < data.size(); ++idx)
     {
-        // State variables for Direct Form II (initialized to zero)
-        std::complex<double> w1(0.0, 0.0);  // Previous state
-        std::complex<double> w2(0.0, 0.0);  // Previous-previous state
+        //current_input = static_cast<std::complex<double>>(data[idx]); 
+        current_input = std::complex<double>((double)data[idx].real(), (double)data[idx].imag());
 
-        // Filter the signal through this section
-        for (size_t n = 0; n < output.size(); ++n) 
+        // Direct Form II Transposed equations for a single section
+        for (jdx=0; jdx<filter.size(); ++jdx)
         {
-            // Direct Form II difference equation
-            // w[n] = x[n] - a1*w[n-1] - a2*w[n-2]
-            std::complex<double> w = output[n] - sos.a1 * w1 - sos.a2 * w2;
+            section_output = filter[jdx][0] * current_input + w[jdx][0];
 
-            // y[n] = b0*w[n] + b1*w[n-1] + b2*w[n-2]
-            output[n] = sos.b0 * w + sos.b1 * w1 + sos.b2 * w2;
+            // update state variables : Note: filter[jdx][3] is assumed to be 1 and not used in calculations
+            w[jdx][0] = filter[jdx][1] * current_input - filter[jdx][4] * section_output + w[jdx][1];
+            w[jdx][1] = filter[jdx][2] * current_input - filter[jdx][5] * section_output;
 
-            // Update state variables
-            w2 = w1;
-            w1 = w;
+            current_input = section_output;
         }
+
+        output[idx] = static_cast<std::complex<T>>(current_input);
     }
 
     return output;
-}
+}   // end of apply_df2t_filter
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -623,58 +646,60 @@ int main(int argc, char** argv)
         bp = 1;
 
         modulation_params2 mp2;
-        mp2.amplitude = 2040;
-        mp2.filter = false;
+        mp2.amplitude = 2046;
+        mp2.filter = true;
         mp2.guard_time = 0.001;
         mp2.hop = false;
-        mp2.modulation_type = MT_FM;
-        mp2.sample_rate = 1000000;
-        mp2.symbol_length = 1e-6;
+        mp2.modulation_type = MODULATION_TYPES::MT_8PSK;
+        mp2.sample_rate = 960000;
+        mp2.symbol_length = 1/2400.0;
         //mp2.specialty_type = MP_FM;
+        iq_params* iq_p = new iq_params(2400);
+
+        v0 = 2046.0 / sqrt(2.0);
+        v1 = 2046.0;
+
+        std::vector<std::complex<float>> bm = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0} };
         
-        double fc = 2400 / (1000000.0);
-        int32_t order = 11;
+        modulation_params mp(MODULATION_TYPES::MT_8PSK, 960000, 1 / 2400.0, 0.0001, 2046.0, true, false, (void*)iq_p);
+        //((iq_params*)mp.mp_t)->set_bit_mapper(bm);
 
-        auto tmp_coeff = DSP::calculate_iir_filter(fc, 2);
+        double fc = 2400 / (960000.0);
+        int32_t order = 12;
 
-        for (idx = 0; idx < tmp_coeff.size(); ++idx)
-        {
-            std::cout << tmp_coeff[idx].first << "\t" << tmp_coeff[idx].second << std::endl;
-        }
+        std::vector<int16_t> data = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+        std::vector<std::complex<int16_t>> iq_data2 = generate_8psk<int16_t>(data, mp);
 
-        auto coefficients = DSP::butterworth_sos_iir(fc, order, true);
+        //auto tmp_coeff = DSP::calculate_iir_filter(fc, 2);
 
-        printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
-        printf("Number of SOS: %zu\n\n", coefficients.size());
+        //for (idx = 0; idx < tmp_coeff.size(); ++idx)
+        //{
+        //    std::cout << tmp_coeff[idx].first << "\t" << tmp_coeff[idx].second << std::endl;
+        //}
 
-        for (size_t i = 0; i < coefficients.size(); ++i) {
-            printf("Section %zu:\n", i);
-            printf("  b0 = %12.8f, b1 = %12.8f, b2 = %12.8f\n",
-                coefficients[i].b0, coefficients[i].b1, coefficients[i].b2);
-            printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
-                coefficients[i].a0, coefficients[i].a1, coefficients[i].a2);
-            printf("  gain = %12.8f\n\n", coefficients[i].gain);
-        }
+        //auto coefficients = DSP::calculate_butterworth_sos(fc, order);
+
+        //printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
+        //printf("Number of SOS: %zu\n\n", coefficients.size());
+
+        //for (size_t i = 0; i < coefficients.size(); ++i) {
+        //    printf("Section %zu:\n", i);
+        //    printf("  b0 = %12.8f, b1 = %12.8f, b2 = %12.8f\n",
+        //        coefficients[i].b0, coefficients[i].b1, coefficients[i].b2);
+        //    printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
+        //        coefficients[i].a0, coefficients[i].a1, coefficients[i].a2);
+        //    printf("  gain = %12.8f\n\n", coefficients[i].gain);
+        //}
 
         auto coeff2 = DSP::calculate_butterworth_sos(fc, order);
 
         printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
         printf("Number of SOS: %zu\n\n", coeff2.size());
 
-        for (size_t i = 0; i < coeff2.size(); ++i) {
-            printf("Section %zu:\n", i);
-            printf("  b0 = %12.8f, b1 = %12.8f, b2 = %12.8f\n",
-                coeff2[i].b0, coeff2[i].b1, coeff2[i].b2);
-            printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
-                coeff2[i].a0, coeff2[i].a1, coeff2[i].a2);
-            printf("  gain = %12.8f\n\n", coeff2[i].gain);
-
-        }
-
         std::cout << std::endl;
         for (idx = 0; idx < coeff2.size(); ++idx)
         {
-            std::cout << coeff2[idx].b0 << ", " << coeff2[idx].b1 << ", " << coeff2[idx].b2 << ", " << coeff2[idx].a0 << ", " << coeff2[idx].a1 << ", " << coeff2[idx].a2 << std::endl;
+            std::cout << coeff2[idx][0] << ",\t" << coeff2[idx][1] << ",\t" << coeff2[idx][2] << ",\t" << coeff2[idx][3] << ",\t" << coeff2[idx][4] << ",\t" << coeff2[idx][5] << std::endl;
         }
         std::cout << std::endl;
 
@@ -682,31 +707,31 @@ int main(int argc, char** argv)
 
 
         // Create a test signal: sum of two complex sinusoids
-        const int N = 1000;
-        std::vector<std::complex<double>> signal(N);
+        const int N = 500;
+        //std::vector<std::complex<double>> signal(N);
 
-        for (int n = 0; n < N; ++n) {
-            // Low frequency component (should pass through)
-            double f1 = 2400/1000000.0;  // Normalized frequency
-            std::complex<double> s1 = 0.5*std::exp(std::complex<double>(0, 2.0 * M_PI * f1 * n));
+        //for (int n = 0; n < N; ++n) {
+        //    // Low frequency component (should pass through)
+        //    double f1 = 2400/9600000.0;  // Normalized frequency
+        //    std::complex<double> s1 = 0.5*std::exp(std::complex<double>(0, 2.0 * M_PI * f1 * n));
 
-            // High frequency component (should be attenuated)
-            double f2 = 5000/1000000.0;   // Normalized frequency
-            std::complex<double> s2 = 0.5 * std::exp(std::complex<double>(0, 2.0 * M_PI * f2 * n));
+        //    // High frequency component (should be attenuated)
+        //    double f2 = 5000/9600000.0;   // Normalized frequency
+        //    std::complex<double> s2 = 0.5 * std::exp(std::complex<double>(0, 2.0 * M_PI * f2 * n));
 
-            signal[n] = s1 + s2;
-        }
+        //    signal[n] = s1 + s2;
+        //}
 
-        std::cout << "s1 = [";
-        for (idx = 0; idx < signal.size()-1; ++idx)
-        {
-            std::cout << signal[idx].real() << (signal[idx].imag() >= 0 ? " + " : " - ") << abs(signal[idx].imag()) << "i, ";
-        }
-        std::cout << signal[idx].real() << (signal[idx].imag() >= 0 ? " + " : " - ") << abs(signal[idx].imag()) << "i];" << std::endl;
-        std::cout << std::endl;
+        //std::cout << "s1 = [";
+        //for (idx = 0; idx < signal.size()-1; ++idx)
+        //{
+        //    std::cout << signal[idx].real() << (signal[idx].imag() >= 0 ? " + " : " - ") << abs(signal[idx].imag()) << "i, ";
+        //}
+        //std::cout << signal[idx].real() << (signal[idx].imag() >= 0 ? " + " : " - ") << abs(signal[idx].imag()) << "i];" << std::endl;
+        //std::cout << std::endl;
 
         // Apply the filter
-        auto filtered = apply_sos_iir_filter(signal, coeff2);
+        auto filtered = apply_df2t_filter(iq_data2, coeff2);
 
         std::cout << "filtered = [";
         for (idx = 0; idx < filtered.size() - 1; ++idx)

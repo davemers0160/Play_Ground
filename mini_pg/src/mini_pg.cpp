@@ -378,11 +378,11 @@ inline void vector_to_pair(std::vector<T> &v1, std::vector<T> &v2, std::vector<s
 }   // end of vector_to_pair
 
 //-----------------------------------------------------------------------------
-inline std::vector<std::complex<int16_t>> generate_qam(std::vector<int16_t>& data, uint64_t sample_rate, uint16_t num_bits, float symbol_length, float amplitude)
+inline std::vector<std::complex<int16_t>> generate_qam(std::vector<int16_t>& data, uint64_t sample_rate, uint16_t num_bits, float symbol_length, double amplitude)
 {
     uint32_t idx, jdx;
     uint16_t num = 0;
-    std::vector<std::complex<float>> bit_mapper;
+    std::vector<std::complex<double>> bit_mapper;
 
     // select which QAM shape gets generated based even or odd bits
     if((num_bits % 2) == 0)
@@ -677,25 +677,16 @@ int main(int argc, char** argv)
         //    std::cout << tmp_coeff[idx].first << "\t" << tmp_coeff[idx].second << std::endl;
         //}
 
-        //auto coefficients = DSP::calculate_butterworth_sos(fc, order);
+        auto coeff_butt = DSP::butterworth_iir_sos(12, 4e6/20e6);
 
-        //printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
-        //printf("Number of SOS: %zu\n\n", coefficients.size());
+        std::cout << std::endl;
+        for (idx = 0; idx < coeff_butt.size(); ++idx)
+        {
+            std::cout << coeff_butt[idx][0] << ",\t" << coeff_butt[idx][1] << ",\t" << coeff_butt[idx][2] << ",\t" << coeff_butt[idx][3] << ",\t" << coeff_butt[idx][4] << ",\t" << coeff_butt[idx][5] << std::endl;
+        }
+        std::cout << std::endl;
 
-        //for (size_t i = 0; i < coefficients.size(); ++i) {
-        //    printf("Section %zu:\n", i);
-        //    printf("  b0 = %12.8f, b1 = %12.8f, b2 = %12.8f\n",
-        //        coefficients[i].b0, coefficients[i].b1, coefficients[i].b2);
-        //    printf("  a0 = %12.8f, a1 = %12.8f, a2 = %12.8f\n\n",
-        //        coefficients[i].a0, coefficients[i].a1, coefficients[i].a2);
-        //    printf("  gain = %12.8f\n\n", coefficients[i].gain);
-        //}
-
-//        auto coeff2 = DSP::create_butterworth_sos_filter(fc, order);
-        std::vector<std::vector<double>> coeff2 = DSP::chebyshev2_iir_sos(6, 0.25, 50.0);
-
-        printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
-        printf("Number of SOS: %zu\n\n", coeff2.size());
+        std::vector<std::vector<double>> coeff2 = DSP::chebyshev2_iir_sos(12, 6e6/20e6, 50.0);
 
         std::cout << std::endl;
         for (idx = 0; idx < coeff2.size(); ++idx)
@@ -829,7 +820,7 @@ int main(int argc, char** argv)
 
 
         uint16_t num_bits = 5;
-        std::vector<std::complex<float>> bit_mapper2 = generate_cross_qam_constellation(num_bits);
+        std::vector<std::complex<double>> bit_mapper2 = generate_cross_qam_constellation(num_bits);
         std::cout << std::endl;
 
         print_constellation(bit_mapper2);

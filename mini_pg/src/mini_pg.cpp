@@ -621,7 +621,7 @@ int main(int argc, char** argv)
         double fps = 30;
         int32_t four_cc = 0;
 
-        std::vector<float> w = DSP::blackman_nuttall_window(601);
+        std::vector<double> w = DSP::blackman_nuttall_window(601);
         
         num_loops = 100;
 
@@ -691,7 +691,8 @@ int main(int argc, char** argv)
         //    printf("  gain = %12.8f\n\n", coefficients[i].gain);
         //}
 
-        auto coeff2 = DSP::calculate_butterworth_sos(fc, order);
+//        auto coeff2 = DSP::create_butterworth_sos_filter(fc, order);
+        std::vector<std::vector<double>> coeff2 = DSP::chebyshev2_iir_sos(6, 0.25, 50.0);
 
         printf("Butterworth Filter Coefficients (Order %d, fc = %.3f)\n", order, fc);
         printf("Number of SOS: %zu\n\n", coeff2.size());

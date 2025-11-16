@@ -698,6 +698,15 @@ int main(int argc, char** argv)
         bp = 99;
 
 
+        std::vector<double> g = DSP::create_hilbert_filter(69);
+        std::cout << std::endl << "h3 = [";
+        for (idx = 0; idx < g.size()-1; ++idx)
+        {
+            std::cout << g[idx] << ", ";
+        }
+        std::cout << g[idx] << "];" << std::endl;
+
+
         // Create a test signal: sum of two complex sinusoids
         const int N = 500;
         //std::vector<std::complex<double>> signal(N);

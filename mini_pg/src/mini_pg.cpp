@@ -37,7 +37,8 @@ typedef void* HINSTANCE;
 #include <mutex>
 #include <random>
 #include <bitset>
-
+#include <set>
+#include <unordered_set>
 
 // custom includes
 #include "get_current_time.h"
@@ -52,11 +53,11 @@ typedef void* HINSTANCE;
 //#include "ocv_threshold_functions.h"
 
 // OpenCV includes
-// #include <opencv2/core.hpp>           
-// #include <opencv2/highgui.hpp>     
-// #include <opencv2/imgproc.hpp> 
-// #include <opencv2/video.hpp>
-// #include <opencv2/imgcodecs.hpp>
+ #include <opencv2/core.hpp>           
+ #include <opencv2/highgui.hpp>     
+ #include <opencv2/imgproc.hpp> 
+ #include <opencv2/video.hpp>
+ #include <opencv2/imgcodecs.hpp>
 
 #include "rds.h"
 #include "dsp/dsp_windows.h"
@@ -537,6 +538,155 @@ inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& 
 
 }   // end of generate_3pi8_8qpsk
 
+//-----------------------------------------------------------------------------
+// Custom hash function for cv::Point
+struct cvPoint_hash 
+{
+    size_t operator()(const cv::Point& p) const 
+    {
+        // Combine hashes of x and y coordinates
+        // A common way to combine hashes is using a technique like boost::hash_combine
+        // For simplicity, a basic combination is used here.
+        size_t h1 = std::hash<int>()(p.x);
+        size_t h2 = std::hash<int>()(p.y);
+        return h1 ^ (h2 << 1); // Simple XOR and shift for combination
+    }
+};
+
+//-----------------------------------------------------------------------------
+std::vector<cv::Point> generate_spiral_search_pattern(
+    uint32_t image_width,
+    uint32_t image_height,
+    const cv::Point& start_point,
+    int32_t half_x,
+    int32_t half_y
+    )
+{
+    uint32_t idx;
+
+    //std::vector<cv::Point> spiralPoints;
+    std::unordered_set<cv::Point, cvPoint_hash> search_points;
+
+    // Start at the center point
+    int32_t x = start_point.x;
+    int32_t y = start_point.y;
+    int32_t min_x = max(x - half_x, 0);
+    int32_t max_x = min((uint32_t)(x + half_x), image_width);
+    int32_t min_y = max(y - half_y, 0);
+    int32_t max_y = min((uint32_t)(y + half_y), image_height);
+
+    // Add starting point if within bounds
+    if ((x >= 0) && (x < image_width) && (y >= 0) && (y < image_height))
+    {
+        search_points.insert(start_point);
+    }
+
+    // Direction vectors for clockwise movement: right, down, left, up
+    //int32_t dx[] = { 1, 0, -1, 0 };
+    //int32_t dy[] = { 0, 1, 0, -1 };
+    int32_t dx = 1;
+    int32_t dy = 0;
+
+    int32_t direction = 0;  // Start moving right
+
+    int32_t steps_current_direction = 1;
+    int32_t steps_taken = 0;
+    int32_t direction_change = 0;
+
+    // Maximum steps based on spiral half-size
+    int32_t max_steps = (2 * half_x + 1) * (2 * half_y + 1) + 4*(abs(half_x-half_y) + 1);
+    //int32_t total_points = 1;  // Already added start point
+    int32_t dist_x, dist_y;
+
+    //while (total_points < max_steps)
+    for (idx = 0; idx < max_steps; ++idx)
+    {
+        // Take a step in current direction
+        x += dx;
+        y += dy;
+        //x += dx[direction];
+        //y += dy[direction];
+        x = min(max(x, min_x), max_x);
+        y = min(max(y, min_y), max_y);
+        ++steps_taken;
+
+        std::cout << x << ", " << y << std::endl;
+
+        // Check if within image bounds before adding
+        if ((x >= 0) && (x < image_width) && (y >= 0) && (y < image_height))
+        {
+            search_points.insert(cv::Point(x, y));
+        }
+        //++total_points;
+
+        // Check if we've completed steps in this direction
+        if (steps_taken == steps_current_direction)
+        {
+            steps_taken = 0;
+            //direction = (direction + 1) % 4;  // Change direction clockwise
+            ++direction_change;
+
+            // Rotate clockwise: right(1,0) -> down(0,1) -> left(-1,0) -> up(0,-1)
+            int32_t newDx = -dy;
+            int32_t newDy = dx;
+            dx = newDx;
+            dy = newDy;
+
+            // Increase steps every 2 direction changes
+            if (direction_change % 2 == 0) {
+                ++steps_current_direction;
+            }
+        }
+
+        // Stop if we've exceeded the spiral bounds
+        //dist_x = std::abs(x - start_point.x);
+        //dist_y = std::abs(y - start_point.y);
+        //if ((std::abs(x - start_point.x) > half_x + 1) && (std::abs(y - start_point.y) > half_y + 1))
+        //{
+        //    break;
+        //}
+    }
+
+    // Convert unordered_set to vector using range constructor
+    std::vector<cv::Point> sp(search_points.begin(), search_points.end());
+    return sp;
+}   // end of generate_spiral_search_pattern
+
+//-----------------------------------------------------------------------------
+std::vector<cv::Point> generate_raster_search_pattern(
+    uint32_t image_width,
+    uint32_t image_height,
+    const cv::Point& start_point,
+    int32_t half_x,
+    int32_t half_y
+)
+{
+    uint32_t idx, jdx;
+
+    std::vector<cv::Point> search_points;
+    //std::unordered_set<cv::Point, cvPoint_hash> search_points;
+
+    // Start at the center point
+    int32_t x = start_point.x;
+    int32_t y = start_point.y;
+    int32_t min_x = max(x - half_x, 0);
+    int32_t max_x = min((uint32_t)(x + half_x + 1), image_width);
+    int32_t min_y = max(y - half_y, 0);
+    int32_t max_y = min((uint32_t)(y + half_y + 1), image_height);
+
+    for (y = min_y; y < max_y; ++y)
+    {
+        for (x = min_x; x < max_x; ++x)
+        {
+            search_points.push_back(cv::Point(x, y));
+        }
+    }
+
+    return search_points;
+
+}   // end of generate_raster_search_pattern
+
+//-----------------------------------------------------------------------------
 /**
  * Apply SOS filter to a sequence of complex numbers
  * Uses Direct Form II implementation
@@ -609,6 +759,26 @@ int main(int argc, char** argv)
         std::string exe_path = get_ubuntu_path();
         std::cout << "Path: " << exe_path << std::endl;
 #endif
+
+        int32_t image_width = 100;
+        int32_t image_height = 100;
+        int32_t x = 2;
+        int32_t y = 0;
+        cv::Point start_point(8, 8);
+
+
+//        std::vector<cv::Point> search_points = generate_spiral_search_pattern(image_width, image_height, start_point, x, y);
+        std::vector<cv::Point> search_points = generate_raster_search_pattern(image_width, image_height, start_point, x, y);
+
+        cv::Mat tmp = cv::Mat::zeros(image_height, image_width, CV_8UC1);
+
+        for (idx = 0; idx < search_points.size(); ++idx)
+        {
+            cv::line(tmp, search_points[idx], search_points[idx], cv::Scalar(255), 1); // Blue line, thickness 2
+
+        }
+
+        bp = 100;
 
         //----------------------------------------------------------------------------------------
         // variables

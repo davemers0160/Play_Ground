@@ -39,6 +39,7 @@ typedef void* HINSTANCE;
 #include <bitset>
 #include <set>
 #include <unordered_set>
+#include <map>
 
 // custom includes
 #include "get_current_time.h"
@@ -766,19 +767,16 @@ int main(int argc, char** argv)
         int32_t y = 0;
         cv::Point start_point(8, 8);
 
+        std::map<int32_t, std::string> test_map = { {0, "zero"},{1,"one"},{2,"two"} };
 
-//        std::vector<cv::Point> search_points = generate_spiral_search_pattern(image_width, image_height, start_point, x, y);
-        std::vector<cv::Point> search_points = generate_raster_search_pattern(image_width, image_height, start_point, x, y);
+        std::cout << "m: " << test_map.at(0) << std::endl;
 
-        cv::Mat tmp = cv::Mat::zeros(image_height, image_width, CV_8UC1);
+        auto& tmp_mp = test_map[0];
 
-        for (idx = 0; idx < search_points.size(); ++idx)
+        for (auto t : test_map)
         {
-            cv::line(tmp, search_points[idx], search_points[idx], cv::Scalar(255), 1); // Blue line, thickness 2
-
+            auto tmp = t;
         }
-
-        bp = 100;
 
         //----------------------------------------------------------------------------------------
         // variables

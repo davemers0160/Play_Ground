@@ -816,10 +816,9 @@ int main(int argc, char** argv)
         std::vector<int16_t> data = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         std::vector<std::complex<int16_t>> iq_data2 = generate_8psk<int16_t>(data, mp);
 
-        std::vector<std::complex<int16_t>> iq_data3 = generate_pi4_qpsk<int16_t>(data, mp);
-
-
-
+        iq_params* iq_mp2 = new iq_params(2400);
+        modulation_params mp_pi4(MODULATION_TYPES::MT_PI4_QPSK, 960000, 0.0001, 0.0, 2046.0, true, true, (void*)iq_mp2);
+        std::vector<std::complex<int16_t>> iq_data3 = generate_pi4_qpsk<int16_t>(data, mp_pi4);
 
         std::vector<double> g = DSP::create_hilbert_filter(69);
         std::cout << std::endl << "h3 = [";

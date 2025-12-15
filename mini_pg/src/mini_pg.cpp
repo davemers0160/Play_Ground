@@ -62,6 +62,7 @@ typedef void* HINSTANCE;
 
 #include "rds.h"
 #include "dsp/dsp_windows.h"
+#include "dsp/dsp_filtering.h"
 
 #include <test_gen_lib.h>
 
@@ -92,10 +93,12 @@ enum MODULATION_TYPES
     MT_DQPSK = 10,   /*!< Differential Quadrature Phased Shift Keyed (DQPSK) Modulation */
     MT_16QAM = 11,   /*!< 16 Symbol Quadrature Amplitude Modulation (16-QAM) */
     MT_64QAM = 12,    /*!< 64 Symbol Quadrature Amplitude Modulation (64-QAM) */
-    MT_PI4QPSK = 13,     /*!< PI/4 Quadrature Phased Shift Keyed (PI/4-QPSK) Modulation */
+    MT_PI4_QPSK = 13,     /*!< PI/4 Quadrature Phased Shift Keyed (PI/4-QPSK) Modulation */
+    
     MT_32QAM = 20,
     MT_128QAM = 21,
     MT_8PSK = 22
+
 };
 
 //-----------------------------------------------------------------------------
@@ -143,7 +146,7 @@ typedef struct iq_params
 
 #ifdef __cplusplus
 
-    std::vector<std::complex<float>> bit_mapper;
+    std::vector<std::complex<double>> bit_mapper;
 
     /**
     @brief Default constructor
@@ -157,13 +160,13 @@ typedef struct iq_params
     */
     iq_params(int64_t fc) : filter_cutoff_freq(fc) {}
 
-    iq_params(int64_t fc, std::vector<std::complex<float>> bm) : filter_cutoff_freq(fc) 
+    iq_params(int64_t fc, std::vector<std::complex<double>> bm) : filter_cutoff_freq(fc) 
     {
         set_bit_mapper(bm);
     }
 
     //-----------------------------------------------------------------------------
-    inline void set_bit_mapper(std::vector<std::complex<float>> bm)
+    inline void set_bit_mapper(std::vector<std::complex<double>> bm)
     {
         bit_mapper.clear();
         bit_mapper = bm;
@@ -260,17 +263,30 @@ typedef struct modulation_params
         case MODULATION_TYPES::MT_OQPSK:
         case MODULATION_TYPES::MT_DPSK:
         case MODULATION_TYPES::MT_DQPSK:
-        case MODULATION_TYPES::MT_PI4QPSK:
+        //case MODULATION_TYPES::MT_PI4QPSK:
         case MODULATION_TYPES::MT_32QAM:
         case MODULATION_TYPES::MT_128QAM:
         case MODULATION_TYPES::MT_8PSK:
             specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
             {
                 iq_params* tmp = (iq_params*)mp_t_;
-                float v0 = amplitude / sqrt(2.0);
-                float v1 = amplitude;
+                double v0 = amplitude / sqrt(2.0);
+                double v1 = amplitude;
 
-                std::vector<std::complex<float>> bm = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0} };
+                std::vector<std::complex<double>> bm = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0} };
+
+                mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq, bm));
+            }
+            break;
+
+        case MODULATION_TYPES::MT_PI4_QPSK:
+            specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
+            {
+                iq_params* tmp = (iq_params*)mp_t_;
+                double v0 = amplitude / sqrt(2.0);
+                double v1 = amplitude;
+
+                std::vector<std::complex<double>> bm = { {-v0, -v0}, {-v0, v0}, {v0, -v0}, {v0, v0}, {-v1, 0}, {0, v1}, {0, -v1}, {v1, 0} };
 
                 mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq, bm));
             }
@@ -540,6 +556,47 @@ inline std::vector<std::complex<OUTPUT>> generate_3pi8_8qpsk(std::vector<DATA>& 
 }   // end of generate_3pi8_8qpsk
 
 //-----------------------------------------------------------------------------
+template<typename OUTPUT, typename DATA>
+inline std::vector<std::complex<OUTPUT>> generate_pi4_qpsk(std::vector<DATA>& data, modulation_params& mp)
+{
+    uint32_t idx;
+    uint8_t index = 0;
+    uint16_t num_bits = 3;
+    uint16_t offset;
+
+    uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
+
+    // data must be an even multiple of 3
+    uint32_t rem = data.size() % num_bits;
+    if (rem != 0)
+        data.insert(data.end(), num_bits - rem, 0);
+
+    DATA v;
+
+    iq_params* iq_mp = (iq_params*)mp.mp_t;
+
+    std::complex<OUTPUT> symbol;
+
+    std::vector<std::complex<OUTPUT>> iq_data;
+    iq_data.reserve(data.size()>>1);
+
+    for (idx = 0; idx < data.size(); idx += num_bits)
+    {
+        v = (data[idx] << 1 | data[idx + 1] ) & 0x03;
+
+        offset = 4 * (index & 0x0001);
+        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[v + offset]);
+
+        ++index;
+
+        // copy the repeated samples for a single symbol
+        iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
+    }
+
+    return iq_data;
+}
+
+////-----------------------------------------------------------------------------
 // Custom hash function for cv::Point
 struct cvPoint_hash 
 {
@@ -653,85 +710,6 @@ std::vector<cv::Point> generate_spiral_search_pattern(
     return sp;
 }   // end of generate_spiral_search_pattern
 
-//-----------------------------------------------------------------------------
-std::vector<cv::Point> generate_raster_search_pattern(
-    uint32_t image_width,
-    uint32_t image_height,
-    const cv::Point& start_point,
-    int32_t half_x,
-    int32_t half_y
-)
-{
-    uint32_t idx, jdx;
-
-    std::vector<cv::Point> search_points;
-    //std::unordered_set<cv::Point, cvPoint_hash> search_points;
-
-    // Start at the center point
-    int32_t x = start_point.x;
-    int32_t y = start_point.y;
-    int32_t min_x = max(x - half_x, 0);
-    int32_t max_x = min((uint32_t)(x + half_x + 1), image_width);
-    int32_t min_y = max(y - half_y, 0);
-    int32_t max_y = min((uint32_t)(y + half_y + 1), image_height);
-
-    for (y = min_y; y < max_y; ++y)
-    {
-        for (x = min_x; x < max_x; ++x)
-        {
-            search_points.push_back(cv::Point(x, y));
-        }
-    }
-
-    return search_points;
-
-}   // end of generate_raster_search_pattern
-
-//-----------------------------------------------------------------------------
-/**
- * Apply SOS filter to a sequence of complex numbers
- * Uses Direct Form II implementation
- *
- * @param input Input sequence of complex numbers
- * @param sections Vector of SOS coefficient structures
- * @return Filtered output sequence
- */
-template <typename T>
-std::vector<std::complex<T>> apply_df2t_filter(const std::vector<std::complex<T>>& data, std::vector<std::vector<double>>& filter)
-{
-    uint64_t idx, jdx;
-    std::complex<double> current_input, section_output;
-
-    uint32_t num_sections = filter.size();
-
-    // state variables for the filter
-    std::vector<std::vector<std::complex<double>>> w(num_sections, std::vector<std::complex<double>>(2, { 0.0, 0.0 }));
-    
-    std::vector<std::complex<T>> output(data.size());
-
-    // Iterate through each sample of the input sequence
-    for (idx = 0; idx < data.size(); ++idx)
-    {
-        //current_input = static_cast<std::complex<double>>(data[idx]); 
-        current_input = std::complex<double>((double)data[idx].real(), (double)data[idx].imag());
-
-        // Direct Form II Transposed equations for a single section
-        for (jdx=0; jdx<filter.size(); ++jdx)
-        {
-            section_output = filter[jdx][0] * current_input + w[jdx][0];
-
-            // update state variables : Note: filter[jdx][3] is assumed to be 1 and not used in calculations
-            w[jdx][0] = filter[jdx][1] * current_input - filter[jdx][4] * section_output + w[jdx][1];
-            w[jdx][1] = filter[jdx][2] * current_input - filter[jdx][5] * section_output;
-
-            current_input = section_output;
-        }
-
-        output[idx] = static_cast<std::complex<T>>(current_input);
-    }
-
-    return output;
-}   // end of apply_df2t_filter
 
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
@@ -838,32 +816,9 @@ int main(int argc, char** argv)
         std::vector<int16_t> data = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         std::vector<std::complex<int16_t>> iq_data2 = generate_8psk<int16_t>(data, mp);
 
-        //auto tmp_coeff = DSP::calculate_iir_filter(fc, 2);
+        std::vector<std::complex<int16_t>> iq_data3 = generate_pi4_qpsk<int16_t>(data, mp);
 
-        //for (idx = 0; idx < tmp_coeff.size(); ++idx)
-        //{
-        //    std::cout << tmp_coeff[idx].first << "\t" << tmp_coeff[idx].second << std::endl;
-        //}
 
-        auto coeff_butt = DSP::butterworth_iir_sos(12, 4e6/20e6);
-
-        std::cout << std::endl;
-        for (idx = 0; idx < coeff_butt.size(); ++idx)
-        {
-            std::cout << coeff_butt[idx][0] << ",\t" << coeff_butt[idx][1] << ",\t" << coeff_butt[idx][2] << ",\t" << coeff_butt[idx][3] << ",\t" << coeff_butt[idx][4] << ",\t" << coeff_butt[idx][5] << std::endl;
-        }
-        std::cout << std::endl;
-
-        std::vector<std::vector<double>> coeff2 = DSP::chebyshev2_iir_sos(12, 6e6/20e6, 50.0);
-
-        std::cout << std::endl;
-        for (idx = 0; idx < coeff2.size(); ++idx)
-        {
-            std::cout << coeff2[idx][0] << ",\t" << coeff2[idx][1] << ",\t" << coeff2[idx][2] << ",\t" << coeff2[idx][3] << ",\t" << coeff2[idx][4] << ",\t" << coeff2[idx][5] << std::endl;
-        }
-        std::cout << std::endl;
-
-        bp = 99;
 
 
         std::vector<double> g = DSP::create_hilbert_filter(69);
@@ -900,17 +855,17 @@ int main(int argc, char** argv)
         //std::cout << std::endl;
 
         // Apply the filter
-        auto filtered = apply_df2t_filter(iq_data2, coeff2);
+        //auto filtered = DSP::apply_df2t_filter(iq_data2, coeff2);
 
-        std::cout << "filtered = [";
-        for (idx = 0; idx < filtered.size() - 1; ++idx)
-        {
-            std::cout << filtered[idx].real() << (filtered[idx].imag() >= 0 ? " + " : " - ") << abs(filtered[idx].imag()) << "i, ";
-        }
-        std::cout << filtered[idx].real() << (filtered[idx].imag() >= 0 ? " + " : " - ") << abs(filtered[idx].imag()) << "i];" << std::endl;
-        std::cout << std::endl;
+        //std::cout << "filtered = [";
+        //for (idx = 0; idx < filtered.size() - 1; ++idx)
+        //{
+        //    std::cout << filtered[idx].real() << (filtered[idx].imag() >= 0 ? " + " : " - ") << abs(filtered[idx].imag()) << "i, ";
+        //}
+        //std::cout << filtered[idx].real() << (filtered[idx].imag() >= 0 ? " + " : " - ") << abs(filtered[idx].imag()) << "i];" << std::endl;
+        //std::cout << std::endl;
 
-        bp = 100;
+        //bp = 100;
 
         ////
         //index = 0;

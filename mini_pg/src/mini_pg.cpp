@@ -610,27 +610,41 @@ inline std::vector<std::complex<OUTPUT>> generate_pi4_qpsk(std::vector<DATA>& da
 }
 
 //-----------------------------------------------------------------------------
-template<typename OUTPUT, typename DATA>
-inline std::vector<std::complex<OUTPUT>> generate_boc_10_5(std::vector<DATA>& data, modulation_params& mp)
+template <typename T>
+inline constexpr double sign(T val)
 {
-    uint32_t idx;
-    //uint8_t index = 0;
-    //uint16_t num_bits = 1;
-    //uint16_t offset;
+    return (T(0) < val) - (val < T(0));
+}   // end of sign
+
+//-----------------------------------------------------------------------------
+template<typename OUTPUT, typename DATA>
+inline std::vector<std::complex<OUTPUT>> generate_boc_10(std::vector<DATA>& data, modulation_params& mp)
+{
+    uint32_t idx, jdx;
+    uint64_t index = 0;
+    double cosine_phase;
+    double f_sc = 10.23e6;
 
     uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
 
+    // precalculate some values
+    double c1 = M_2PI * f_sc;
+    double a1 = (double)(mp.amplitude * 0.70710678118654752440084436210485)
+
     iq_params* iq_mp = (iq_params*)mp.mp_t;
 
-    std::complex<OUTPUT> symbol;
-    std::vector<std::complex<OUTPUT>> iq_data;
-
+    std::vector<std::complex<OUTPUT>> iq_data(data.size() * samples_per_symbol);
+   
     for (idx = 0; idx < data.size(); ++idx)
     {
-        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[data[idx]]);
-
-        // copy the repeated samples for a single symbol
-        iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
+        for (jdx = 0; jdx < samples_per_symbol; ++jdx)
+        {
+            cosine_phase = sign(std::cos(c1 * index));
+            cosine_phase *= (data[idx] == 0) ? -a1 : a1;
+  
+            iq_data[index] = static_cast<std::complex<OUTPUT>>(cosine_phase, 0);
+            ++index;
+        }
     }
 
     return iq_data;

@@ -97,7 +97,8 @@ enum MODULATION_TYPES
     
     MT_32QAM = 20,
     MT_128QAM = 21,
-    MT_8PSK = 22
+    MT_8PSK = 22,
+    MT_BOC_10_5
 
 };
 
@@ -274,6 +275,18 @@ typedef struct modulation_params
                 double v1 = amplitude;
 
                 std::vector<std::complex<double>> bm = { {-v0, -v0}, {-v1, 0}, {0, v1}, {-v0, v0}, {0, -v1}, {v0, -v0}, {v0, v0}, {v1, 0} };
+
+                mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq, bm));
+            }
+            break;
+
+        case MODULATION_TYPES::MT_BOC_10_5:
+            specialty_type = SPECIALTY_PARAMS_TYPE::MP_IQ;
+            {
+                iq_params* tmp = (iq_params*)mp_t_;
+                double v0 = amplitude / sqrt(2.0);
+
+                std::vector<std::complex<double>> bm = { {-v0, -v0}, {-v0, v0}, {v0, -v0}, {v0, v0}};
 
                 mp_t = (void*)(&iq_params(tmp->filter_cutoff_freq, bm));
             }
@@ -595,6 +608,35 @@ inline std::vector<std::complex<OUTPUT>> generate_pi4_qpsk(std::vector<DATA>& da
 
     return iq_data;
 }
+
+//-----------------------------------------------------------------------------
+template<typename OUTPUT, typename DATA>
+inline std::vector<std::complex<OUTPUT>> generate_boc_10_5(std::vector<DATA>& data, modulation_params& mp)
+{
+    uint32_t idx;
+    //uint8_t index = 0;
+    //uint16_t num_bits = 1;
+    //uint16_t offset;
+
+    uint32_t samples_per_symbol = floor(mp.sample_rate * mp.symbol_length + 0.5);
+
+    iq_params* iq_mp = (iq_params*)mp.mp_t;
+
+    std::complex<OUTPUT> symbol;
+    std::vector<std::complex<OUTPUT>> iq_data;
+
+    for (idx = 0; idx < data.size(); ++idx)
+    {
+        symbol = static_cast<std::complex<OUTPUT>>(iq_mp->bit_mapper[data[idx]]);
+
+        // copy the repeated samples for a single symbol
+        iq_data.insert(iq_data.end(), samples_per_symbol, symbol);
+    }
+
+    return iq_data;
+
+}   // end of generate_boc_10_5
+
 
 ////-----------------------------------------------------------------------------
 // Custom hash function for cv::Point

@@ -762,8 +762,167 @@ inline std::vector<std::complex<OUTPUT>> generate_boc_10(std::vector<DATA>& data
 
     return iq_data;
 
-}   // end of generate_boc_10_5
+}   // end of generate_boc_10
 
+namespace DSP
+{
+    inline std::vector<std::vector<std::complex<double>>> zpk_to_sos_complex(
+        const std::vector<std::complex<double>>& zeros,
+        const std::vector<std::complex<double>>& poles,
+        double overall_gain)
+    {
+        size_t n = poles.size();
+        if (zeros.size() != n) /* error */;
+
+        std::vector<std::vector<std::complex<double>>> sos(n / 2);
+
+        // Naive pairing: pole 2k with 2k+1, zero 2k with 2k+1
+        // Better: sort by angle, pair nearest conjugates, etc.
+        for (size_t i = 0; i < n; i += 2)
+        {
+            std::complex<double> p1 = poles[i];
+            std::complex<double> p2 = poles[i + 1];
+
+            std::complex<double> z1 = (i < zeros.size()) ? zeros[i] : std::complex<double>(0.0, 0.0);
+            std::complex<double> z2 = (i + 1 < zeros.size()) ? zeros[i + 1] : std::complex<double>(0.0, 0.0);
+
+            // Quadratic numerator: b0 (z-z1)(z-z2) --> b0 z² - b0(z1+z2) z + b0 z1 z2
+            // We usually set b0 = 1 for each section, scale overall gain later
+            std::complex<double> b0 = 1.0;
+            std::complex<double> b1 = -(z1 + z2);
+            std::complex<double> b2 = z1 * z2;
+
+            // Denominator
+            std::complex<double> a0 = 1.0;
+            std::complex<double> a1 = -(p1 + p2);
+            std::complex<double> a2 = p1 * p2;
+
+            sos[i / 2] = { b0, b1, b2, a0, a1, a2 };
+        }
+
+        // Apply overall gain to first section (common convention)
+        if (!sos.empty()) {
+            sos[0][0] *= overall_gain;
+            sos[0][1] *= overall_gain;
+            sos[0][2] *= overall_gain;
+        }
+
+        return sos;
+    }
+
+inline std::vector<std::vector<std::complex<double>>> chebyshev2_iir_bp_sos(int32_t N, double f_low, double f_high, double r_s)
+{
+    // 1. Frequency Warping (Digital to Analog)
+    // f_low and f_high should be normalized frequencies (0.0 to 0.5)
+    double w1 = 2.0 * std::tan(M_PI * f_low);
+    double w2 = 2.0 * std::tan(M_PI * f_high);
+
+    double bw = w2 - w1;
+    double w0_sq = w1 * w2;
+
+    // 2. Calculate LP Prototype (1 rad/s)
+    double epsilon = 1 / std::sqrt(std::pow(10, (r_s / 10.0)) - 1.0);
+    std::vector<std::complex<double>> z_lp(N), p_lp(N);
+    chebyshev2_poles_zeros(N, epsilon, z_lp, p_lp);
+
+    // 3. LP to BP Transformation
+    // Each LP pole/zero s_lp creates two BP poles/zeros s_bp via:
+    // s_bp^2 - (s_lp * bw)s_bp + w0_sq = 0
+    std::vector<std::complex<double>> z_bp, p_bp;
+
+    for (int i = 0; i < N; ++i) {
+        // Transform Poles
+        std::complex<double> b_p = p_lp[i] * bw;
+        std::complex<double> disc_p = std::sqrt(b_p * b_p - 4.0 * w0_sq);
+        p_bp.push_back((b_p + disc_p) / 2.0);
+        p_bp.push_back((b_p - disc_p) / 2.0);
+
+        // Transform Zeros
+        if (std::abs(z_lp[i]) > 1e10 || std::isinf(z_lp[i].real())) {
+            // A zero at infinity in LP becomes one zero at 0 and one at infinity in BP
+            z_bp.push_back(0.0);
+            z_bp.push_back(1e15); // Numerical infinity
+        }
+        else {
+            std::complex<double> b_z = z_lp[i] * bw;
+            std::complex<double> disc_z = std::sqrt(b_z * b_z - 4.0 * w0_sq);
+            z_bp.push_back((b_z + disc_z) / 2.0);
+            z_bp.push_back((b_z - disc_z) / 2.0);
+        }
+    }
+
+    // 4. Bilinear Transformation (s-plane to z-plane)
+    std::complex<double> kz(1.0, 0.0), kp(1.0, 0.0);
+    std::vector<std::complex<double>> zd = bilinear_transform(z_bp, kz);
+    std::vector<std::complex<double>> pd = bilinear_transform(p_bp, kp);
+
+    // 5. Convert to SOS
+    // k is typically 1.0 for Cheby2 passband, but you may need to 
+    // normalize gain at the center frequency (sqrt(f_low * f_high))
+    double k_final = 1.0;
+    return zpk_to_sos_complex(zd, pd, k_final);
+}
+
+
+// Returns vector of second-order sections
+// each section: 6 complex doubles = [b0 b1 b2  a0 a1 a2]
+// a0 is always kept = 1+0j
+inline std::vector<std::vector<std::complex<double>>> chebyshev2_complex_bandpass_iir_sos(
+    int32_t N,                      // lowpass prototype order (= filter order)
+    double center_omega_normalized, // wo = 2*pi * f_center / f_s
+    double lowpass_cutoff_omega,    // w_c of the lowpass prototype (rad/sample)
+    //   ~ bandwidth/2 in normalized terms
+    double stopband_attenuation_db  // Rs [dB]
+)
+{
+    // 1. Design real Chebyshev Type II lowpass prototype
+    double epsilon = 1.0 / std::sqrt(std::pow(10.0, stopband_attenuation_db / 10.0) - 1.0);
+
+    std::vector<std::complex<double>> z_lp(N, { 0.0, 0.0 });
+    std::vector<std::complex<double>> p_lp(N, { 0.0, 0.0 });
+
+    chebyshev2_poles_zeros(N, epsilon, z_lp, p_lp);  // your existing function
+
+    // Scale prototype to desired cutoff (your original code did scaling via omega_warped)
+    double omega_warped = 2.0 * std::tan(M_PI * lowpass_cutoff_omega);
+    for (auto& zz : z_lp) zz *= omega_warped;
+    for (auto& pp : p_lp) pp *= omega_warped;
+
+    // 2. Bilinear transform lowpass prototype --> digital lowpass
+    std::complex<double> kz(1.0, 0.0);
+    std::complex<double> kp(1.0, 0.0);   // usually same prewarping constant
+
+    auto zd_lp = bilinear_transform(z_lp, kz);
+    auto pd_lp = bilinear_transform(p_lp, kp);
+
+    // Gain (optional - can be adjusted later)
+    double gain_lp = 1.0; // or compute from your original logic
+
+    // 3. Apply complex frequency shift z --> z * exp(-j wo)
+    //std::complex<double> rot = std::exp(std::complex<double>(0.0, -center_omega_normalized));
+    std::complex<double> rot = std::exp((double)M_2PI * DSP::j * center_omega_normalized);
+
+    std::vector<std::complex<double>> zd_bp(N);
+    std::vector<std::complex<double>> pd_bp(N);
+
+    for (int i = 0; i < N; ++i) {
+        zd_bp[i] = zd_lp[i] * rot;
+        pd_bp[i] = pd_lp[i] * rot;
+    }
+
+    // 4. Convert zpk --> second-order sections (complex)
+    // You need to implement/adapt zpk_to_sos to handle complex poles/zeros
+    // It must pair conjugates (or near-conjugates) correctly when possible,
+    // but since we expect complex coeffs anyway, we can pair arbitrarily
+    // (but better to pair conjugates for numerical reasons when they exist)
+
+    auto sos_complex = zpk_to_sos_complex(zd_bp, pd_bp, gain_lp);
+
+    return sos_complex;
+}
+
+
+}   // end of DSP
 
 ////-----------------------------------------------------------------------------
 // Custom hash function for cv::Point
@@ -924,6 +1083,25 @@ int main(int argc, char** argv)
         {
             auto tmp = t;
         }
+
+
+        int32_t N2 = 6;
+
+        //std::vector<std::vector<double>> tmp = DSP::chebyshev2_iir_bp_sos(N2, 2/20.0, 4/20.0, 40.0);
+        //std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_iir_bp_sos(N2, 2/20.0, 4/20.0, 40.0);
+
+        std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_complex_bandpass_iir_sos(N2, -3.0/20.0, 1.0 / 20.0, 40);
+
+        for (idx = 0; idx < tmp.size(); ++idx)
+        {
+            for (jdx = 0; jdx < tmp[idx].size(); ++jdx)
+            {
+                std::cout << tmp[idx][jdx].real() << "+" << tmp[idx][jdx].imag() << "j\t";
+            }
+            std::cout << std::endl;
+        }
+
+
 
         //----------------------------------------------------------------------------------------
         // variables

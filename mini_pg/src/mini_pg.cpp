@@ -77,6 +77,119 @@ volatile bool entry = false;
 volatile bool run = true;
 std::string console_input1;
 
+class mixer_filter_settings
+{
+public:
+    uint8_t band;
+    uint8_t filter;
+    uint64_t min_freq;
+    uint64_t max_freq;
+
+    mixer_filter_settings(uint8_t b, uint8_t f, uint64_t mn_f, uint64_t mx_f) : band(b), filter(f), min_freq(mn_f), max_freq(mx_f) {}
+
+};
+
+const std::vector<mixer_filter_settings> mixer_filters = { {0, 0, 5100000000, 7800000000},{0, 1, 5200000000, 8000000000},{0, 2, 5300000000, 8100000000},
+                                    {0, 3, 5300000000, 8300000000},{0, 4, 5400000000, 8600000000},{0, 5, 5500000000, 8800000000},
+                                    {0, 6, 5700000000, 9000000000},{0, 7, 5900000000, 9100000000},{0, 8, 5800000000, 9200000000},
+                                    {0, 9, 6000000000, 9500000000},{0, 10, 6300000000, 9800000000},{0, 11, 6500000000, 10100000000},
+                                    {0, 12, 6800000000, 10600000000},{0, 13, 7300000000, 11000000000},{0, 14, 8100000000, 11600000000},
+                                    {0, 15, 9100000000, 12300000000},{1, 0, 11000000000, 13800000000},{1, 1, 11100000000, 13900000000},
+                                    {1, 2, 11200000000, 14100000000},{1, 3, 11400000000, 14400000000},{1, 4, 11400000000, 14500000000},
+                                    {1, 5, 11500000000, 14900000000},{1, 6, 11700000000, 15200000000},{1, 7, 12000000000, 15400000000},
+                                    {1, 8, 11800000000, 15700000000},{1, 9, 12000000000, 16000000000},{1, 10, 12300000000, 16200000000},
+                                    {1, 11, 12700000000, 16600000000},{1, 12, 12800000000, 16700000000},{1, 13, 13400000000, 17200000000},
+                                    {1, 14, 14200000000, 18000000000},{1, 15, 15800000000, 19600000000},{2, 0, 15600000000, 20200000000},
+                                    {2, 1, 15800000000, 20300000000},{2, 2, 16000000000, 20600000000},{2, 3, 16200000000, 20900000000},
+                                    {2, 4, 16500000000, 21000000000},{2, 5, 16700000000, 21300000000},{2, 6, 17000000000, 21700000000},
+                                    {2, 7, 17200000000, 22100000000},{2, 8, 17500000000, 21800000000},{2, 9, 17900000000, 22200000000},
+                                    {2, 10, 18400000000, 22700000000},{2, 11, 18900000000, 23200000000},{2, 12, 19800000000, 23700000000},
+                                    {2, 13, 20400000000, 24400000000},{2, 14, 21300000000, 25300000000},{2, 15, 22300000000, 26400000000} };
+
+const uint64_t lo_min_freq = 3000000000;
+const uint64_t lo_max_freq = 16000000000;
+
+const uint64_t sdr_min_freq = 70000000;
+const uint64_t sdr_max_freq = 4000000000;
+
+const uint64_t filter_min_low = 200000000;
+const uint64_t filter_min_high = 100000000;
+const uint64_t filter_max_low = 200000000;
+const uint64_t filter_max_high = 200000000;
+
+//-----------------------------------------------------------------------------
+inline void get_mixer_settings(uint64_t desired_frequency, uint8_t& band, uint8_t& filter, uint64_t& sdr_freq, uint64_t& lo_freq, uint64_t lo_step = 50000000)
+{
+    int32_t idx;
+    bool found_candidate = false;
+    int32_t filter_index = 0;
+
+
+    std::vector<uint32_t> filter_candidates;
+
+    // start at the end of the list and work backwards.This will get filters
+    // with the low end closer to the desired frequency at the top of the list
+    for (idx = mixer_filters.size() - 1; idx >= 0; --idx)
+    {
+        if ((desired_frequency >= (mixer_filters[idx].min_freq + filter_min_high)) && (desired_frequency <= (mixer_filters[idx].max_freq - filter_max_low)))
+            filter_candidates.push_back(idx);
+    }
+
+    bool lo_freq_conditions = false;
+    bool sdr_freq_conditions = false;
+
+    // run through the candidates
+    for (idx = 0; idx < filter_candidates.size(); ++idx)
+    {
+        if (found_candidate == true)
+            break;
+
+        filter_index = filter_candidates[idx];
+
+        lo_freq = (uint64_t)((mixer_filters[filter_index].max_freq + filter_max_high) / 2);
+        sdr_freq = desired_frequency - lo_freq;
+
+        lo_freq_conditions = (lo_freq <= lo_max_freq) && (lo_freq >= lo_min_freq);
+        sdr_freq_conditions = (sdr_freq >= sdr_min_freq) && (sdr_freq <= sdr_max_freq) && (sdr_freq <= (mixer_filters[filter_index].min_freq - filter_min_low) / 2);
+
+        if (lo_freq_conditions == true && sdr_freq_conditions == true)
+        {
+            found_candidate = true;
+            continue;
+        }
+
+        while (lo_freq_conditions == false || sdr_freq_conditions == false)
+        {
+            lo_freq = lo_freq + lo_step;
+            sdr_freq = desired_frequency - lo_freq;
+
+            lo_freq_conditions = (lo_freq <= lo_max_freq) && (lo_freq >= lo_min_freq);
+            sdr_freq_conditions = (sdr_freq >= sdr_min_freq) && (sdr_freq <= sdr_max_freq) && (sdr_freq <= (mixer_filters[filter_index].min_freq - filter_min_low) / 2);
+
+            if (lo_freq_conditions == true && sdr_freq_conditions == true)
+            {
+                found_candidate = true;
+                continue;
+            }
+            else if (lo_freq > lo_max_freq)
+            {
+                std::cout << "max lo freq hit" << std::endl;
+                break;
+            }
+        }
+
+    }
+
+    std::cout << "found candidate: " << found_candidate << std::endl;
+    std::cout << "lo_freq:  " << lo_freq << std::endl;
+    std::cout << "sdr_freq: " << sdr_freq << std::endl;
+    std::cout << "filter band/step: " << (uint32_t)mixer_filters[filter_index].band << "/" << (uint32_t)mixer_filters[filter_index].filter << " -- " << mixer_filters[filter_index].min_freq << "-" << mixer_filters[filter_index].max_freq << std::endl;
+
+    band = mixer_filters[filter_index].band;
+    filter = mixer_filters[filter_index].filter;
+
+}   // end of get_mixer_settings
+
 //-----------------------------------------------------------------------------
 enum MODULATION_TYPES
 {
@@ -872,18 +985,26 @@ int main(int argc, char** argv)
         std::vector<int16_t> data = { 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         std::vector<std::complex<int16_t>> iq_data2 = generate_8psk<int16_t>(data, mp);
 
-        iq_params* iq_mp2 = new iq_params(2400);
-        modulation_params mp_pi4(MODULATION_TYPES::MT_PI4_QPSK, 960000, 0.0001, 0.0, 2046.0, true, true, (void*)iq_mp2);
-        std::vector<std::complex<int16_t>> iq_data3 = generate_pi4_qpsk<int16_t>(data, mp_pi4);
+        //iq_params* iq_mp2 = new iq_params(2400);
+        //modulation_params mp_pi4(MODULATION_TYPES::MT_PI4_QPSK, 960000, 0.0001, 0.0, 2046.0, true, true, (void*)iq_mp2);
+        //std::vector<std::complex<int16_t>> iq_data3 = generate_pi4_qpsk<int16_t>(data, mp_pi4);
 
-        std::vector<double> g = DSP::create_hilbert_filter(69);
-        std::cout << std::endl << "h3 = [";
-        for (idx = 0; idx < g.size()-1; ++idx)
-        {
-            std::cout << g[idx] << ", ";
-        }
-        std::cout << g[idx] << "];" << std::endl;
+        //std::vector<double> g = DSP::create_hilbert_filter(69);
+        //std::cout << std::endl << "h3 = [";
+        //for (idx = 0; idx < g.size()-1; ++idx)
+        //{
+        //    std::cout << g[idx] << ", ";
+        //}
+        //std::cout << g[idx] << "];" << std::endl;
 
+
+        uint64_t desired_frequency = 16000000000;
+        uint8_t band;
+        uint8_t filter;
+        uint64_t sdr_freq;
+        uint64_t lo_freq;
+
+        get_mixer_settings(desired_frequency, band, filter, sdr_freq, lo_freq);
 
         // Create a test signal: sum of two complex sinusoids
         const int N = 500;

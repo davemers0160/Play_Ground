@@ -766,13 +766,17 @@ inline std::vector<std::complex<OUTPUT>> generate_boc_10(std::vector<DATA>& data
 
 namespace DSP
 {
-    inline std::vector<std::vector<std::complex<double>>> zpk_to_sos_complex(
-        const std::vector<std::complex<double>>& zeros,
-        const std::vector<std::complex<double>>& poles,
-        double overall_gain)
+    inline std::vector<std::vector<std::complex<double>>> zpk_to_sos_complex(const std::vector<std::complex<double>>& zeros, const std::vector<std::complex<double>>& poles, double overall_gain)
     {
         size_t n = poles.size();
         if (zeros.size() != n) /* error */;
+
+
+        //theta_c = 2 * pi * center_freq / sample_rate;
+        std::complex<double> z_c = std::exp(2*DSP::M_1PI * -3/20.0);
+        std::complex<double> gain = {1.0, 0.0};
+
+        double total_mag = 1.0;
 
         std::vector<std::vector<std::complex<double>>> sos(n / 2);
 
@@ -798,13 +802,22 @@ namespace DSP
             std::complex<double> a2 = p1 * p2;
 
             sos[i / 2] = { b0, b1, b2, a0, a1, a2 };
+
+            std::complex<double> num = b0 * (z_c * z_c) + b1 * z_c + b2;
+            std::complex<double> den = a0 * (z_c *z_c) + a1 * z_c + a2;
+
+            double section_mag = std::abs(num / den);
+            total_mag = total_mag * section_mag;
+
+            gain *= ((a0 + a1 + a2) / (b0 + b1 + b2));
+
         }
 
         // Apply overall gain to first section (common convention)
         if (!sos.empty()) {
-            sos[0][0] *= overall_gain;
-            sos[0][1] *= overall_gain;
-            sos[0][2] *= overall_gain;
+            sos[0][0] /= total_mag;
+            sos[0][1] /= total_mag;
+            sos[0][2] /= total_mag;
         }
 
         return sos;
@@ -923,6 +936,10 @@ inline std::vector<std::vector<std::complex<double>>> chebyshev2_complex_bandpas
 
 
 }   // end of DSP
+
+
+
+
 
 ////-----------------------------------------------------------------------------
 // Custom hash function for cv::Point

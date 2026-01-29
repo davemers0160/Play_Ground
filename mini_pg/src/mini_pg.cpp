@@ -773,10 +773,10 @@ namespace DSP
 
 
         //theta_c = 2 * pi * center_freq / sample_rate;
-        std::complex<double> z_c = std::exp(2*DSP::M_1PI * -3/20.0);
+        std::complex<double> z_c = std::exp(2*DSP::M_1PI * 0/20.0);
         std::complex<double> gain = {1.0, 0.0};
 
-        double total_mag = 1.0;
+        std::complex<double> total_mag(1.0, 0.0);
 
         std::vector<std::vector<std::complex<double>>> sos(n / 2);
 
@@ -803,21 +803,23 @@ namespace DSP
 
             sos[i / 2] = { b0, b1, b2, a0, a1, a2 };
 
-            std::complex<double> num = b0 * (z_c * z_c) + b1 * z_c + b2;
-            std::complex<double> den = a0 * (z_c *z_c) + a1 * z_c + a2;
+            //std::complex<double> num = b0 * (z_c * z_c) + b1 * z_c + b2;
+            //std::complex<double> den = a0 * (z_c *z_c) + a1 * z_c + a2;
+            std::complex<double> num = b0 + b1 / z_c + b2 / (z_c * z_c);
+            std::complex<double> den = a0 + a1 / z_c + a2 / (z_c * z_c);
 
-            double section_mag = std::abs(num / den);
-            total_mag = total_mag * section_mag;
+            std::complex<double> section_mag = (num / den);
+            total_mag *= section_mag;
 
             gain *= ((a0 + a1 + a2) / (b0 + b1 + b2));
-
+            std::cout << "total_mag: " << std::abs(total_mag) << std::endl;
         }
 
         // Apply overall gain to first section (common convention)
         if (!sos.empty()) {
-            sos[0][0] /= total_mag;
-            sos[0][1] /= total_mag;
-            sos[0][2] /= total_mag;
+            sos[0][0] /= std::abs(total_mag);
+            sos[0][1] /= std::abs(total_mag);
+            sos[0][2] /= std::abs(total_mag);
         }
 
         return sos;
@@ -1064,7 +1066,7 @@ std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::v
     if (sos_filter.empty() == true)
     {
         std::cout << "SoS filter is empty" << std::endl;
-        return;
+        return sos_filter;
     }
 
     // Iterate over the specified frequency range to find the peak gain
@@ -1086,12 +1088,14 @@ std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::v
         }
 
         double current_gain = std::abs(overall_response);
+        std::cout << "current_gain: " << current_gain << std::endl;
         if (current_gain > max_gain) 
         {
             max_gain = current_gain;
         }
     }
 
+    std::cout << "max_gain: " << max_gain << std::endl;
     std::cout << "Peak gain in the passband is: " << 20 * log10(max_gain) << " dB" << std::endl;
 
     // If gain is > 0dB (linear gain > 1.0), adjust the filter coefficients

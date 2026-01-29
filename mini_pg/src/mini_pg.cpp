@@ -768,27 +768,23 @@ namespace DSP
 {
     inline std::vector<std::vector<std::complex<double>>> zpk_to_sos_complex(const std::vector<std::complex<double>>& zeros, const std::vector<std::complex<double>>& poles, double overall_gain)
     {
+        uint32_t idx;
+
         size_t n = poles.size();
         if (zeros.size() != n) /* error */;
 
-
-        //theta_c = 2 * pi * center_freq / sample_rate;
-        std::complex<double> z_c = std::exp(2*DSP::M_1PI * 0/20.0);
-        std::complex<double> gain = {1.0, 0.0};
-
-        std::complex<double> total_mag(1.0, 0.0);
 
         std::vector<std::vector<std::complex<double>>> sos(n / 2);
 
         // Naive pairing: pole 2k with 2k+1, zero 2k with 2k+1
         // Better: sort by angle, pair nearest conjugates, etc.
-        for (size_t i = 0; i < n; i += 2)
+        for (idx = 0; idx < n; idx += 2)
         {
-            std::complex<double> p1 = poles[i];
-            std::complex<double> p2 = poles[i + 1];
+            std::complex<double> p1 = poles[idx];
+            std::complex<double> p2 = poles[idx + 1];
 
-            std::complex<double> z1 = (i < zeros.size()) ? zeros[i] : std::complex<double>(0.0, 0.0);
-            std::complex<double> z2 = (i + 1 < zeros.size()) ? zeros[i + 1] : std::complex<double>(0.0, 0.0);
+            std::complex<double> z1 = (idx < zeros.size()) ? zeros[idx] : std::complex<double>(0.0, 0.0);
+            std::complex<double> z2 = (idx + 1 < zeros.size()) ? zeros[idx + 1] : std::complex<double>(0.0, 0.0);
 
             // Quadratic numerator: b0 (z-z1)(z-z2) --> b0 z² - b0(z1+z2) z + b0 z1 z2
             // We usually set b0 = 1 for each section, scale overall gain later
@@ -801,25 +797,8 @@ namespace DSP
             std::complex<double> a1 = -(p1 + p2);
             std::complex<double> a2 = p1 * p2;
 
-            sos[i / 2] = { b0, b1, b2, a0, a1, a2 };
+            sos[idx >> 1] = { b0, b1, b2, a0, a1, a2 };
 
-            //std::complex<double> num = b0 * (z_c * z_c) + b1 * z_c + b2;
-            //std::complex<double> den = a0 * (z_c *z_c) + a1 * z_c + a2;
-            std::complex<double> num = b0 + b1 / z_c + b2 / (z_c * z_c);
-            std::complex<double> den = a0 + a1 / z_c + a2 / (z_c * z_c);
-
-            std::complex<double> section_mag = (num / den);
-            total_mag *= section_mag;
-
-            gain *= ((a0 + a1 + a2) / (b0 + b1 + b2));
-            std::cout << "total_mag: " << std::abs(total_mag) << std::endl;
-        }
-
-        // Apply overall gain to first section (common convention)
-        if (!sos.empty()) {
-            sos[0][0] /= std::abs(total_mag);
-            sos[0][1] /= std::abs(total_mag);
-            sos[0][2] /= std::abs(total_mag);
         }
 
         return sos;
@@ -932,6 +911,51 @@ inline std::vector<std::vector<std::complex<double>>> chebyshev2_complex_bandpas
     // (but better to pair conjugates for numerical reasons when they exist)
 
     auto sos_complex = zpk_to_sos_complex(zd_bp, pd_bp, gain_lp);
+
+    return sos_complex;
+}
+
+
+inline std::vector<std::vector<std::complex<double>>> chebyshev2_complex_band_reject_iir_sos(int32_t N,double center_omega_normalized,double lowpass_cutoff_omega,double stopband_attenuation_db)
+{
+    // 1. Design real Chebyshev Type II lowpass prototype
+    double epsilon = 1.0 / std::sqrt(std::pow(10.0, stopband_attenuation_db / 10.0) - 1.0);
+    std::vector<std::complex<double>> z_lp(N, { 0.0, 0.0 });
+    std::vector<std::complex<double>> p_lp(N, { 0.0, 0.0 });
+    chebyshev2_poles_zeros(N, epsilon, z_lp, p_lp);
+
+    // Scale prototype to desired cutoff width
+    double omega_warped = 2.0 * std::tan(M_PI * lowpass_cutoff_omega);
+    for (auto& zz : z_lp) zz *= omega_warped;
+    for (auto& pp : p_lp) pp *= omega_warped;
+
+    // 2. Bilinear transform lowpass prototype --> digital lowpass
+    std::complex<double> k(1.0, 0.0); // Prewarping is handled by omega_warped
+    auto zd_lp = bilinear_transform(z_lp, k);
+    auto pd_lp = bilinear_transform(p_lp, k);
+
+    // 3. (NEW STEP) Transform digital lowpass --> digital high-pass (z -> -z)
+    // This moves the passband at DC to Nyquist, creating a high-pass filter.
+    // The zeros on the jw-axis of the prototype become the notch.
+    for (auto& z : zd_lp) { z *= -1.0; }
+    for (auto& p : pd_lp) { p *= -1.0; }
+
+    // 4. Apply complex frequency shift z --> z * exp(-j wo)
+    // This moves the high-pass filter's response (with its notch at DC) to the target center_omega.
+    std::complex<double> rot = std::exp(-1.0 * DSP::j * center_omega_normalized); // Correction: Use -j for positive freq shift
+    std::vector<std::complex<double>> zd_br(N); // 'br' for band-reject
+    std::vector<std::complex<double>> pd_br(N);
+    for (int i = 0; i < N; ++i) {
+        zd_br[i] = zd_lp[i] * rot;
+        pd_br[i] = pd_lp[i] * rot;
+    }
+
+    // 5. Convert zpk --> second-order sections (complex)
+    // The overall gain might need to be re-calculated or normalized depending
+    // on the z->-z transformation, but for a Chebyshev II, the passband gain
+    // should remain unity. We start with 1.0.
+    double gain = 1.0;
+    auto sos_complex = zpk_to_sos_complex(zd_br, pd_br, gain);
 
     return sos_complex;
 }
@@ -1058,7 +1082,7 @@ std::vector<cv::Point> generate_spiral_search_pattern(
 }   // end of generate_spiral_search_pattern
 
 
-std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::vector< std::vector<std::complex<double>>> sos_filter,double sample_rate,double passband_start_freq,double passband_end_freq,int num_frequency_points = 1000) 
+std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::vector< std::vector<std::complex<double>>> sos_filter, uint32_t num_frequency_points = 1000) 
 {
     uint32_t idx;
     double max_gain = 0.0;
@@ -1069,11 +1093,15 @@ std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::v
         return sos_filter;
     }
 
+    double step = 2.0* M_PI / (double)num_frequency_points;
+    double omega = -M_PI;
+
     // Iterate over the specified frequency range to find the peak gain
     for (idx = 0; idx < num_frequency_points; ++idx) 
     {
-        double freq = passband_start_freq + (passband_end_freq - passband_start_freq) * idx / (num_frequency_points - 1);
-        double omega = 2.0 * M_PI * freq / sample_rate;
+        //double freq = passband_start_freq + (passband_end_freq - passband_start_freq) * idx / (num_frequency_points - 1);
+        //double omega = 2.0 * M_PI * freq / sample_rate;
+
 
         std::complex<double> z(cos(omega), sin(omega));
         std::complex<double> z_inv = 1.0 / z;
@@ -1088,14 +1116,17 @@ std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::v
         }
 
         double current_gain = std::abs(overall_response);
-        std::cout << "current_gain: " << current_gain << std::endl;
+        //std::cout << "current_gain: " << 20 * log10(current_gain) << std::endl;
         if (current_gain > max_gain) 
         {
             max_gain = current_gain;
         }
+
+        omega += step;
+
     }
 
-    std::cout << "max_gain: " << max_gain << std::endl;
+    //std::cout << "max_gain: " << max_gain << std::endl;
     std::cout << "Peak gain in the passband is: " << 20 * log10(max_gain) << " dB" << std::endl;
 
     // If gain is > 0dB (linear gain > 1.0), adjust the filter coefficients
@@ -1167,7 +1198,7 @@ int main(int argc, char** argv)
         }
 
 
-        int32_t N2 = 6;
+        int32_t N2 = 8;
 
         //std::vector<std::vector<double>> tmp = DSP::chebyshev2_iir_bp_sos(N2, 2/20.0, 4/20.0, 40.0);
         //std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_iir_bp_sos(N2, 2/20.0, 4/20.0, 40.0);
@@ -1184,7 +1215,7 @@ int main(int argc, char** argv)
         }
         std::cout << std::endl;
 
-        auto tmp2 = normalize_sos_filter_gain(tmp, 20e6, -4e6, 4e6, 100);
+        auto tmp2 = normalize_sos_filter_gain(tmp, 100);
         std::cout << std::endl;
 
         for (idx = 0; idx < tmp2.size(); ++idx)
@@ -1196,6 +1227,34 @@ int main(int argc, char** argv)
             std::cout << std::endl;
         }
         std::cout << std::endl;
+
+        std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_complex_band_reject_iir_sos(N2, 7.0 / 20.0, 9 / 20.0, 40.0);
+        for (idx = 0; idx < tmp3.size(); ++idx)
+        {
+            for (jdx = 0; jdx < tmp3[idx].size(); ++jdx)
+            {
+                std::cout << tmp3[idx][jdx].real() << "+" << tmp3[idx][jdx].imag() << "j\t";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+
+
+        auto tmp4 = normalize_sos_filter_gain(tmp3, 200);
+        std::cout << std::endl;
+
+        for (idx = 0; idx < tmp4.size(); ++idx)
+        {
+            for (jdx = 0; jdx < tmp4[idx].size(); ++jdx)
+            {
+                std::cout << tmp4[idx][jdx].real() << "+" << tmp4[idx][jdx].imag() << "j\t";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+
+
+
 
         //----------------------------------------------------------------------------------------
         // variables

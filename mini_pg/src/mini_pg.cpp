@@ -1056,6 +1056,67 @@ std::vector<cv::Point> generate_spiral_search_pattern(
 }   // end of generate_spiral_search_pattern
 
 
+std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::vector< std::vector<std::complex<double>>> sos_filter,double sample_rate,double passband_start_freq,double passband_end_freq,int num_frequency_points = 1000) 
+{
+    uint32_t idx;
+    double max_gain = 0.0;
+
+    if (sos_filter.empty() == true)
+    {
+        std::cout << "SoS filter is empty" << std::endl;
+        return;
+    }
+
+    // Iterate over the specified frequency range to find the peak gain
+    for (idx = 0; idx < num_frequency_points; ++idx) 
+    {
+        double freq = passband_start_freq + (passband_end_freq - passband_start_freq) * idx / (num_frequency_points - 1);
+        double omega = 2.0 * M_PI * freq / sample_rate;
+
+        std::complex<double> z(cos(omega), sin(omega));
+        std::complex<double> z_inv = 1.0 / z;
+        std::complex<double> overall_response(1.0, 0.0);
+
+        // Cascade the response of each SOS
+        for (const auto& sos : sos_filter) 
+        {
+            std::complex<double> numerator = sos[0] + sos[1] * z_inv + sos[2] * z_inv * z_inv;
+            std::complex<double> denominator = sos[3] + sos[4] * z_inv + sos[5] * z_inv * z_inv;
+            overall_response *= numerator / denominator;
+        }
+
+        double current_gain = std::abs(overall_response);
+        if (current_gain > max_gain) 
+        {
+            max_gain = current_gain;
+        }
+    }
+
+    std::cout << "Peak gain in the passband is: " << 20 * log10(max_gain) << " dB" << std::endl;
+
+    // If gain is > 0dB (linear gain > 1.0), adjust the filter coefficients
+    //if (max_gain > 1.0) {
+    //std::cout << "Gain is > 0dB. Adjusting filter coefficients..." << std::endl;
+    double gain_correction_factor = 1.0 / max_gain;
+
+    // Apply the correction factor to the numerator of the first section.
+    // This scales the entire filter's gain.
+    //if (!sos_filter.empty()) 
+    //{
+    sos_filter[0][0] *= gain_correction_factor;
+    sos_filter[0][1] *= gain_correction_factor;
+    sos_filter[0][2] *= gain_correction_factor;
+
+    std::cout << "Filter gain normalized. New peak gain is approximately 0 dB." << std::endl << std::endl;
+        //}
+    //}
+    //else {
+    //    std::cout << "Filter gain is at or below 0dB. No adjustment needed." << std::endl;
+    //}
+
+    return sos_filter;
+}
+
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {
@@ -1107,7 +1168,7 @@ int main(int argc, char** argv)
         //std::vector<std::vector<double>> tmp = DSP::chebyshev2_iir_bp_sos(N2, 2/20.0, 4/20.0, 40.0);
         //std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_iir_bp_sos(N2, 2/20.0, 4/20.0, 40.0);
 
-        std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_complex_bandpass_iir_sos(N2, -3.0/20.0, 1.0 / 20.0, 40);
+        std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_complex_bandpass_iir_sos(N2, 0.0/20.0, 4 / 20.0, 40);
 
         for (idx = 0; idx < tmp.size(); ++idx)
         {
@@ -1117,8 +1178,20 @@ int main(int argc, char** argv)
             }
             std::cout << std::endl;
         }
+        std::cout << std::endl;
 
+        auto tmp2 = normalize_sos_filter_gain(tmp, 20e6, -4e6, 4e6, 100);
+        std::cout << std::endl;
 
+        for (idx = 0; idx < tmp2.size(); ++idx)
+        {
+            for (jdx = 0; jdx < tmp2[idx].size(); ++jdx)
+            {
+                std::cout << tmp2[idx][jdx].real() << "+" << tmp2[idx][jdx].imag() << "j\t";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
 
         //----------------------------------------------------------------------------------------
         // variables

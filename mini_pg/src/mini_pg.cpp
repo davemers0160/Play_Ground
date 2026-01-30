@@ -1086,6 +1086,57 @@ inline std::vector<std::vector<std::complex<double>>> create_complex_chebyshev_2
 
 
 
+
+inline std::vector<std::vector<double>> chebyshev2_highpass_iir_sos(int32_t N, double cutoff_frequency, double r_s)
+{
+    int32_t idx;
+    double k = 1.0; // Gain initialization
+
+    // 1. Calculate Chebyshev Type II parameters (Stopband ripple/rejection)
+    double epsilon = 1.0 / std::sqrt(std::pow(10.0, (r_s / 10.0)) - 1.0);
+
+    // 2. Calculate poles and zeros for normalized lowpass prototype
+    std::vector<std::complex<double>> z(N, { 0.0, 0.0 });
+    std::vector<std::complex<double>> p(N, { 0.0, 0.0 });
+    chebyshev2_poles_zeros(N, epsilon, z, p);
+
+    // 3. Frequency transformation (Lowpass Prototype to Highpass)
+    // Transformation: s_hp = omega_warped / s_lp
+    double omega_warped = 2.0 * std::tan(M_PI * cutoff_frequency);
+
+    std::vector<std::complex<double>> z_hp(N);
+    std::vector<std::complex<double>> p_hp(N);
+
+    for (idx = 0; idx < N; ++idx)
+    {
+        // Highpass transformation: inverse the prototype and scale by warped frequency
+        // Handle potential division by zero for zeros at infinity in prototype
+        p_hp[idx] = omega_warped / p[idx];
+
+        if (std::abs(z[idx]) > 1e-15) {
+            z_hp[idx] = omega_warped / z[idx];
+        }
+        else {
+            // Analog zeros at infinity in LP prototype map to 0 in HP
+            z_hp[idx] = std::complex<double>(0.0, 0.0);
+        }
+    }
+
+    // 4. Bilinear transformation to z-domain
+    std::complex<double> kz(1.0, 0.0), kp(1.0, 0.0);
+    std::vector<std::complex<double>> zd = bilinear_transform(z_hp, kz);
+    std::vector<std::complex<double>> pd = bilinear_transform(p_hp, kp);
+
+    // 5. ZPK to SOS
+    // The gain 'k' usually needs correction to ensure 0dB in the passband (at Nyquist/Fs/2)
+    std::vector<std::vector<double>> sos_filter = zpk_to_sos(zd, pd, k);
+
+    // Normalize gain at Fs/2 (High-pass passband)
+    // (You might need a normalize_gain function here depending on your zpk_to_sos implementation)
+
+    return normalize_sos_filter_gain<double>(sos_filter);
+}
+
 }   // end of DSP
 
 
@@ -1334,13 +1385,16 @@ int main(int argc, char** argv)
         //std::cout << std::endl;
 
         //std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_complex_band_reject_iir_sos(N2, 3.0/20.0, 1.0/20.0, 40.0);
-        std::vector<std::vector<std::complex<double>>> tmp3 = DSP::create_complex_chebyshev_2_band_reject(N2, 4.0/20.0, 1.0/20.0, 40.0);
+        //std::vector<std::vector<std::complex<double>>> tmp3 = DSP::create_complex_chebyshev_2_band_reject(N2, 4.0/20.0, 1.0/20.0, 40.0);
 
-        for (idx = 0; idx < tmp3.size(); ++idx)
+        std::vector<std::vector<double>> hp = DSP::chebyshev2_highpass_iir_sos(10, 5.0 / 20.0, 40.0);
+
+        for (idx = 0; idx < hp.size(); ++idx)
         {
-            for (jdx = 0; jdx < tmp3[idx].size(); ++jdx)
+            for (jdx = 0; jdx < hp[idx].size(); ++jdx)
             {
-                std::cout << tmp3[idx][jdx].real() << "+" << tmp3[idx][jdx].imag() << "j\t";
+//                std::cout << tmp3[idx][jdx].real() << "+" << tmp3[idx][jdx].imag() << "j\t";
+                std::cout << hp[idx][jdx] << "\t";
             }
             std::cout << std::endl;
         }

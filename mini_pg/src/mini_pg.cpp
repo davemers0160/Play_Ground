@@ -770,15 +770,18 @@ namespace DSP
     {
         uint32_t idx;
 
-        size_t n = poles.size();
-        if (zeros.size() != n) /* error */;
-
-
-        std::vector<std::vector<std::complex<double>>> sos(n / 2);
+        int64_t n = poles.size() >> 1;
+        std::vector<std::vector<std::complex<double>>> sos(n);
+        
+        if (zeros.size() != poles.size())
+        {
+            std::cerr << "The number of poles and zeros is not the same." << std::endl;
+            return sos;
+        }      
 
         // Naive pairing: pole 2k with 2k+1, zero 2k with 2k+1
         // Better: sort by angle, pair nearest conjugates, etc.
-        for (idx = 0; idx < n; idx += 2)
+        for (idx = 0; idx < poles.size(); idx += 2)
         {
             std::complex<double> p1 = poles[idx];
             std::complex<double> p2 = poles[idx + 1];
@@ -802,7 +805,8 @@ namespace DSP
         }
 
         return sos;
-    }
+
+    }   // end of zpk_to_sos_complex
 
 inline std::vector<std::vector<std::complex<double>>> chebyshev2_iir_bp_sos(int32_t N, double f_low, double f_high, double r_s)
 {

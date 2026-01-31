@@ -1385,16 +1385,19 @@ int main(int argc, char** argv)
         //std::cout << std::endl;
 
         //std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_complex_band_reject_iir_sos(N2, 3.0/20.0, 1.0/20.0, 40.0);
-        //std::vector<std::vector<std::complex<double>>> tmp3 = DSP::create_complex_chebyshev_2_band_reject(N2, 4.0/20.0, 1.0/20.0, 40.0);
+        std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_bandreject_iir_sos(N2, 4.0/20.0, 1.0/20.0, 40.0);
 
-        std::vector<std::vector<double>> hp = DSP::chebyshev2_highpass_iir_sos(10, 9.0 / 20.0, 50.0);
+        //std::vector<std::vector<double>> hp = DSP::chebyshev2_highpass_iir_sos(10, 9.0 / 20.0, 50.0);
 
-        for (idx = 0; idx < hp.size(); ++idx)
+        for (idx = 0; idx < tmp3.size(); ++idx)
         {
-            for (jdx = 0; jdx < hp[idx].size(); ++jdx)
+            for (jdx = 0; jdx < tmp3[idx].size(); ++jdx)
             {
-//                std::cout << tmp3[idx][jdx].real() << "+" << tmp3[idx][jdx].imag() << "j\t";
-                std::cout << hp[idx][jdx] << "\t";
+
+                std::string t2 = ((tmp3[idx][jdx].imag() >= 0) ? "+" : "-");
+                
+                std::cout << tmp3[idx][jdx].real() << t2 << std::abs(tmp3[idx][jdx].imag()) << "j\t";
+                //std::cout << hp[idx][jdx] << "\t";
             }
             std::cout << std::endl;
         }

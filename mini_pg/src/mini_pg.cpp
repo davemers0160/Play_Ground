@@ -1014,8 +1014,8 @@ int main(int argc, char** argv)
         //bool cx2 = DSP::is_complex_double(r1[0]);
 
        
-        //std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_lowpass_iir_sos(N2, 2/20.0, 40.0);
-        std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_highpass_iir_sos(N2, 3 / 20.0, 40.0);
+        std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_lowpass_iir_sos(N2, 5.0/20.0, 40.0);
+        //std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_highpass_iir_sos(N2, 3 / 20.0, 40.0);
 
         //std::vector<std::vector<std::complex<double>>> tmp = DSP::chebyshev2_complex_bandpass_iir_sos(N2, 0.0/20.0, 2.0/20.0, 40);
 
@@ -1029,6 +1029,43 @@ int main(int argc, char** argv)
             std::cout << std::endl;
         }
         std::cout << std::endl;
+
+        std::vector<std::complex<double>> h = DSP::calculate_sos_impulse_response(tmp);
+
+        std::vector<std::complex<double>> x_high;
+
+        uint32_t samples_per_symbol = 30;
+
+        uint32_t end_index = std::floor(h.size() / (double)samples_per_symbol) * samples_per_symbol;
+
+        double n;
+        for (idx = 0; idx < end_index; idx += samples_per_symbol)
+        {
+            std::complex<double> block_sum(0, 0);
+
+            for (jdx = 0; jdx < samples_per_symbol; ++jdx)
+            {
+                block_sum += h[idx + jdx];
+            }
+
+            if (block_sum.real() >= 0)
+                n = 1;
+            else
+                n = -1;
+            
+            x_high.insert(x_high.end(), samples_per_symbol, n);
+            
+        }
+
+        std::vector<std::complex<double>> x2 = DSP::apply_df2t_filter(x_high, tmp);
+
+        double max_step = std::abs(std::real(*std::max_element(x2.begin(), x2.end(), [](const std::complex<double>& a, const std::complex<double>& b) {
+            return std::abs(a.real()) < std::abs(b.real());
+            })));
+
+        std::cout << "max: " << max_step << std::endl;
+
+        bp = 99;
 
         //auto tmp2 = DSP::normalize_sos_filter_gain(tmp, 200);
         //std::cout << std::endl;
@@ -1045,7 +1082,7 @@ int main(int argc, char** argv)
 
         //std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_complex_band_reject_iir_sos(N2, 3.0/20.0, 1.0/20.0, 40.0);
         //std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_bandreject_iir_sos(N2, 4.0/20.0, 1.0/20.0, 40.0);
-        std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_notch_iir_sos(20000000, 3500000, 100000);
+        std::vector<std::vector<std::complex<double>>> tmp3 = DSP::chebyshev2_notch_iir_sos(3.5/20.0, 1/20.0);
 
         //std::vector<std::vector<double>> hp = DSP::chebyshev2_highpass_iir_sos(10, 9.0 / 20.0, 50.0);
 

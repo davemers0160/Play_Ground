@@ -905,57 +905,6 @@ std::vector<cv::Point> generate_spiral_search_pattern(
     return sp;
 }   // end of generate_spiral_search_pattern
 
-
-//std::vector< std::vector<std::complex<double>>> normalize_sos_filter_gain(std::vector< std::vector<std::complex<double>>> sos_filter, uint32_t num_frequency_points = 1000) 
-//{
-//    uint32_t idx;
-//    double max_gain = 0.0;
-//
-//    if (sos_filter.empty() == true)
-//    {
-//        std::cout << "SoS filter is empty" << std::endl;
-//        return sos_filter;
-//    }
-//
-//    double step = 2.0* M_PI / (double)num_frequency_points;
-//    double omega = -M_PI;
-//
-//    // Iterate over the specified frequency range to find the peak gain
-//    for (idx = 0; idx < num_frequency_points; ++idx) 
-//    {
-//        std::complex<double> z(cos(omega), sin(omega));
-//        std::complex<double> z_inv = 1.0 / z;
-//        std::complex<double> overall_response(1.0, 0.0);
-//
-//        // Cascade the response of each SOS
-//        for (const auto& sos : sos_filter) 
-//        {
-//            std::complex<double> numerator = sos[0] + sos[1] * z_inv + sos[2] * z_inv * z_inv;
-//            std::complex<double> denominator = sos[3] + sos[4] * z_inv + sos[5] * z_inv * z_inv;
-//            overall_response *= numerator / denominator;
-//        }
-//
-//        double current_gain = std::abs(overall_response);
-//        if (current_gain > max_gain) 
-//        {
-//            max_gain = current_gain;
-//        }
-//
-//        omega += step;
-//    }
-//
-//    //std::cout << "max_gain: " << max_gain << std::endl;
-//    std::cout << "Peak gain in the passband is: " << 20 * log10(max_gain) << " dB" << std::endl;
-//
-//    double gain_correction_factor = 1.0 / max_gain;
-//
-//    sos_filter[0][0] *= gain_correction_factor;
-//    sos_filter[0][1] *= gain_correction_factor;
-//    sos_filter[0][2] *= gain_correction_factor;
-//
-//    return sos_filter;
-//}
-
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv)
 {

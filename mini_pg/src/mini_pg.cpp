@@ -1034,7 +1034,7 @@ int main(int argc, char** argv)
 
         std::vector<std::complex<double>> x_high;
 
-        uint32_t samples_per_symbol = 30;
+        uint32_t samples_per_symbol = 3;
 
         uint32_t end_index = std::floor(h.size() / (double)samples_per_symbol) * samples_per_symbol;
 
@@ -1064,6 +1064,13 @@ int main(int argc, char** argv)
             })));
 
         std::cout << "max: " << max_step << std::endl;
+
+        tmp[0][0] /= max_step;
+        tmp[0][1] /= max_step;
+        tmp[0][2] /= max_step;
+
+        std::vector<std::complex<double>> x3 = DSP::apply_df2t_filter(x_high, tmp);
+
 
         bp = 99;
 

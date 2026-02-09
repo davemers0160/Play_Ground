@@ -954,6 +954,29 @@ int main(int argc, char** argv)
         int32_t N2 = 8;
 
 
+        // std::min(samples_per_symbol * 5, guard_samples)
+        uint32_t n2 = std::min((uint32_t)(20), 100U);
+        double b = 0.71;
+        double bn = std::pow(b, n2);
+        double bx = b;
+        // k = a/(1-bn)
+        double a = 2040.;
+        double k = a/(1.0-bn);
+
+        std::vector<double> yy;
+
+        for (idx = 0; idx < n2; ++idx)
+        {
+            // y = k *(b^x - bn)
+            double tmp_y = k * (bx - bn);
+            yy.push_back(tmp_y);
+            bx *= b;
+
+        }
+
+
+
+
         std::vector<std::complex<double>> c1(10, std::complex<double>(2,2));
         std::vector<double> r1(10, 5);
 
